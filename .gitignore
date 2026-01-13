@@ -1,0 +1,7 @@
+.idea/
+.vscode/
+.env
+
+*.out
+*.test
+configs/config.yaml
