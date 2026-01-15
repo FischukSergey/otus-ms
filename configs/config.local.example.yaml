@@ -7,7 +7,7 @@ log:
  
 servers:
   debug:
-    addr: localhost:33010
+    addr: localhost:33000
   client:
     addr: localhost:38080
     allow_origins:

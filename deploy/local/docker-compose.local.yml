@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     ports:
       - "38080:38080"  # API port
-      - "33010:33010"  # Debug port
+      - "33000:33000"  # Debug port
     volumes:
       - ../../configs:/app/configs:ro
       - ../../logs:/app/logs

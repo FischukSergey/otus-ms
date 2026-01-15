@@ -133,5 +133,5 @@ sudo docker system prune -af --volumes
 ## Порты
 
 - `38080` - HTTP API
-- `33010` - Debug/pprof
+- `33000` - Debug/pprof
 

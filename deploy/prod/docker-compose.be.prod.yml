@@ -5,7 +5,7 @@ services:
     restart: always
     ports:
       - "0.0.0.0:38080:38080"  # API port
-      - "0.0.0.0:33010:33010"  # Debug port
+      - "0.0.0.0:33000:33000"  # Debug port
     volumes:
       - ./configs:/app/configs:ro
       - ./logs:/app/logs
