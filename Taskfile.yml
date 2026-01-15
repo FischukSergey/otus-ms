@@ -18,7 +18,7 @@ vars:
     github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.2
   
   DOCKER_COMPOSE_PATHS: >- #задел на будущее
-    -f ./deploy/local/docker-compose.yml --env-file ./deploy/local/.env.local
+    -f ./deploy/local/docker-compose.local.yml
 
   DOCKER_COMPOSE_CMD: "docker compose"
   PROJECT_NAME: "otus"
