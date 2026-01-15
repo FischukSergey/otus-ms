@@ -15,7 +15,7 @@ var configExamplePath string
 
 func init() {
 	_, currentFile, _, _ := runtime.Caller(0)
-	configExamplePath = filepath.Join(filepath.Dir(currentFile), "..", "..", "configs", "config.example.yaml")
+	configExamplePath = filepath.Join(filepath.Dir(currentFile), "..", "..", "configs", "config.local.example.yaml")
 }
 
 func TestParseAndValidate(t *testing.T) {

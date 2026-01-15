@@ -67,6 +67,9 @@ tasks:
 
   tests:
     desc: "Запустить ВСЕ тесты (unit + integration)"
+    cmds:
+      - echo "- Tests"
+      - go test -race -count=1 ./...
     #добавить тесты
 
   build:

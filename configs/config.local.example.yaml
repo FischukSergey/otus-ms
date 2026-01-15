@@ -1,0 +1,14 @@
+# config.yaml
+global:
+  env: local
+
+log:
+  level: debug
+ 
+servers:
+  debug:
+    addr: localhost:33010
+  client:
+    addr: localhost:38080
+    allow_origins:
+      - "*"
