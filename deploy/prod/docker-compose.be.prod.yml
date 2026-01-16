@@ -1,7 +1,7 @@
 services:
   otus-microservice-be:
     container_name: otus-microservice-be-prod
-    image: cr.selcloud.ru/otus-microservice-be:latest
+    image: cr.selcloud.ru/otus-microservice-be/backend:latest
     restart: always
     ports:
       - "0.0.0.0:38080:38080"  # API port

@@ -11,7 +11,8 @@ env:
   
   # Docker Registry
   REGISTRY: cr.selcloud.ru
-  BE_IMAGE_NAME: otus-microservice-be
+  REGISTRY_PROJECT: otus-microservice-be
+  BE_IMAGE_NAME: backend
   IMAGE_TAG: latest
 
   # VPS Configuration
@@ -72,11 +73,7 @@ jobs:
           context: .
           file: ./prod.Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:buildcache,mode=max
+          tags: ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -109,7 +106,7 @@ jobs:
             docker compose -f ${{ env.COMPOSE_FILE }} down || true
             
             echo "🗑️  Удаление старых образов..."
-            docker image rm ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} || true
+            docker image rm ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} || true
             
             echo "⬇️  Скачивание нового образа..."
             docker compose -f ${{ env.COMPOSE_FILE }} pull
