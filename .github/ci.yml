@@ -1,0 +1,116 @@
+name: CI & Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: 1.23
+  GOLANGCI_LINT_VERSION: v1.61.0
+  
+  # Docker Registry
+  REGISTRY: cr.selcloud.ru
+  BE_IMAGE_NAME: otus-microservice-be
+  IMAGE_TAG: latest
+
+  # VPS Configuration
+  VPS_PATH: /root/otus-microservice/prod/be
+  
+  # Application Configuration
+  APP_CONTAINER_NAME: otus-microservice-be-prod
+  COMPOSE_FILE: docker-compose.be.prod.yml
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/checkout@v4
+      - uses: golangci/golangci-lint-action@v4
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --timeout=5m
+
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/checkout@v4
+      
+      - name: Run unit tests
+        run: |
+          echo "🧪 Запуск unit тестов..."
+          go test -race -count=1 -v ./...
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: 'main'
+
+      - name: Log in to Selectel Registry
+        env:
+          SELECTEL_REGISTRY_TOKEN_PROD: ${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}
+          SELECTEL_REGISTRY_USERNAME_PROD: ${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}
+        run: |
+          echo "$SELECTEL_REGISTRY_TOKEN_PROD" | docker login ${{ env.REGISTRY }} -u "$SELECTEL_REGISTRY_USERNAME_PROD" --password-stdin
+
+      - name: Build and push Backend
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ./prod.Dockerfile .
+          docker push ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            # Создаем структуру директорий
+            mkdir -p ${{ env.VPS_PATH }}/{configs,logs,data/files}
+            
+            # Переходим в рабочую директорию
+            cd ${{ env.VPS_PATH }}
+            
+            # Скачиваем docker-compose файл из репозитория
+            curl -o docker-compose.be.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/deploy/prod/docker-compose.be.prod.yml
+            
+            # Проверяем наличие конфига
+            if [ ! -f configs/config.prod.yaml ]; then
+              echo "⚠️  configs/config.prod.yaml не найден!"
+              echo "ℹ️  Создайте конфиг вручную в ${{ env.VPS_PATH }}/configs/"
+              echo "ℹ️  Используйте configs/config.prod.example.yaml как шаблон"
+              exit 1
+            fi
+            
+            echo "📦 Логин в Selectel Registry..."
+            echo "${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}" | docker login ${{ env.REGISTRY }} -u "${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}" --password-stdin
+            
+            echo "🔄 Остановка старых контейнеров..."
+            docker compose -f ${{ env.COMPOSE_FILE }} down || true
+            
+            echo "🗑️  Удаление старых образов..."
+            docker image rm ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} || true
+            
+            echo "⬇️  Скачивание нового образа..."
+            docker compose -f ${{ env.COMPOSE_FILE }} pull
+            
+            echo "🚀 Запуск контейнеров..."
+            docker compose -f ${{ env.COMPOSE_FILE }} up -d
+            
+            echo "✅ Production деплой завершен!"
+            docker ps | grep otus-microservice
+            
+            echo "🧹 Очистка..."
+            docker system prune -f || true
