@@ -75,6 +75,16 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/docker-compose.be.prod.yml"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
+
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -88,8 +98,11 @@ jobs:
             # Переходим в рабочую директорию
             cd ${{ env.VPS_PATH }}
             
-            # Скачиваем docker-compose файл из репозитория
-            curl -o docker-compose.be.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/deploy/prod/docker-compose.be.prod.yml
+            # Проверяем что docker-compose файл скопирован
+            if [ ! -f docker-compose.be.prod.yml ]; then
+              echo "❌ docker-compose.be.prod.yml не найден!"
+              exit 1
+            fi
             
             # Проверяем наличие конфига
             if [ ! -f configs/config.prod.yaml ]; then
