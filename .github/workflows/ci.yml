@@ -55,20 +55,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: 'main'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Selectel Registry
-        env:
-          SELECTEL_REGISTRY_TOKEN_PROD: ${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}
-          SELECTEL_REGISTRY_USERNAME_PROD: ${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}
-        run: |
-          echo "$SELECTEL_REGISTRY_TOKEN_PROD" | docker login ${{ env.REGISTRY }} -u "$SELECTEL_REGISTRY_USERNAME_PROD" --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}
+          password: ${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}
 
       - name: Build and push Backend
-        run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ./prod.Dockerfile .
-          docker push ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./prod.Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:buildcache,mode=max
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3

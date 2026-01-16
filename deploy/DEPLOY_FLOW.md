@@ -120,15 +120,25 @@ test:
 
 ### Этап 3: Сборка образа (GitHub Actions)
 
-```bash
+```yaml
 # На GitHub Actions сервере
-docker build -t cr.selcloud.ru/otus-microservice-be:latest -f ./prod.Dockerfile .
-docker push cr.selcloud.ru/otus-microservice-be:latest
+- uses: docker/setup-buildx-action@v3
+- uses: docker/login-action@v3
+- uses: docker/build-push-action@v6
+  with:
+    context: .
+    file: ./prod.Dockerfile
+    push: true
+    tags: |
+      cr.selcloud.ru/otus-microservice-be:latest
+      cr.selcloud.ru/otus-microservice-be:${COMMIT_SHA}
 ```
 
 **Создает:**
-- 🏗️ Multi-stage Docker образ
+- 🏗️ Multi-stage Docker образ с BuildKit
 - 📦 Optimized Alpine-based image
+- 🏷️ Два тега: `latest` и SHA коммита
+- ⚡ Кэширование слоев для быстрой пересборки
 - 🚀 Готовый к запуску контейнер
 
 ### Этап 4: Деплой на VPS (SSH)
@@ -239,15 +249,36 @@ docker compose pull
 docker compose up -d
 ```
 
-### Вариант 3: Запуск конкретной версии
+### Вариант 3: Запуск конкретной версии (по SHA коммита)
 
 ```bash
+# На VPS
+
+# Найдите SHA коммита рабочей версии на GitHub
+# https://github.com/YOUR_USERNAME/OtusMS/commits/main
+
 # В docker-compose.be.prod.yml измените
-image: cr.selcloud.ru/otus-microservice-be:v1.0.0  # вместо :latest
+image: cr.selcloud.ru/otus-microservice-be:abc123def456  # вместо :latest (полный SHA)
 
 # Затем
 docker compose pull
 docker compose up -d
+```
+
+Или без изменения docker-compose:
+
+```bash
+# Остановить текущий контейнер
+docker compose down
+
+# Запустить конкретную версию
+docker run -d --name otus-microservice-be-prod \
+  -p 38080:38080 -p 33000:33000 \
+  -v $(pwd)/configs:/app/configs:ro \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/data/files:/app/data/files \
+  cr.selcloud.ru/otus-microservice-be:abc123def456 \
+  ./main-service -config /app/configs/config.prod.yaml
 ```
 
 ## Zero Downtime Deployment (будущее улучшение)

@@ -114,6 +114,30 @@ docker ps | grep otus-microservice
 docker logs otus-microservice-be-prod -f
 ```
 
+### Rollback к предыдущей версии
+
+Каждая сборка создает образ с тегом SHA коммита. Для отката:
+
+```bash
+# Найдите SHA коммита на GitHub:
+# https://github.com/YOUR_USERNAME/OtusMS/commits/main
+
+# Откатитесь к конкретной версии
+docker compose down
+docker pull cr.selcloud.ru/otus-microservice-be:abc123def456
+docker tag cr.selcloud.ru/otus-microservice-be:abc123def456 cr.selcloud.ru/otus-microservice-be:latest
+docker compose up -d
+
+# Или прямо запустите нужную версию:
+docker run -d --name otus-microservice-be-prod \
+  -p 38080:38080 -p 33000:33000 \
+  -v $(pwd)/configs:/app/configs:ro \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/data/files:/app/data/files \
+  --restart always \
+  cr.selcloud.ru/otus-microservice-be:abc123def456
+```
+
 ## Полезные команды
 
 ### Просмотр логов

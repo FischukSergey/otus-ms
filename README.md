@@ -134,8 +134,10 @@ servers:
 GitHub Actions автоматически при пуше в `main`:
 - ✅ Проверяет код линтером (`golangci-lint`)
 - ✅ Запускает unit тесты
-- ✅ Собирает Docker образ
-- ✅ Публикует образ в Selectel Container Registry
+- ✅ Собирает Docker образ с BuildKit и кэшированием слоев
+- ✅ Публикует образ в Selectel Container Registry с двумя тегами:
+  - `latest` - последняя версия
+  - `<commit-sha>` - конкретная версия для rollback
 - ✅ Деплоит на production сервер через SSH
 
 ### Настройка деплоя
