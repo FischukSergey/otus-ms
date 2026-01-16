@@ -1,5 +1,11 @@
 # Деплой OtusMS
 
+## 📚 Документация
+
+- 📋 [CHECKLIST.md](CHECKLIST.md) - Пошаговый чек-лист настройки
+- 🔐 [SSH_SETUP.md](SSH_SETUP.md) - Детальная настройка SSH
+- 🔄 [DEPLOY_FLOW.md](DEPLOY_FLOW.md) - Схема процесса деплоя
+
 ## Локальная разработка
 
 ### С Docker Compose
@@ -30,27 +36,52 @@ task build
 
 ### Предварительная настройка на сервере
 
-1. **Создайте структуру директорий:**
+> 📖 **Подробная инструкция:** См. [SSH_SETUP.md](SSH_SETUP.md)
+
+1. **Настройте SSH доступ:**
 
 ```bash
-sudo mkdir -p /root/otus-microservice/prod/be/{configs,logs,data/files}
+# На вашем локальном компьютере
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/vps_deploy
+
+# Скопируйте публичный ключ на VPS
+ssh-copy-id -i ~/.ssh/vps_deploy.pub root@ваш_vps_ip
+
+# Проверьте подключение
+ssh -i ~/.ssh/vps_deploy root@ваш_vps_ip
+
+# Скопируйте приватный ключ для GitHub Secrets
+cat ~/.ssh/vps_deploy
+# Скопируйте весь вывод включая -----BEGIN/END-----
 ```
 
-2. **Создайте конфигурационный файл:**
+2. **Создайте структуру директорий на VPS:**
 
 ```bash
-# Скопируйте пример конфига
-sudo nano /root/otus-microservice/prod/be/configs/config.prod.yaml
+# На VPS
+mkdir -p /root/otus-microservice/prod/be/{configs,logs,data/files}
+chmod -R 755 /root/otus-microservice/prod/be
+```
+
+3. **Создайте конфигурационный файл на VPS:**
+
+```bash
+# На VPS
+nano /root/otus-microservice/prod/be/configs/config.prod.yaml
 ```
 
 Используйте `configs/config.prod.example.yaml` как шаблон.
 
-3. **Настройте GitHub Actions Runner** (для self-hosted):
+4. **Настройте GitHub Secrets:**
 
-```bash
-# Установите и настройте runner на сервере
-# https://github.com/your-repo/settings/actions/runners/new
-```
+Перейдите в `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
+
+Добавьте:
+- `VPS_OTUS_HOST` = IP адрес вашего VPS
+- `VPS_OTUS_USER` = `root`
+- `VPS_OTUS_SSH_KEY` = содержимое файла `~/.ssh/vps_deploy` (приватный ключ)
+- `SELECTEL_REGISTRY_OTUS_USERNAME_PROD` = логин в Selectel Registry
+- `SELECTEL_REGISTRY_OTUS_TOKEN_PROD` = токен Selectel Registry
 
 ### Автоматический деплой через GitHub Actions
 
@@ -67,17 +98,20 @@ sudo nano /root/otus-microservice/prod/be/configs/config.prod.yaml
 # На сервере
 cd /root/otus-microservice/prod/be
 
-# Скачать новую версию docker-compose (если изменился)
-# обычно делается через CI/CD
+# Скачать последнюю версию docker-compose файла
+curl -o docker-compose.be.prod.yml https://raw.githubusercontent.com/ВАШ_USERNAME/OtusMS/main/deploy/prod/docker-compose.be.prod.yml
+
+# Логин в registry
+echo "ваш_токен" | docker login cr.selcloud.ru -u "ваш_логин" --password-stdin
 
 # Перезапустить контейнеры
-sudo docker compose -f docker-compose.be.prod.yml down
-sudo docker compose -f docker-compose.be.prod.yml pull
-sudo docker compose -f docker-compose.be.prod.yml up -d
+docker compose -f docker-compose.be.prod.yml down
+docker compose -f docker-compose.be.prod.yml pull
+docker compose -f docker-compose.be.prod.yml up -d
 
 # Проверить статус
-sudo docker ps | grep otus-microservice
-sudo docker logs otus-microservice-be-prod -f
+docker ps | grep otus-microservice
+docker logs otus-microservice-be-prod -f
 ```
 
 ## Полезные команды
@@ -126,9 +160,16 @@ sudo docker system prune -af --volumes
 
 ## Переменные окружения (GitHub Secrets)
 
-Необходимо настроить в GitHub:
-- `SELECTEL_REGISTRY_USERNAME_PROD` - логин для Selectel Container Registry
-- `SELECTEL_REGISTRY_TOKEN_PROD` - токен для Selectel Container Registry
+Необходимо настроить в GitHub (`Settings` → `Secrets and variables` → `Actions`):
+
+### Доступ к Container Registry:
+- `SELECTEL_REGISTRY_OTUS_USERNAME_PROD` - логин для Selectel Container Registry
+- `SELECTEL_REGISTRY_OTUS_TOKEN_PROD` - токен для Selectel Container Registry
+
+### Доступ к VPS (SSH):
+- `VPS_OTUS_HOST` - IP адрес или домен вашего VPS
+- `VPS_OTUS_USER` - пользователь для SSH (обычно `root`)
+- `VPS_OTUS_SSH_KEY` - приватный SSH ключ для доступа к серверу
 
 ## Порты
 

@@ -131,11 +131,37 @@ servers:
 
 ## CI/CD
 
-GitHub Actions автоматически:
-- ✅ Проверяет код линтером
-- ✅ Запускает тесты
+GitHub Actions автоматически при пуше в `main`:
+- ✅ Проверяет код линтером (`golangci-lint`)
+- ✅ Запускает unit тесты
 - ✅ Собирает Docker образ
-- ✅ Деплоит на production сервер
+- ✅ Публикует образ в Selectel Container Registry
+- ✅ Деплоит на production сервер через SSH
+
+### Настройка деплоя
+
+> 📋 **Пошаговая инструкция:** [deploy/CHECKLIST.md](deploy/CHECKLIST.md)
+
+Для автоматического деплоя необходимо:
+
+1. **Настроить VPS сервер:**
+   - Установить Docker и Docker Compose
+   - Создать структуру директорий
+   - Создать production конфиг
+
+2. **Настроить SSH доступ:**
+   - Создать SSH ключи
+   - Добавить публичный ключ на VPS
+   - См. [deploy/SSH_SETUP.md](deploy/SSH_SETUP.md)
+
+3. **Настроить GitHub Secrets:**
+   - `VPS_OTUS_HOST` - IP адрес VPS
+   - `VPS_OTUS_USER` - SSH пользователь (root)
+   - `VPS_OTUS_SSH_KEY` - приватный SSH ключ
+   - `SELECTEL_REGISTRY_OTUS_USERNAME_PROD` - логин в registry
+   - `SELECTEL_REGISTRY_OTUS_TOKEN_PROD` - токен registry
+
+Подробнее: [deploy/README.md](deploy/README.md)
 
 ## Порты
 
