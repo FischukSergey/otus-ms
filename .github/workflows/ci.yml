@@ -106,29 +106,29 @@ jobs:
             
             # Проверяем наличие конфига
             if [ ! -f configs/config.prod.yaml ]; then
-              echo "⚠️  configs/config.prod.yaml не найден!"
-              echo "ℹ️  Создайте конфиг вручную в ${{ env.VPS_PATH }}/configs/"
-              echo "ℹ️  Используйте configs/config.prod.example.yaml как шаблон"
+              echo "configs/config.prod.yaml не найден!"
+              echo "Создайте конфиг вручную в ${{ env.VPS_PATH }}/configs/"
+              echo "Используйте configs/config.prod.example.yaml как шаблон"
               exit 1
             fi
             
             echo "📦 Логин в Selectel Registry..."
             echo "${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}" | docker login ${{ env.REGISTRY }} -u "${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}" --password-stdin
             
-            echo "🔄 Остановка старых контейнеров..."
+            echo "Остановка старых контейнеров..."
             docker compose -f ${{ env.COMPOSE_FILE }} down || true
             
-            echo "🗑️  Удаление старых образов..."
+            echo "Удаление старых образов..."
             docker image rm ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} || true
             
-            echo "⬇️  Скачивание нового образа..."
+            echo "Скачивание нового образа..."
             docker compose -f ${{ env.COMPOSE_FILE }} pull
             
-            echo "🚀 Запуск контейнеров..."
+            echo "Запуск контейнеров..."
             docker compose -f ${{ env.COMPOSE_FILE }} up -d
             
             echo "✅ Production деплой завершен!"
             docker ps | grep otus-microservice
             
-            echo "🧹 Очистка..."
+            echo "Очистка..."
             docker system prune -f || true
