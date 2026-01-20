@@ -8,7 +8,7 @@ vars:
   GO_FILES:
     sh: find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./internal/store/*" -not -path "*.gen.go" | tr "\n" " "
 
-  GOLANGCI_LINT_VERSION: v1.61.0
+  GOLANGCI_LINT_VERSION: v1.63.4
   GOLANGCI_LINT_CACHE:
     sh: echo "$HOME/Library/Caches/golangci-lint" # сделал отдельную директорию для кэша
 
@@ -62,6 +62,7 @@ tasks:
         docker run --rm \
           -v "$(pwd):/app" -w /app \
           -v "{{.GOLANGCI_LINT_CACHE}}:/root/.cache" \
+          -e GOEXPERIMENT=rangefunc \
           golangci/golangci-lint:{{.GOLANGCI_LINT_VERSION}} \
           golangci-lint {{.CLI_ARGS}}
 

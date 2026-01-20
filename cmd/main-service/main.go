@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/FischukSergey/otus-ms/internal/config"
+	"github.com/FischukSergey/otus-ms/internal/store"
 )
 
 var configPath = flag.String("config", "configs/config.local.yaml", "Path to config file")
@@ -42,11 +44,44 @@ func run() error {
 	)
 	defer cancel()
 
+	// Инициализируем подключение к БД
+	logger.Info("Initializing database connection",
+		"host", cfg.DB.Host,
+		"port", cfg.DB.Port,
+		"database", cfg.DB.Name,
+	)
+
+	storage, err := store.NewStorage(ctx, store.NewOptions(
+		cfg.DB.Name,                         // dbName
+		cfg.DB.User,                         // dbUser
+		cfg.DB.Password,                     // dbPassword
+		cfg.DB.Host,                         // dbHost
+		cfg.DB.Port,                         // dbPort
+		store.WithDbSSLMode(cfg.DB.SSLMode), // optional SSL mode
+	))
+	if err != nil {
+		return fmt.Errorf("init storage: %w", err)
+	}
+	defer storage.Close()
+
+	// Устанавливаем logger для storage
+	storage.SetLogger(logger)
+
+	logger.Info("Database connection established successfully")
+
+	// Запускаем миграции
+	logger.Info("Running database migrations...")
+	if err := storage.RunMigrations(ctx); err != nil {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+	logger.Info("Database migrations completed successfully")
+
 	// Создаем и запускаем API сервер
-	apiServer := NewAPIServer(APIServerDeps{
-		Addr:   cfg.Servers.Client.Addr,
-		Config: cfg,
-		Logger: logger,
+	apiServer := NewAPIServer(&APIServerDeps{
+		Addr:    cfg.Servers.Client.Addr,
+		Config:  cfg,
+		Logger:  logger,
+		Storage: storage,
 	})
 
 	// Запускаем сервер в отдельной горутине

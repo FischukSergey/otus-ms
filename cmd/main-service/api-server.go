@@ -11,23 +11,26 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/FischukSergey/otus-ms/internal/config"
+	"github.com/FischukSergey/otus-ms/internal/store"
 )
 
 // APIServer представляет простой HTTP API сервер.
 type APIServer struct {
-	server *http.Server
-	logger *slog.Logger
+	server  *http.Server
+	logger  *slog.Logger
+	storage *store.Storage
 }
 
 // APIServerDeps содержит зависимости для инициализации API сервера.
 type APIServerDeps struct {
-	Addr   string
-	Config config.Config
-	Logger *slog.Logger
+	Addr    string
+	Config  config.Config
+	Logger  *slog.Logger
+	Storage *store.Storage
 }
 
 // NewAPIServer создает и настраивает простой API сервер с chi роутером.
-func NewAPIServer(deps APIServerDeps) *APIServer {
+func NewAPIServer(deps *APIServerDeps) *APIServer {
 	router := chi.NewRouter()
 
 	// Middleware
@@ -38,7 +41,8 @@ func NewAPIServer(deps APIServerDeps) *APIServer {
 
 	// API сервер
 	apiSrv := &APIServer{
-		logger: deps.Logger,
+		logger:  deps.Logger,
+		storage: deps.Storage,
 	}
 
 	// Роуты

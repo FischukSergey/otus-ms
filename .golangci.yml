@@ -15,6 +15,13 @@ linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
 
+  gomoddirectives:
+    replace-allow-list:
+      - golang.org/x/crypto
+      - golang.org/x/sync
+      - golang.org/x/sys
+      - golang.org/x/text
+
   depguard:
     rules:
       main:
