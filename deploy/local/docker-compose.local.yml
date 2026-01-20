@@ -1,0 +1,25 @@
+services:
+  otus-microservice-be:
+    container_name: otus-microservice-be-local
+    build:
+      context: ../..
+      dockerfile: prod.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "38080:38080"  # API port
+      - "33000:33000"  # Debug port
+    volumes:
+      - ../../configs:/app/configs:ro
+      - ../../logs:/app/logs
+      - ../../data/files:/app/data/files
+    environment:
+      - CONFIG_PATH=/app/configs/config.local.yaml
+    command: ["./main-service", "-config", "/app/configs/config.local.yaml"]
+    networks:
+      - otus_local_network
+
+networks:
+  otus_local_network:
+    name: otus_local_network
+    driver: bridge
+

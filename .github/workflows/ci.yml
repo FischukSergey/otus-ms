@@ -11,7 +11,8 @@ env:
   
   # Docker Registry
   REGISTRY: cr.selcloud.ru
-  BE_IMAGE_NAME: otus-microservice-be
+  REGISTRY_PROJECT: otus-microservice-be
+  BE_IMAGE_NAME: backend
   IMAGE_TAG: latest
 
   # VPS Configuration
@@ -55,20 +56,34 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: 'main'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Selectel Registry
-        env:
-          SELECTEL_REGISTRY_TOKEN_PROD: ${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}
-          SELECTEL_REGISTRY_USERNAME_PROD: ${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}
-        run: |
-          echo "$SELECTEL_REGISTRY_TOKEN_PROD" | docker login ${{ env.REGISTRY }} -u "$SELECTEL_REGISTRY_USERNAME_PROD" --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}
+          password: ${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}
 
       - name: Build and push Backend
-        run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ./prod.Dockerfile .
-          docker push ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./prod.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/docker-compose.be.prod.yml"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -83,8 +98,11 @@ jobs:
             # Переходим в рабочую директорию
             cd ${{ env.VPS_PATH }}
             
-            # Скачиваем docker-compose файл из репозитория
-            curl -o docker-compose.be.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/deploy/prod/docker-compose.be.prod.yml
+            # Проверяем что docker-compose файл скопирован
+            if [ ! -f docker-compose.be.prod.yml ]; then
+              echo "❌ docker-compose.be.prod.yml не найден!"
+              exit 1
+            fi
             
             # Проверяем наличие конфига
             if [ ! -f configs/config.prod.yaml ]; then
@@ -101,7 +119,7 @@ jobs:
             docker compose -f ${{ env.COMPOSE_FILE }} down || true
             
             echo "🗑️  Удаление старых образов..."
-            docker image rm ${{ env.REGISTRY }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} || true
+            docker image rm ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }} || true
             
             echo "⬇️  Скачивание нового образа..."
             docker compose -f ${{ env.COMPOSE_FILE }} pull

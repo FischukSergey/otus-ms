@@ -4,4 +4,8 @@
 
 *.out
 *.test
-configs/config.yaml
+
+/main-service
+
+configs/config.local.yaml
+configs/config.prod.yaml
