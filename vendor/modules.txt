@@ -28,6 +28,9 @@ github.com/go-playground/universal-translator
 # github.com/go-playground/validator/v10 v10.22.0
 ## explicit; go 1.18
 github.com/go-playground/validator/v10
+# github.com/google/uuid v1.6.0
+## explicit
+github.com/google/uuid
 # github.com/ilyakaznacheev/cleanenv v1.5.0
 ## explicit; go 1.13
 github.com/ilyakaznacheev/cleanenv

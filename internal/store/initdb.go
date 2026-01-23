@@ -61,6 +61,11 @@ func (s *Storage) SetLogger(logger *slog.Logger) {
 	s.logger = logger
 }
 
+// DB возвращает пул подключений к базе данных.
+func (s *Storage) DB() *pgxpool.Pool {
+	return s.db
+}
+
 // Close closes the database connection pool.
 func (s *Storage) Close() {
 	s.db.Close()
