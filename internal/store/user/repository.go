@@ -58,7 +58,7 @@ func (r *Repository) Create(ctx context.Context, user *models.User) error {
 }
 
 // GetByUUID возвращает пользователя по UUID.
-// Возвращает всех пользователей, включая помеченных как удаленные (deleted=true).
+// Возвращает все записи, включая мягко удаленные (deleted=true).
 func (r *Repository) GetByUUID(ctx context.Context, uuid string) (*models.User, error) {
 	query := `
 		SELECT uuid, email, first_name, last_name, middle_name, role, 

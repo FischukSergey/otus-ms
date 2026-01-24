@@ -1,0 +1,22 @@
+global:
+  env: local
+
+log:
+  level: info
+
+servers:
+  debug:
+    addr: "0.0.0.0:6060"
+  client:
+    addr: "0.0.0.0:8080"
+    allow_origins:
+      - "*"
+
+db:
+  name: otus_ms_test
+  user: otus_ms_test
+  password: otus_ms_test
+  host: postgres
+  port: "5432"
+  ssl_mode: disable
+

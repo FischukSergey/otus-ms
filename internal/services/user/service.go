@@ -84,7 +84,8 @@ func (s *Service) CreateUser(ctx context.Context, req CreateRequest) error {
 }
 
 // GetUser возвращает пользователя по UUID.
-// Возвращает пользователей независимо от статуса deleted.
+// Возвращает все записи, включая мягко удаленные (deleted=true).
+// API клиент может фильтровать по флагу deleted при необходимости.
 func (s *Service) GetUser(ctx context.Context, uuidStr string) (*Response, error) {
 	// Валидируем формат UUID
 	if _, err := uuid.Parse(uuidStr); err != nil {
