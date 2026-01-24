@@ -21,6 +21,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    # PostgreSQL запускается отдельно через deploy-database.yml workflow
+    # и подключается через общую сеть otus_network
 
 networks:
   otus_network:
