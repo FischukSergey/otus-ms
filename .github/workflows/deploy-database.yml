@@ -1,0 +1,81 @@
+name: Deploy PostgreSQL to Production (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Действие с БД'
+        required: true
+        default: 'up'
+        type: choice
+        options:
+          - up      # Запустить БД
+          - down    # Остановить БД (БЕЗ удаления данных)
+          - restart # Перезапустить БД
+          - logs    # Показать логи
+
+env:
+  VPS_PATH: /root/otus-microservice/prod/db
+
+jobs:
+  deploy-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/docker-compose.db.prod.yml"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
+
+      - name: Execute action on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            cd ${{ env.VPS_PATH }}
+            
+            # Создаем .env файл с паролем если его нет
+            if [ ! -f .env ]; then
+              echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .env
+              echo "✅ Создан .env файл с паролем БД"
+            fi
+            
+            case "${{ inputs.action }}" in
+              up)
+                echo "🚀 Запуск PostgreSQL..."
+                docker compose -f docker-compose.db.prod.yml up -d
+                sleep 5
+                docker compose -f docker-compose.db.prod.yml ps
+                echo "✅ PostgreSQL запущен"
+                ;;
+              down)
+                echo "⏸️  Остановка PostgreSQL (данные сохраняются)..."
+                docker compose -f docker-compose.db.prod.yml down
+                echo "✅ PostgreSQL остановлен"
+                ;;
+              restart)
+                echo "🔄 Перезапуск PostgreSQL..."
+                docker compose -f docker-compose.db.prod.yml restart
+                sleep 5
+                docker compose -f docker-compose.db.prod.yml ps
+                echo "✅ PostgreSQL перезапущен"
+                ;;
+              logs)
+                echo "📋 Логи PostgreSQL (последние 100 строк):"
+                docker compose -f docker-compose.db.prod.yml logs --tail=100
+                ;;
+            esac
+            
+            echo ""
+            echo "ℹ️  Статус контейнеров:"
+            docker ps | grep postgres || echo "PostgreSQL не запущен"
