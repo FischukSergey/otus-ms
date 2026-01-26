@@ -354,7 +354,8 @@ func (s *DebugServer) handleDebugIndex(w http.ResponseWriter, _ *http.Request) {
                 
                 <div class="info">
                     <strong>📖 Базовое использование</strong>
-                    Кликните на любую ссылку выше для просмотра профиля в браузере или используйте go tool pprof для детального анализа.
+                    Кликните на любую ссылку выше для просмотра профиля в браузере или используйте 
+                    go tool pprof для детального анализа.
                 </div>
                 
                 <h3>Анализ через командную строку:</h3>
@@ -396,9 +397,11 @@ go tool pprof -http=:8080 http://localhost:33000/debug/pprof/heap</code></div>
             <div class="section">
                 <h2>📚 Документация</h2>
                 <ul>
-                    <li><a href="https://pkg.go.dev/net/http/pprof" target="_blank">net/http/pprof - Официальная документация</a></li>
+                    <li><a href="https://pkg.go.dev/net/http/pprof" target="_blank">
+                        net/http/pprof - Официальная документация</a></li>
                     <li><a href="https://go.dev/blog/pprof" target="_blank">Profiling Go Programs</a></li>
-                    <li><a href="https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/" target="_blank">Profiling Go with pprof</a></li>
+                    <li><a href="https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/" target="_blank">
+                        Profiling Go with pprof</a></li>
                 </ul>
             </div>
         </div>
