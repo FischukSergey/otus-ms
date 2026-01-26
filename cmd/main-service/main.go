@@ -84,11 +84,25 @@ func run() error {
 		Storage: storage,
 	})
 
-	// Запускаем сервер в отдельной горутине
+	// Создаем и запускаем Debug сервер
+	debugServer := NewDebugServer(&DebugServerDeps{
+		Addr:   cfg.Servers.Debug.Addr,
+		Logger: logger,
+	})
+
+	// Запускаем API сервер в отдельной горутине
 	go func() {
 		logger.Info("Starting API server", "addr", cfg.Servers.Client.Addr)
 		if err := apiServer.Start(); err != nil {
 			logger.Error("API server error", "error", err)
+		}
+	}()
+
+	// Запускаем Debug сервер в отдельной горутине
+	go func() {
+		logger.Info("Starting Debug server", "addr", cfg.Servers.Debug.Addr)
+		if err := debugServer.Start(); err != nil {
+			logger.Error("Debug server error", "error", err)
 		}
 	}()
 
@@ -100,8 +114,15 @@ func run() error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
+	// Останавливаем API сервер
 	if err := apiServer.Stop(shutdownCtx); err != nil {
-		logger.Error("Error during shutdown", "error", err)
+		logger.Error("Error during API server shutdown", "error", err)
+		return err
+	}
+
+	// Останавливаем Debug сервер
+	if err := debugServer.Stop(shutdownCtx); err != nil {
+		logger.Error("Error during Debug server shutdown", "error", err)
 		return err
 	}
 
