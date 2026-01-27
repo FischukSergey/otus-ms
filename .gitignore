@@ -9,3 +9,5 @@
 
 configs/config.local.yaml
 configs/config.prod.yaml
+
+/load_testing/logs

@@ -1,0 +1,10 @@
+phantom:
+  address: fishouk-otus-ms.ru:443
+  ssl: true
+  uris:
+    - /health
+  load_profile:
+    load_type: rps
+    schedule: line(1, 50, 2m)
+console:
+  enabled: true
