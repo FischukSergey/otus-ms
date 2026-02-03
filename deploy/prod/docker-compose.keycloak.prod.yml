@@ -13,33 +13,35 @@ services:
       # 8443 не нужен - SSL терминируется на nginx
     environment:
       # Database Configuration
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://otus-keycloak-postgres-prod:5432/keycloak_db
-      - KC_DB_USERNAME=keycloak_user
-      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-CHANGE_ME}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://otus-keycloak-postgres-prod:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-CHANGE_ME}
       
       # Admin User (используется ТОЛЬКО при первом запуске для создания admin)
       # При последующих запусках игнорируется - пароль берется из БД
       # Для смены пароля используйте Admin Console
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER:-admin}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
       
       # Production Configuration
       # KC_HOSTNAME - основной домен (БЕЗ поддомена)
       # KC_HTTP_RELATIVE_PATH - подпуть для Keycloak на общем домене
-      - KC_HOSTNAME=${KEYCLOAK_HOSTNAME:-localhost}
-      - KC_HTTP_RELATIVE_PATH=/auth           # Keycloak на /auth
-      - KC_HOSTNAME_STRICT=false              # Разрешает запросы с любого Host
-      - KC_HOSTNAME_STRICT_HTTPS=true         # Всегда генерирует HTTPS URL
-      - KC_HTTP_ENABLED=true                  # HTTP внутри, SSL терминируется на nginx
-      - KC_PROXY=edge                         # Доверяет X-Forwarded-* заголовкам от nginx
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "true"
+      
+      # HTTP & Proxy (для работы за nginx)
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
       
       # Features
-      - KC_HEALTH_ENABLED=true
-      - KC_METRICS_ENABLED=true
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
       
       # Logging
-      - KC_LOG_LEVEL=info
+      KC_LOG_LEVEL: info
     command:
       - start
       # Первый запуск - БЕЗ импорта, realm'ы создаются через Admin UI
