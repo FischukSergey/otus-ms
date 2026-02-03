@@ -43,14 +43,19 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
       
       # Production Configuration
-      # Комбинация v1 (hostname) + v2 (proxy-headers) для работы за nginx
+      # Frontend hostname (для клиентов) - генерирует HTTPS URL
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
       KC_HTTP_RELATIVE_PATH: /auth
       KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"  # Разрешает HTTP для внутренних запросов
       
       # HTTP & Proxy
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded  # v2 параметр для чтения X-Forwarded-* заголовков
+      
+      # Явно указываем что frontend должен использовать HTTPS
+      KC_HOSTNAME_PORT: "443"
+      KC_HOSTNAME_SCHEME: https
       
       # Features
       KC_HEALTH_ENABLED: "true"
