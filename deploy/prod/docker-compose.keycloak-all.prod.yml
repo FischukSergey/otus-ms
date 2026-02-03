@@ -43,12 +43,12 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
       
       # Production Configuration  
-      # Используем KC_PROXY=passthrough для игнорирования заголовков
-      KC_HOSTNAME: https://${KEYCLOAK_HOSTNAME:-localhost}
-      KC_HTTP_RELATIVE_PATH: /auth
+      # KC_HOSTNAME содержит полный URL с протоколом и путем
+      # KC_PROXY=passthrough заставляет всегда использовать это значение
+      KC_HOSTNAME: https://${KEYCLOAK_HOSTNAME:-localhost}/auth
       KC_HOSTNAME_STRICT: "false"
       
-      # HTTP & Proxy - passthrough игнорирует запрос и всегда использует KC_HOSTNAME
+      # HTTP & Proxy
       KC_HTTP_ENABLED: "true"
       KC_PROXY: passthrough
       
