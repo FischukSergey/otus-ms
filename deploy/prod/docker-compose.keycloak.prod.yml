@@ -24,17 +24,16 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
       
-      # Production Configuration
-      # KC_HOSTNAME - основной домен (БЕЗ поддомена)
-      # KC_HTTP_RELATIVE_PATH - подпуть для Keycloak на общем домене
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
-      KC_HTTP_RELATIVE_PATH: /auth
+      # Production Configuration (Keycloak v2 hostname options)
+      # KC_HOSTNAME_URL - полный публичный URL для генерации ссылок
+      # Включает протокол, домен и подпуть
+      KC_HOSTNAME_URL: https://${KEYCLOAK_HOSTNAME:-localhost}/auth
+      KC_HOSTNAME_ADMIN_URL: https://${KEYCLOAK_HOSTNAME:-localhost}/auth
       KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "true"
       
       # HTTP & Proxy (для работы за nginx)
       KC_HTTP_ENABLED: "true"
-      KC_PROXY: edge
+      KC_PROXY_HEADERS: xforwarded  # Новый параметр v2 вместо KC_PROXY=edge
       
       # Features
       KC_HEALTH_ENABLED: "true"
