@@ -24,16 +24,15 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
       
-      # Production Configuration (Keycloak v2 hostname options)
-      # KC_HOSTNAME_URL - полный публичный URL для генерации ссылок
-      # Включает протокол, домен и подпуть
-      KC_HOSTNAME_URL: https://${KEYCLOAK_HOSTNAME:-localhost}/auth
-      KC_HOSTNAME_ADMIN_URL: https://${KEYCLOAK_HOSTNAME:-localhost}/auth
+      # Production Configuration
+      # Комбинация v1 (hostname) + v2 (proxy-headers) для работы за nginx
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_HTTP_RELATIVE_PATH: /auth
       KC_HOSTNAME_STRICT: "false"
       
-      # HTTP & Proxy (для работы за nginx)
+      # HTTP & Proxy
       KC_HTTP_ENABLED: "true"
-      KC_PROXY_HEADERS: xforwarded  # Новый параметр v2 вместо KC_PROXY=edge
+      KC_PROXY_HEADERS: xforwarded  # v2 параметр для чтения X-Forwarded-* заголовков
       
       # Features
       KC_HEALTH_ENABLED: "true"
@@ -47,7 +46,7 @@ services:
     networks:
       - otus_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/auth/health/ready"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
       interval: 30s
       timeout: 10s
       retries: 5
