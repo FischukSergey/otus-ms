@@ -30,6 +30,7 @@ services:
       - KC_HOSTNAME=${KEYCLOAK_HOSTNAME:-localhost}
       - KC_HTTP_RELATIVE_PATH=/auth           # Keycloak на /auth
       - KC_HOSTNAME_STRICT=false              # Разрешает запросы с любого Host
+      - KC_HOSTNAME_STRICT_HTTPS=true         # Всегда генерирует HTTPS URL
       - KC_HTTP_ENABLED=true                  # HTTP внутри, SSL терминируется на nginx
       - KC_PROXY=edge                         # Доверяет X-Forwarded-* заголовкам от nginx
       
