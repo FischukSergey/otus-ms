@@ -1,6 +1,15 @@
 name: Deploy Keycloak to Production (Manual)
 
 on:
+  # ВРЕМЕННО: Для запуска из ветки UpKeycloak без мержа в main
+  # После мержа в main - удалить push триггер!
+  push:
+    branches:
+      - UpKeycloak
+    paths:
+      - '.github/workflows/deploy-keycloak.yml'
+      - 'deploy/prod/docker-compose.keycloak*.yml'
+  
   workflow_dispatch:
     inputs:
       target:
@@ -34,10 +43,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set default inputs for push trigger
+        id: set-defaults
+        run: |
+          # Если workflow запущен через push (не manual), используем дефолтные значения
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "target=all" >> $GITHUB_OUTPUT
+            echo "action=up" >> $GITHUB_OUTPUT
+            echo "🔄 Push trigger detected - using default values: target=all, action=up"
+          else
+            echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
+            echo "action=${{ inputs.action }}" >> $GITHUB_OUTPUT
+            echo "✅ Manual trigger - using user inputs"
+          fi
+
       - name: Determine compose file
         id: compose-file
         run: |
-          case "${{ inputs.target }}" in
+          case "${{ steps.set-defaults.outputs.target }}" in
             all)
               echo "file=docker-compose.keycloak-all.prod.yml" >> $GITHUB_OUTPUT
               echo "description=Keycloak + PostgreSQL" >> $GITHUB_OUTPUT
@@ -87,7 +110,7 @@ jobs:
             COMPOSE_FILE="${{ steps.compose-file.outputs.file }}"
             TARGET="${{ steps.compose-file.outputs.description }}"
             
-            case "${{ inputs.action }}" in
+            case "${{ steps.set-defaults.outputs.action }}" in
               up)
                 echo "🚀 Запуск: $TARGET"
                 docker compose -f $COMPOSE_FILE up -d
