@@ -4,6 +4,8 @@ global:
 
 log:
   level: debug
+  format: text
+  service_name: main-service
  
 servers:
   debug:

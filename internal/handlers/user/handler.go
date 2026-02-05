@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/FischukSergey/otus-ms/internal/middleware"
 	userService "github.com/FischukSergey/otus-ms/internal/services/user"
 	userRepo "github.com/FischukSergey/otus-ms/internal/store/user"
 )
@@ -40,35 +41,37 @@ type ErrorResponse struct {
 }
 
 // writeError отправляет JSON ответ с ошибкой.
-func (h *Handler) writeError(w http.ResponseWriter, statusCode int, message string) {
+func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode int, message string) {
+	logger := middleware.LoggerFromContext(r.Context())
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(ErrorResponse{Error: message}); err != nil {
-		h.logger.Error("Failed to encode error response", "error", err)
+		logger.Error("Failed to encode error response", "error", err)
 	}
 }
 
 // Create обрабатывает POST /api/v1/users - создание нового пользователя.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.LoggerFromContext(r.Context())
 	var req userService.CreateRequest
 
 	// Парсим JSON из тела запроса
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.logger.Error("Failed to decode request body", "error", err)
-		h.writeError(w, http.StatusBadRequest, "Invalid request body")
+		logger.Error("Failed to decode request body", "error", err)
+		h.writeError(w, r, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	// Вызываем сервис для создания пользователя
 	if err := h.service.CreateUser(r.Context(), req); err != nil {
-		h.logger.Error("Failed to create user", "error", err)
+		logger.Error("Failed to create user", "error", err)
 		// Проверяем тип ошибки для определения статус-кода
 		if errors.Is(err, errors.New("validation error")) ||
 			err.Error()[:len("validation error")] == "validation error" {
-			h.writeError(w, http.StatusBadRequest, err.Error())
+			h.writeError(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		h.writeError(w, http.StatusInternalServerError, "Internal server error")
+		h.writeError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -78,10 +81,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Get обрабатывает GET /api/v1/users/{uuid} - получение пользователя по UUID.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.LoggerFromContext(r.Context())
+
 	// Извлекаем UUID из URL
 	uuid := chi.URLParam(r, "uuid")
 	if uuid == "" {
-		h.writeError(w, http.StatusBadRequest, "UUID is required")
+		h.writeError(w, r, http.StatusBadRequest, "UUID is required")
 		return
 	}
 
@@ -89,15 +94,15 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	user, err := h.service.GetUser(r.Context(), uuid)
 	if err != nil {
 		if errors.Is(err, userService.ErrInvalidUUID) {
-			h.writeError(w, http.StatusBadRequest, "Invalid UUID format")
+			h.writeError(w, r, http.StatusBadRequest, "Invalid UUID format")
 			return
 		}
 		if errors.Is(err, userRepo.ErrUserNotFound) {
-			h.writeError(w, http.StatusNotFound, "User not found")
+			h.writeError(w, r, http.StatusNotFound, "User not found")
 			return
 		}
-		h.logger.Error("Failed to get user", "error", err, "uuid", uuid)
-		h.writeError(w, http.StatusInternalServerError, "Internal server error")
+		logger.Error("Failed to get user", "error", err, "uuid", uuid)
+		h.writeError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -105,31 +110,33 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(user); err != nil {
-		h.logger.Error("Failed to encode response", "error", err)
+		logger.Error("Failed to encode response", "error", err)
 	}
 }
 
 // Delete обрабатывает DELETE /api/v1/users/{uuid} - мягкое удаление пользователя.
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.LoggerFromContext(r.Context())
+
 	// Извлекаем UUID из URL
 	uuid := chi.URLParam(r, "uuid")
 	if uuid == "" {
-		h.writeError(w, http.StatusBadRequest, "UUID is required")
+		h.writeError(w, r, http.StatusBadRequest, "UUID is required")
 		return
 	}
 
 	// Удаляем пользователя (мягкое удаление)
 	if err := h.service.DeleteUser(r.Context(), uuid); err != nil {
 		if errors.Is(err, userService.ErrInvalidUUID) {
-			h.writeError(w, http.StatusBadRequest, "Invalid UUID format")
+			h.writeError(w, r, http.StatusBadRequest, "Invalid UUID format")
 			return
 		}
 		if errors.Is(err, userRepo.ErrUserNotFound) {
-			h.writeError(w, http.StatusNotFound, "User not found")
+			h.writeError(w, r, http.StatusNotFound, "User not found")
 			return
 		}
-		h.logger.Error("Failed to delete user", "error", err, "uuid", uuid)
-		h.writeError(w, http.StatusInternalServerError, "Internal server error")
+		logger.Error("Failed to delete user", "error", err, "uuid", uuid)
+		h.writeError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 

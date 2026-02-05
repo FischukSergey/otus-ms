@@ -18,6 +18,10 @@ type GlobalConfig struct {
 type LogConfig struct {
 	// добавляем валидацию: обязательное поле, значения из {"debug", "info", "warn", "error"}.
 	Level string `yaml:"level" validate:"required,oneof=debug info warn error"`
+	// Формат вывода логов: json для продакшена, text для локальной разработки.
+	Format string `yaml:"format" validate:"required,oneof=json text"`
+	// Имя сервиса для идентификации в логах.
+	ServiceName string `yaml:"service_name" validate:"required"`
 }
 
 // ServersConfig представляет настройки серверов.

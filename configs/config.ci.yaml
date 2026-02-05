@@ -3,6 +3,8 @@ global:
 
 log:
   level: info
+  format: json
+  service_name: main-service
 
 servers:
   debug:

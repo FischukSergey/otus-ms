@@ -12,6 +12,7 @@ import (
 
 	"github.com/FischukSergey/otus-ms/internal/config"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
+	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
 	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
 	"github.com/FischukSergey/otus-ms/internal/store"
 	userrepo "github.com/FischukSergey/otus-ms/internal/store/user"
@@ -36,11 +37,11 @@ type APIServerDeps struct {
 func NewAPIServer(deps *APIServerDeps) *APIServer {
 	router := chi.NewRouter()
 
-	// Middleware
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.RequestID)
-	router.Use(middleware.RealIP)
+	// Middleware - порядок важен!
+	router.Use(middleware.RequestID)                           // 1. Генерируем request_id
+	router.Use(middleware.RealIP)                              // 2. Определяем реальный IP
+	router.Use(custommiddleware.LoggerMiddleware(deps.Logger)) // 3. Логируем запросы с request_id
+	router.Use(middleware.Recoverer)                           // 4. Восстанавливаемся от паник
 
 	// API сервер
 	apiSrv := &APIServer{
