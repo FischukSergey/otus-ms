@@ -11,23 +11,29 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/FischukSergey/otus-ms/internal/config"
+	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
+	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
+	"github.com/FischukSergey/otus-ms/internal/store"
+	userrepo "github.com/FischukSergey/otus-ms/internal/store/user"
 )
 
 // APIServer представляет простой HTTP API сервер.
 type APIServer struct {
-	server *http.Server
-	logger *slog.Logger
+	server  *http.Server
+	logger  *slog.Logger
+	storage *store.Storage
 }
 
 // APIServerDeps содержит зависимости для инициализации API сервера.
 type APIServerDeps struct {
-	Addr   string
-	Config config.Config
-	Logger *slog.Logger
+	Addr    string
+	Config  config.Config
+	Logger  *slog.Logger
+	Storage *store.Storage
 }
 
 // NewAPIServer создает и настраивает простой API сервер с chi роутером.
-func NewAPIServer(deps APIServerDeps) *APIServer {
+func NewAPIServer(deps *APIServerDeps) *APIServer {
 	router := chi.NewRouter()
 
 	// Middleware
@@ -38,12 +44,25 @@ func NewAPIServer(deps APIServerDeps) *APIServer {
 
 	// API сервер
 	apiSrv := &APIServer{
-		logger: deps.Logger,
+		logger:  deps.Logger,
+		storage: deps.Storage,
 	}
+
+	// Инициализация слоев для работы с пользователями
+	userRepository := userrepo.NewRepository(deps.Storage.DB())
+	userService := userservice.NewService(userRepository)
+	userHandler := userhandler.NewHandler(userService, deps.Logger)
 
 	// Роуты
 	router.Get("/", apiSrv.handleRoot)
 	router.Get("/health", apiSrv.handleHealth)
+
+	// API роуты для работы с пользователями
+	router.Route("/api/v1/users", func(r chi.Router) {
+		r.Post("/", userHandler.Create)
+		r.Get("/{uuid}", userHandler.Get)
+		r.Delete("/{uuid}", userHandler.Delete)
+	})
 
 	server := &http.Server{
 		Addr:              deps.Addr,

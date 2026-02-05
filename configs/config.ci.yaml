@@ -1,0 +1,22 @@
+global:
+  env: local
+
+log:
+  level: info
+
+servers:
+  debug:
+    addr: "127.0.0.1:6060"
+  client:
+    addr: "127.0.0.1:8080"
+    allow_origins:
+      - "*"
+
+db:
+  name: otus_ms_test
+  user: otus_ms_test
+  password: otus_ms_test
+  host: localhost
+  port: "38433"
+  ssl_mode: disable
+

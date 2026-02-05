@@ -12,3 +12,13 @@ servers:
     addr: localhost:38080
     allow_origins:
       - "*"
+
+db:
+  name: otus_ms # database name
+  user: otus_ms # database user
+  password: otus_ms # database password
+  host: localhost # database host
+  port: 38432 # for local development
+  ssl_mode: disable # database ssl mode
+  ssl_root_cert: # database ssl root cert
+  ssl_key: # database ssl key

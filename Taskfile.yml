@@ -8,7 +8,7 @@ vars:
   GO_FILES:
     sh: find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./internal/store/*" -not -path "*.gen.go" | tr "\n" " "
 
-  GOLANGCI_LINT_VERSION: v1.61.0
+  GOLANGCI_LINT_VERSION: v1.63.4
   GOLANGCI_LINT_CACHE:
     sh: echo "$HOME/Library/Caches/golangci-lint" # сделал отдельную директорию для кэша
 
@@ -62,15 +62,50 @@ tasks:
         docker run --rm \
           -v "$(pwd):/app" -w /app \
           -v "{{.GOLANGCI_LINT_CACHE}}:/root/.cache" \
+          -e GOEXPERIMENT=rangefunc \
           golangci/golangci-lint:{{.GOLANGCI_LINT_VERSION}} \
           golangci-lint {{.CLI_ARGS}}
+
+  test:unit:
+    desc: "Запустить только unit тесты"
+    cmds:
+      - echo "- Unit Tests"
+      - go test -race -count=1 -short ./...
+
+  test:env:up:
+    desc: "Поднять тестовое окружение (БД + API сервер)"
+    cmds:
+      - echo "- Starting test environment..."
+      - "{{.DOCKER_COMPOSE_CMD}} -f ./deploy/test/docker-compose.test.yml up -d --build"
+      - echo "- Waiting for services to be ready..."
+      - sleep 10
+
+  test:env:down:
+    desc: "Остановить и удалить тестовое окружение"
+    cmds:
+      - echo "- Stopping test environment..."
+      - "{{.DOCKER_COMPOSE_CMD}} -f ./deploy/test/docker-compose.test.yml down -v"
+
+  test:env:logs:
+    desc: "Показать логи тестового окружения"
+    cmds:
+      - "{{.DOCKER_COMPOSE_CMD}} -f ./deploy/test/docker-compose.test.yml logs -f"
+
+  test:integration:
+    desc: "Запустить интеграционные тесты (с поднятием окружения)"
+    cmds:
+      - task: test:env:down
+      - task: test:env:up
+      - echo "- Integration Tests"
+      - go test -race -count=1 -v -tags=integration ./tests/integration/...
+      - task: test:env:down
 
   tests:
     desc: "Запустить ВСЕ тесты (unit + integration)"
     cmds:
-      - echo "- Tests"
-      - go test -race -count=1 ./...
-    #добавить тесты
+      - echo "- Running all tests"
+      - task: test:unit
+      - task: test:integration
 
   build:
     cmds:

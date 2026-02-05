@@ -1,0 +1,177 @@
+# https://taskfile.dev
+# Production deployment tasks
+version: '3'
+
+silent: true
+
+vars:
+  # SSH alias из ~/.ssh/config (например: ssh otus-prod)
+  SSH_HOST:
+    sh: echo "${SSH_HOST:-otus-prod}"
+  VPS_PATH_BE: /root/otus-microservice/prod/be
+  VPS_PATH_DB: /root/otus-microservice/prod/db
+
+tasks:
+  # ===== Конфигурация =====
+  
+  config:upload:
+    desc: "Загрузить config.prod.yaml на VPS"
+    cmds:
+      - echo "📤 Загрузка config.prod.yaml на VPS..."
+      - scp configs/config.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/configs/
+      - echo "✅ Конфиг загружен в {{.VPS_PATH_BE}}/configs/"
+
+  config:download:
+    desc: "Скачать config.prod.yaml с VPS (backup)"
+    cmds:
+      - echo "📥 Скачивание config.prod.yaml с VPS..."
+      - scp {{.SSH_HOST}}:{{.VPS_PATH_BE}}/configs/config.prod.yaml configs/config.prod.yaml.backup
+      - echo "✅ Конфиг скачан в configs/config.prod.yaml.backup"
+
+  config:edit:
+    desc: "Открыть config.prod.yaml на VPS в nano"
+    cmds:
+      - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_BE}}/configs/config.prod.yaml"
+
+  # ===== Мониторинг =====
+
+  logs:
+    desc: "Показать логи API сервера"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-microservice-be-prod --tail=100 -f"
+
+  logs:db:
+    desc: "Показать логи PostgreSQL"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-postgres-prod --tail=100 -f"
+
+  status:
+    desc: "Статус контейнеров"
+    cmds:
+      - echo "🔍 Статус контейнеров на production:"
+      - ssh {{.SSH_HOST}} "docker ps -a | grep -E 'otus-|CONTAINER'"
+
+  health:
+    desc: "Проверить healthcheck API"
+    cmds:
+      - echo "🏥 Healthcheck API сервера:"
+      - ssh {{.SSH_HOST}} "curl -s http://localhost:38080/health | jq ."
+
+  # ===== Управление API сервером =====
+
+  restart:
+    desc: "Перезапустить API сервер"
+    cmds:
+      - echo "🔄 Перезапуск API сервера..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_BE}} && docker compose -f docker-compose.be.prod.yml restart"
+      - echo "✅ API сервер перезапущен"
+
+  stop:
+    desc: "Остановить API сервер"
+    cmds:
+      - echo "⏸️  Остановка API сервера..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_BE}} && docker compose -f docker-compose.be.prod.yml stop"
+      - echo "✅ API сервер остановлен"
+
+  start:
+    desc: "Запустить API сервер"
+    cmds:
+      - echo "▶️  Запуск API сервера..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_BE}} && docker compose -f docker-compose.be.prod.yml start"
+      - echo "✅ API сервер запущен"
+
+  # ===== Управление БД =====
+
+  db:up:
+    desc: "Запустить PostgreSQL"
+    cmds:
+      - echo "🚀 Запуск PostgreSQL..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_DB}} && docker compose -f docker-compose.db.prod.yml up -d"
+      - sleep 5
+      - task: status
+      - echo "✅ PostgreSQL запущен"
+
+  db:down:
+    desc: "Остановить PostgreSQL (данные сохраняются)"
+    cmds:
+      - echo "⏸️  Остановка PostgreSQL..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_DB}} && docker compose -f docker-compose.db.prod.yml down"
+      - echo "✅ PostgreSQL остановлен"
+
+  db:restart:
+    desc: "Перезапустить PostgreSQL"
+    cmds:
+      - echo "🔄 Перезапуск PostgreSQL..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_DB}} && docker compose -f docker-compose.db.prod.yml restart"
+      - echo "✅ PostgreSQL перезапущен"
+
+  db:connect:
+    desc: "Подключиться к PostgreSQL через psql"
+    cmds:
+      - ssh {{.SSH_HOST}} -t "docker exec -it otus-postgres-prod psql -U otus_ms_user -d otus_ms_prod"
+
+  db:migrations:
+    desc: "Проверить примененные миграции"
+    cmds:
+      - echo "📋 Примененные миграции:"
+      - ssh {{.SSH_HOST}} "docker exec otus-postgres-prod psql -U otus_ms_user -d otus_ms_prod -c 'SELECT * FROM schema_migrations ORDER BY version;'"
+
+  # ===== Backup =====
+
+  backup:db:
+    desc: "Создать backup БД"
+    cmds:
+      - echo "💾 Создание backup БД..."
+      - ssh {{.SSH_HOST}} "docker exec otus-postgres-prod pg_dump -U otus_ms_user otus_ms_prod > /tmp/backup_$(date +%Y%m%d_%H%M%S).sql"
+      - echo "✅ Backup создан в /tmp/ на VPS"
+
+  backup:db:download:
+    desc: "Скачать последний backup БД"
+    cmds:
+      - echo "📥 Скачивание последнего backup..."
+      - ssh {{.SSH_HOST}} "ls -t /tmp/backup_*.sql | head -1" > /tmp/latest_backup.txt
+      - scp {{.SSH_HOST}}:$(cat /tmp/latest_backup.txt) ./backup_$(date +%Y%m%d).sql
+      - rm /tmp/latest_backup.txt
+      - echo "✅ Backup скачан в ./backup_$(date +%Y%m%d).sql"
+
+  # ===== Деплой файлов =====
+
+  deploy:compose:
+    desc: "Загрузить docker-compose файлы на VPS"
+    cmds:
+      - echo "📤 Загрузка docker-compose файлов..."
+      - scp deploy/prod/docker-compose.be.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/
+      - scp deploy/prod/docker-compose.db.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_DB}}/
+      - echo "✅ Docker-compose файлы загружены"
+
+  # ===== Утилиты =====
+
+  ssh:
+    desc: "Подключиться к VPS по SSH"
+    cmds:
+      - ssh {{.SSH_HOST}}
+
+  clean:
+    desc: "Очистка неиспользуемых Docker ресурсов на VPS"
+    cmds:
+      - echo "🧹 Очистка Docker на VPS..."
+      - ssh {{.SSH_HOST}} "docker system prune -f"
+      - echo "✅ Очистка завершена"
+
+  info:
+    desc: "Показать информацию о VPS подключении"
+    cmds:
+      - echo "📡 VPS Connection Info:"
+      - echo "   SSH Host{{.SSH_HOST}}"
+      - echo "   BE Path{{.VPS_PATH_BE}}"
+      - echo "   DB Path{{.VPS_PATH_DB}}"
+      - echo ""
+      - echo "💡 Настройка SSH alias в ~/.ssh/config:"
+      - 'echo "   Host {{.SSH_HOST}}"'
+      - 'echo "       HostName your-vps-ip"'
+      - 'echo "       User root"'
+      - 'echo "       IdentityFile ~/.ssh/id_ed25519"'
+      - echo ""
+      - echo "💡 Или установите переменную окружения:"
+      - 'echo "   export SSH_HOST=your-ssh-alias"'
+

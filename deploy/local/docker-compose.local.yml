@@ -1,25 +1,34 @@
+name: otusms  # Уникальное имя проекта, чтобы избежать конфликтов
+
 services:
-  otus-microservice-be:
-    container_name: otus-microservice-be-local
-    build:
-      context: ../..
-      dockerfile: prod.Dockerfile
+  postgres:
+    container_name: otusms-postgres-local
+    image: postgres:16-alpine
+    profiles:
+      - db  # Запускается с профилем: docker compose --profile db up
     restart: unless-stopped
     ports:
-      - "38080:38080"  # API port
-      - "33000:33000"  # Debug port
-    volumes:
-      - ../../configs:/app/configs:ro
-      - ../../logs:/app/logs
-      - ../../data/files:/app/data/files
+      - "38432:5432"
     environment:
-      - CONFIG_PATH=/app/configs/config.local.yaml
-    command: ["./main-service", "-config", "/app/configs/config.local.yaml"]
+      - POSTGRES_DB=otus_ms
+      - POSTGRES_USER=otus_ms
+      - POSTGRES_PASSWORD=otus_ms
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - otus_local_network
+      - otusms_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otus_ms -d otus_ms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
-  otus_local_network:
-    name: otus_local_network
+  otusms_network:
+    name: otusms_local_network
     driver: bridge
+
+volumes:
+  postgres_data:
+    name: otusms_postgres_data_local
 

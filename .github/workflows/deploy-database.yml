@@ -79,3 +79,4 @@ jobs:
             echo ""
             echo "ℹ️  Статус контейнеров:"
             docker ps | grep postgres || echo "PostgreSQL не запущен"
+

@@ -1,0 +1,66 @@
+2026-01-27 19:21:51,626	Failed to install monitoring agent to fishouk-otus-ms.ru
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/plugins/Telegraf/client.py", line 209, in install
+    out, errors, err_code = self.ssh.execute(cmd)
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/common/util.py", line 98, in execute
+    with self.connect() as client:
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/common/util.py", line 57, in connect
+    client.connect(
+  File "/usr/local/lib/python3.8/dist-packages/paramiko/client.py", line 435, in connect
+    self._auth(
+  File "/usr/local/lib/python3.8/dist-packages/paramiko/client.py", line 767, in _auth
+    raise SSHException("No authentication methods available")
+paramiko.ssh_exception.SSHException: No authentication methods available
+2026-01-27 19:48:06,472	Failed to install monitoring agent to fishouk-otus-ms.ru
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/plugins/Telegraf/client.py", line 209, in install
+    out, errors, err_code = self.ssh.execute(cmd)
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/common/util.py", line 98, in execute
+    with self.connect() as client:
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/common/util.py", line 57, in connect
+    client.connect(
+  File "/usr/local/lib/python3.8/dist-packages/paramiko/client.py", line 435, in connect
+    self._auth(
+  File "/usr/local/lib/python3.8/dist-packages/paramiko/client.py", line 767, in _auth
+    raise SSHException("No authentication methods available")
+paramiko.ssh_exception.SSHException: No authentication methods available
+2026-01-27 20:00:12,015	Sparkline got outdated second 1769543410, oldest in list 1769543830
+2026-01-27 20:00:12,019	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,019	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,020	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,020	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,021	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,021	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,022	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,022	Sparkline got outdated second 1769543410, oldest in list 1769543890
+2026-01-27 20:00:12,023	Sparkline got outdated second 1769543415, oldest in list 1769543830
+2026-01-27 20:00:12,025	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,025	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,026	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,026	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,026	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,027	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,027	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,028	Sparkline got outdated second 1769543415, oldest in list 1769543890
+2026-01-27 20:00:12,029	Sparkline got outdated second 1769543416, oldest in list 1769543830
+2026-01-27 20:00:12,030	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:00:12,031	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:00:12,031	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:00:12,032	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:00:12,032	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:00:12,032	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:00:12,033	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:00:12,033	Sparkline got outdated second 1769543416, oldest in list 1769543890
+2026-01-27 20:15:40,783	Failed to install monitoring agent to fishouk-otus-ms.ru
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/plugins/Telegraf/client.py", line 209, in install
+    out, errors, err_code = self.ssh.execute(cmd)
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/common/util.py", line 98, in execute
+    with self.connect() as client:
+  File "/usr/local/lib/python3.8/dist-packages/yandextank/common/util.py", line 57, in connect
+    client.connect(
+  File "/usr/local/lib/python3.8/dist-packages/paramiko/client.py", line 435, in connect
+    self._auth(
+  File "/usr/local/lib/python3.8/dist-packages/paramiko/client.py", line 767, in _auth
+    raise SSHException("No authentication methods available")
+paramiko.ssh_exception.SSHException: No authentication methods available

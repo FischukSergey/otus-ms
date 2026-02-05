@@ -5,6 +5,7 @@ type Config struct {
 	Global  GlobalConfig  `yaml:"global"`
 	Log     LogConfig     `yaml:"log"`
 	Servers ServersConfig `yaml:"servers"`
+	DB      DBConfig      `yaml:"db"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -35,4 +36,16 @@ type DebugServerConfig struct {
 type ClientServerConfig struct {
 	Addr         string   `yaml:"addr" validate:"required,hostname_port"`
 	AllowOrigins []string `yaml:"allow_origins"`
+}
+
+// DBConfig представляет настройки базы данных.
+type DBConfig struct {
+	Name        string `yaml:"name" validate:"required"`
+	User        string `yaml:"user" validate:"required"`
+	Password    string `yaml:"password" validate:"required"`
+	Host        string `yaml:"host" validate:"required"`
+	Port        string `yaml:"port" validate:"required"`
+	SSLMode     string `yaml:"ssl_mode"`
+	SSLRootCert string `yaml:"ssl_root_cert"`
+	SSLKey      string `yaml:"ssl_key"`
 }

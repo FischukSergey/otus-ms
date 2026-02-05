@@ -1,0 +1,49 @@
+name: otusms-test
+
+services:
+  postgres:
+    container_name: otusms-postgres-test
+    image: postgres:16-alpine
+    restart: no
+    ports:
+      - "38433:5432"
+    environment:
+      - POSTGRES_DB=otus_ms_test
+      - POSTGRES_USER=otus_ms_test
+      - POSTGRES_PASSWORD=otus_ms_test
+    networks:
+      - otusms_test_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otus_ms_test -d otus_ms_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api-server:
+    container_name: otusms-api-test
+    build:
+      context: ../..
+      dockerfile: prod.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    command: ["./main-service", "-config", "/app/configs/config.test.yaml"]
+    volumes:
+      - ../../configs/config.test.yaml:/app/configs/config.test.yaml:ro
+    networks:
+      - otusms_test_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  otusms_test_network:
+    name: otusms_test_network
+    driver: bridge
+
