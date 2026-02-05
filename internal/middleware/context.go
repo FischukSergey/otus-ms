@@ -5,7 +5,7 @@ import (
 	"log/slog"
 )
 
-// Ключ для хранения логгера в контексте
+// Ключ для хранения логгера в контексте.
 type contextKey string
 
 const loggerKey contextKey = "logger"
