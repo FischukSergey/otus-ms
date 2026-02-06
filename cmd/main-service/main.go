@@ -61,7 +61,12 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init storage: %w", err)
 	}
-	defer storage.Close()
+	// Гарантируем закрытие соединений при любом выходе из функции
+	defer func() {
+		appLogger.Info("Closing database connections...")
+		storage.Close()
+		appLogger.Info("Database connections closed")
+	}()
 
 	// Устанавливаем logger для storage
 	storage.SetLogger(appLogger)
