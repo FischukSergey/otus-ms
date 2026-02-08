@@ -11,6 +11,7 @@ import (
 
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/logger"
+	"github.com/FischukSergey/otus-ms/internal/metrics"
 	"github.com/FischukSergey/otus-ms/internal/store"
 )
 
@@ -34,6 +35,11 @@ func run() error {
 	// Будет использоваться tint (цветной вывод) для format=text
 	// или JSON для format=json
 	appLogger := logger.NewLogger(cfg.Log)
+
+	// Инициализируем Prometheus метрики
+	appLogger.Info("Initializing Prometheus metrics...")
+	metrics.Init()
+	appLogger.Info("Prometheus metrics initialized successfully")
 
 	// Создаем контекст для отслеживания сигналов прерывания
 	ctx, cancel := signal.NotifyContext(
@@ -80,7 +86,7 @@ func run() error {
 	}
 	appLogger.Info("Database migrations completed successfully")
 
-	// Создаем и запускаем API сервер
+	// Создаем API сервер
 	apiServer := NewAPIServer(&APIServerDeps{
 		Addr:    cfg.Servers.Client.Addr,
 		Config:  cfg,
@@ -91,6 +97,12 @@ func run() error {
 	// Создаем и запускаем Debug сервер
 	debugServer := NewDebugServer(&DebugServerDeps{
 		Addr:   cfg.Servers.Debug.Addr,
+		Logger: appLogger,
+	})
+
+	// Создаем и запускаем Metrics сервер
+	metricsServer := NewMetricsServer(&MetricsServerDeps{
+		Addr:   cfg.Servers.Metrics.Addr,
 		Logger: appLogger,
 	})
 
@@ -107,6 +119,14 @@ func run() error {
 		appLogger.Info("Starting Debug server", "addr", cfg.Servers.Debug.Addr)
 		if err := debugServer.Start(); err != nil {
 			appLogger.Error("Debug server error", "error", err)
+		}
+	}()
+
+	// Запускаем Metrics сервер в отдельной горутине
+	go func() {
+		appLogger.Info("Starting Metrics server", "addr", cfg.Servers.Metrics.Addr)
+		if err := metricsServer.Start(); err != nil {
+			appLogger.Error("Metrics server error", "error", err)
 		}
 	}()
 
@@ -127,6 +147,12 @@ func run() error {
 	// Останавливаем Debug сервер
 	if err := debugServer.Stop(shutdownCtx); err != nil {
 		appLogger.Error("Error during Debug server shutdown", "error", err)
+		return err
+	}
+
+	// Останавливаем Metrics сервер
+	if err := metricsServer.Stop(shutdownCtx); err != nil {
+		appLogger.Error("Error during Metrics server shutdown", "error", err)
 		return err
 	}
 

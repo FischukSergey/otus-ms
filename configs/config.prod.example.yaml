@@ -14,6 +14,8 @@ servers:
     addr: 0.0.0.0:38080
     allow_origins:
       - "https://yourdomain.com"
+  metrics:
+    addr: 0.0.0.0:39090
 
 db:
   name: otus_ms_prod # database name

@@ -26,8 +26,9 @@ type LogConfig struct {
 
 // ServersConfig представляет настройки серверов.
 type ServersConfig struct {
-	Debug  DebugServerConfig  `yaml:"debug"`
-	Client ClientServerConfig `yaml:"client"`
+	Debug   DebugServerConfig   `yaml:"debug"`
+	Client  ClientServerConfig  `yaml:"client"`
+	Metrics MetricsServerConfig `yaml:"metrics"`
 }
 
 // DebugServerConfig представляет настройки отладочного сервера.
@@ -40,6 +41,11 @@ type DebugServerConfig struct {
 type ClientServerConfig struct {
 	Addr         string   `yaml:"addr" validate:"required,hostname_port"`
 	AllowOrigins []string `yaml:"allow_origins"`
+}
+
+// MetricsServerConfig представляет настройки сервера метрик.
+type MetricsServerConfig struct {
+	Addr string `yaml:"addr" validate:"required,hostname_port"`
 }
 
 // DBConfig представляет настройки базы данных.

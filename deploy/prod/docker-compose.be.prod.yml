@@ -6,6 +6,7 @@ services:
     ports:
       - "0.0.0.0:38080:38080"  # API port
       - "0.0.0.0:33000:33000"  # Debug port
+      - "0.0.0.0:39090:39090"  # Metrics port
     volumes:
       - ./configs:/app/configs:ro
       - ./logs:/app/logs

@@ -12,6 +12,7 @@ import (
 
 	"github.com/FischukSergey/otus-ms/internal/config"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
+	"github.com/FischukSergey/otus-ms/internal/metrics"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
 	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
 	"github.com/FischukSergey/otus-ms/internal/store"
@@ -41,7 +42,8 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	router.Use(middleware.RequestID)                           // 1. Генерируем request_id
 	router.Use(middleware.RealIP)                              // 2. Определяем реальный IP
 	router.Use(custommiddleware.LoggerMiddleware(deps.Logger)) // 3. Логируем запросы с request_id
-	router.Use(middleware.Recoverer)                           // 4. Восстанавливаемся от паник
+	router.Use(metrics.PrometheusMiddleware())                 // 4. Собираем метрики для Prometheus
+	router.Use(middleware.Recoverer)                           // 5. Восстанавливаемся от паник
 
 	// API сервер
 	apiSrv := &APIServer{

@@ -13,6 +13,8 @@ servers:
     addr: "127.0.0.1:8080"
     allow_origins:
       - "*"
+  metrics:
+    addr: "127.0.0.1:9090"
 
 db:
   name: otus_ms_test

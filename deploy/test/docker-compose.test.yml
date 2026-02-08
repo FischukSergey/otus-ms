@@ -29,7 +29,8 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "8081:8080"
+      - "8081:8080"   # API server
+      - "9091:9090"   # Metrics server
     command: ["./main-service", "-config", "/app/configs/config.test.yaml"]
     volumes:
       - ../../configs/config.test.yaml:/app/configs/config.test.yaml:ro
