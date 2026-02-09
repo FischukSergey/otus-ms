@@ -7,6 +7,8 @@
 
 /main-service
 
+/vendor
+
 configs/config.local.yaml
 configs/config.prod.yaml
 configs/alertmanager.yml
