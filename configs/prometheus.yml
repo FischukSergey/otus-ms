@@ -9,6 +9,17 @@ global:
     monitor: 'otusms-monitor'
     environment: 'local'
 
+# Подключение правил алертов
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+# Настройка Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
 # Конфигурация сбора метрик
 scrape_configs:
   # Job для сбора метрик из OtusMS API

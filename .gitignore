@@ -9,5 +9,6 @@
 
 configs/config.local.yaml
 configs/config.prod.yaml
+configs/alertmanager.yml
 
 /load_testing/logs
