@@ -3,12 +3,12 @@ name: Deploy Keycloak to Production (Manual)
 on:
   # ВРЕМЕННО: Для запуска из ветки UpKeycloak без мержа в main
   # После мержа в main - удалить push триггер!
-  push:
-    branches:
-      - UpKeycloak
-    paths:
-      - '.github/workflows/deploy-keycloak.yml'
-      - 'deploy/prod/docker-compose.keycloak*.yml'
+  # push:
+  #   branches:
+  #     - UpKeycloak
+  #   paths:
+  #     - '.github/workflows/deploy-keycloak.yml'
+  #     - 'deploy/prod/docker-compose.keycloak*.yml'
   
   workflow_dispatch:
     inputs:
