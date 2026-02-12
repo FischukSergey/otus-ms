@@ -216,7 +216,7 @@ go run ./cmd/main-service -config configs/config.local.yaml
 task
 
 # Отдельные команды
-task tidy           # go mod tidy + vendor
+task tidy           # go mod tidy
 task fmt            # Форматирование кода (gofumpt + gci)
 task lint           # Линтинг (golangci-lint в Docker)
 task tests          # Запуск тестов
