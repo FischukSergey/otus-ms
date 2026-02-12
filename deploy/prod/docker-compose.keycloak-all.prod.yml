@@ -1,0 +1,82 @@
+# Keycloak + PostgreSQL для Production
+# Запуск обоих сервисов одновременно
+# Используется для первоначального развертывания
+
+services:
+  keycloak-postgres:
+    container_name: otus-keycloak-postgres-prod
+    image: postgres:16-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      - POSTGRES_DB=keycloak_db
+      - POSTGRES_USER=keycloak_user
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:-CHANGE_ME}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    networks:
+      - otus_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak_user -d keycloak_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  keycloak:
+    container_name: otus-keycloak-prod
+    image: quay.io/keycloak/keycloak:26.5.2
+    restart: always
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Database Configuration
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://otus-keycloak-postgres-prod:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-CHANGE_ME}
+      
+      # Admin User (используется ТОЛЬКО при первом запуске для создания admin)
+      # При последующих запусках игнорируется - пароль берется из БД
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
+      
+      # Production Configuration  
+      # KC_HOSTNAME содержит полный URL с протоколом и путем
+      # KC_PROXY=passthrough заставляет всегда использовать это значение
+      KC_HOSTNAME: https://${KEYCLOAK_HOSTNAME:-localhost}/auth
+      KC_HOSTNAME_STRICT: "false"
+      
+      # HTTP & Proxy
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: passthrough
+      
+      # Features
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      
+      # Logging
+      KC_LOG_LEVEL: info
+    command:
+      - start
+    networks:
+      - otus_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+
+networks:
+  otus_network:
+    external: true
+    name: otus_network
+
+volumes:
+  keycloak_postgres_data:
+    name: otus_keycloak_postgres_data
