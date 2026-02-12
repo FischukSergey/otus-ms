@@ -23,6 +23,55 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    container_name: otusms-prometheus-local
+    image: prom/prometheus:latest
+    profiles:
+      - monitoring  # Запускается с профилем: docker compose --profile monitoring up
+    restart: unless-stopped
+    ports:
+      - "39000:9090"  # Prometheus UI будет доступен на localhost:39000
+    volumes:
+      - ../../configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../configs/prometheus_alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'  # Хранить данные 30 дней
+      - '--web.enable-lifecycle'  # Разрешить перезагрузку конфигурации через API
+    networks:
+      - otusms_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  alertmanager:
+    container_name: otusms-alertmanager-local
+    image: prom/alertmanager:latest
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    ports:
+      - "39093:9093"  # Alertmanager UI
+    volumes:
+      - ../../configs/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - otusms_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 networks:
   otusms_network:
     name: otusms_local_network
@@ -31,4 +80,8 @@ networks:
 volumes:
   postgres_data:
     name: otusms_postgres_data_local
+  prometheus_data:
+    name: otusms_prometheus_data_local
+  alertmanager_data:
+    name: otusms_alertmanager_data_local
 

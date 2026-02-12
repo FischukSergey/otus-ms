@@ -1,0 +1,41 @@
+# Конфигурация Prometheus для сбора метрик из OtusMS
+global:
+  # Интервал сбора метрик (scraping)
+  scrape_interval: 15s
+  # Интервал оценки правил алертинга
+  evaluation_interval: 15s
+  # Дополнительные labels для всех метрик
+  external_labels:
+    monitor: 'otusms-monitor'
+    environment: 'local'
+
+# Подключение правил алертов
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+# Настройка Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
+# Конфигурация сбора метрик
+scrape_configs:
+  # Job для сбора метрик из OtusMS API
+  - job_name: 'otusms-api'
+    # Интервал сбора метрик для этого job
+    scrape_interval: 15s
+    # Таймаут для scraping запроса
+    scrape_timeout: 10s
+    # Путь к endpoint с метриками
+    metrics_path: '/metrics'
+    # Схема подключения
+    scheme: http
+    # Статические цели для scraping
+    static_configs:
+      # host.docker.internal используется для доступа к хосту из Docker контейнера
+      - targets: ['host.docker.internal:39090']
+        labels:
+          service: 'otusms'
+          component: 'api'

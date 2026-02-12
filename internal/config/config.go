@@ -18,12 +18,17 @@ type GlobalConfig struct {
 type LogConfig struct {
 	// добавляем валидацию: обязательное поле, значения из {"debug", "info", "warn", "error"}.
 	Level string `yaml:"level" validate:"required,oneof=debug info warn error"`
+	// Формат вывода логов: json для продакшена, text для локальной разработки.
+	Format string `yaml:"format" validate:"required,oneof=json text"`
+	// Имя сервиса для идентификации в логах.
+	ServiceName string `yaml:"service_name" validate:"required"`
 }
 
 // ServersConfig представляет настройки серверов.
 type ServersConfig struct {
-	Debug  DebugServerConfig  `yaml:"debug"`
-	Client ClientServerConfig `yaml:"client"`
+	Debug   DebugServerConfig   `yaml:"debug"`
+	Client  ClientServerConfig  `yaml:"client"`
+	Metrics MetricsServerConfig `yaml:"metrics"`
 }
 
 // DebugServerConfig представляет настройки отладочного сервера.
@@ -36,6 +41,11 @@ type DebugServerConfig struct {
 type ClientServerConfig struct {
 	Addr         string   `yaml:"addr" validate:"required,hostname_port"`
 	AllowOrigins []string `yaml:"allow_origins"`
+}
+
+// MetricsServerConfig представляет настройки сервера метрик.
+type MetricsServerConfig struct {
+	Addr string `yaml:"addr" validate:"required,hostname_port"`
 }
 
 // DBConfig представляет настройки базы данных.

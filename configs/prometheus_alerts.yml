@@ -1,0 +1,14 @@
+# Простое правило алерта для учебного проекта
+groups:
+  - name: service_alerts
+    interval: 30s
+    rules:
+      # Алерт: Сервис недоступен
+      - alert: ServiceDown
+        expr: up{job="otusms-api"} == 0
+        for: 1m  # Ждем 1 минуту перед отправкой
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 Сервис OtusMS недоступен!"
+          description: "Prometheus не может получить метрики. Проверьте, запущено ли приложение."

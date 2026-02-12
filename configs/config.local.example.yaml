@@ -4,6 +4,8 @@ global:
 
 log:
   level: debug
+  format: text
+  service_name: main-service
  
 servers:
   debug:
@@ -12,6 +14,8 @@ servers:
     addr: localhost:38080
     allow_origins:
       - "*"
+  metrics:
+    addr: localhost:39090
 
 db:
   name: otus_ms # database name
