@@ -23,6 +23,6 @@ db:
   password: CHANGE_ME_STRONG_PASSWORD # database password - ОБЯЗАТЕЛЬНО ИЗМЕНИТЕ!
   host: postgres # имя контейнера PostgreSQL (otus-postgres-prod подключен к той же сети)
   port: "5432" # database port (внутренний порт в Docker сети)
-  ssl_mode: require # SSL обязателен (require = SSL без проверки сертификата, verify-ca = с проверкой CA)
-  ssl_root_cert: # path to SSL root certificate if needed (для verify-ca или verify-full)
-  ssl_key: # path to SSL key if needed (для client certificate authentication)
+  ssl_mode: disable # для Docker сети можно disable (все сервисы изолированы в otus_network)
+  ssl_root_cert: # path to SSL root certificate if needed
+  ssl_key: # path to SSL key if needed
