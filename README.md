@@ -21,36 +21,57 @@ OtusMS - это шаблон микросервиса с полным CI/CD ци
 ```
 OtusMS/
 ├── cmd/
-│   └── main-service/          # Точка входа приложения
+│   ├── main-service/          # Основной микросервис
+│   │   ├── main.go            # Инициализация и запуск
+│   │   └── api-server.go      # HTTP сервер с роутами
+│   └── auth-proxy/            # Auth-Proxy микросервис
 │       ├── main.go            # Инициализация и запуск
-│       └── api-server.go      # HTTP сервер с роутами
+│       └── api-server.go      # HTTP сервер для авторизации
 │
 ├── internal/                  # Внутренняя бизнес-логика
-│   └── config/               # Конфигурация
-│       ├── config.go         # Структуры конфигурации
-│       ├── parse.go          # Парсинг YAML
-│       └── parse_test.go     # Unit тесты
+│   ├── config/               # Конфигурация
+│   │   ├── config.go         # Структуры конфигурации
+│   │   ├── parse.go          # Парсинг YAML
+│   │   └── parse_test.go     # Unit тесты
+│   ├── keycloak/             # Keycloak интеграция
+│   │   ├── client.go         # Клиент для Keycloak
+│   │   └── models.go         # Модели данных
+│   └── handlers/
+│       ├── user/             # User handlers
+│       └── auth/             # Auth handlers (login/refresh/logout)
 │
 ├── pkg/                      # Публичные библиотеки (переиспользуемые)
 │
 ├── configs/                  # Файлы конфигурации
-│   ├── config.local.yaml    # Для разработки (не в git)
-│   ├── config.prod.yaml     # Для production (не в git)
+│   ├── config.local.yaml    # Main-service (не в git)
+│   ├── config.prod.yaml     # Main-service production (не в git)
+│   ├── config.auth-proxy.local.yaml   # Auth-Proxy локально
+│   ├── config.auth-proxy.prod.yaml    # Auth-Proxy production
 │   └── *.example.yaml       # Примеры конфигов
 │
 ├── deploy/                   # Инфраструктура и деплой
 │   ├── local/               # Docker Compose для разработки
 │   └── prod/                # Production конфигурация
+│       ├── docker-compose.auth-proxy.prod.yml
+│       ├── docker-compose.keycloak*.prod.yml
+│       └── KEYCLOAK_AUTH_PROXY_SETUP.md
+│
+├── docs/                     # Документация
+│   └── AUTH_PROXY_API.md    # API документация Auth-Proxy
 │
 ├── tests/                    # Тесты
 │   ├── integration/         # Интеграционные тесты
+│   │   ├── user_test.go
+│   │   └── auth_test.go
 │   └── unit/                # Unit тесты
 │
 ├── .github/
 │   └── workflows/
-│       └── ci.yml           # GitHub Actions CI/CD
+│       ├── ci.yml           # GitHub Actions CI/CD
+│       └── deploy-keycloak.yml  # Деплой Keycloak
 │
-├── prod.Dockerfile          # Multi-stage build для production
+├── prod.Dockerfile          # Main-service Dockerfile
+├── auth-proxy.Dockerfile    # Auth-Proxy Dockerfile
 ├── Taskfile.yml             # Автоматизация задач разработки
 └── go.mod                   # Go зависимости
 ```
@@ -63,6 +84,7 @@ OtusMS/
 - **slog** - структурированное логирование
 - **cleanenv** - парсинг конфигурации
 - **validator/v10** - валидация данных
+- **gocloak/v13** - Keycloak клиент для авторизации
 
 ### DevOps & Infrastructure
 - **Docker** - контейнеризация приложения
@@ -226,13 +248,31 @@ task build          # Сборка бинарника
 docker compose -f deploy/local/docker-compose.local.yml up -d
 docker compose -f deploy/local/docker-compose.local.yml logs -f
 docker compose -f deploy/local/docker-compose.local.yml down
+
+# Запуск Auth-Proxy с профилем
+docker compose -f deploy/local/docker-compose.local.yml --profile auth up -d
+```
+
+### Настройка Auth-Proxy (если нужен)
+
+Перед запуском Auth-Proxy создайте конфиг с реальным Client Secret:
+
+```bash
+# 1. Скопируйте example файл
+cp configs/config.auth-proxy.local.example.yaml configs/config.auth-proxy.local.yaml
+
+# 2. Откройте файл и замените 'your-client-secret-here' на реальный secret из Keycloak
+nano configs/config.auth-proxy.local.yaml
 ```
 
 ### Проверка работы
 
 ```bash
-# Healthcheck
+# Main Service health check
 curl http://localhost:38080/health
+
+# Auth-Proxy health check (если запущен с --profile auth)
+curl http://localhost:38081/health
 
 # Главная страница
 curl http://localhost:38080/
@@ -260,40 +300,56 @@ curl http://localhost:38080/
 5. Выполняется graceful restart
 
 
-## 🌐 API Endpoints
+## 🌐 Микросервисы
 
-### `GET /`
-Приветственное сообщение с информацией о сервисе
+### Main Service (порт 38080)
 
-**Response:**
-```json
-{
-  "message": "Welcome to OtusMS Microservice!",
-  "version": "1.0.0",
-  "status": "running"
-}
-```
+Основной микросервис для работы с пользователями.
 
-**Example:**
-```bash
-curl https://fishouk-otus-ms.ru/
-```
+**Endpoints:**
 
-### `GET /health`
-Health check endpoint для мониторинга и балансировщиков
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "time": "2026-01-17T20:30:59+03:00"
-}
-```
+- `GET /` - Приветственное сообщение
+- `GET /health` - Health check
+- `POST /api/v1/users` - Создание пользователя
+- `GET /api/v1/users/{uuid}` - Получение пользователя
+- `DELETE /api/v1/users/{uuid}` - Удаление пользователя
 
 **Example:**
 ```bash
 curl https://fishouk-otus-ms.ru/health
 ```
+
+### Auth-Proxy Service (порт 38081)
+
+Микросервис для централизованной авторизации через Keycloak.
+
+**Endpoints:**
+
+- `GET /health` - Health check
+- `POST /api/v1/auth/login` - Логин пользователя
+- `POST /api/v1/auth/refresh` - Обновление токена
+- `POST /api/v1/auth/logout` - Logout пользователя
+
+**Подробная документация:** [AUTH_PROXY_API.md](docs/AUTH_PROXY_API.md)
+
+**Example:**
+```bash
+# Health check
+curl http://localhost:38081/health
+
+# Login
+curl -X POST http://localhost:38081/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test@example.com","password":"test123"}'
+```
+
+**Архитектура авторизации:**
+- Централизованная аутентификация через Keycloak
+- JWT токены для API доступа
+- Refresh token для обновления
+- Логирование всех попыток авторизации
+
+См. полную документацию: [Feat_Authorization.md](Feat_Authorization.md)
 
 ## ⚙️ Конфигурация
 

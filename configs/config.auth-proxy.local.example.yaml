@@ -1,0 +1,19 @@
+# Auth-Proxy Configuration (Local Development) - EXAMPLE
+# Скопируйте этот файл как config.auth-proxy.local.yaml и заполните реальными значениями
+global:
+  env: local
+
+log:
+  level: info
+  format: text
+  service_name: auth-proxy
+
+servers:
+  client:
+    addr: localhost:38081  # Auth-Proxy API
+
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"  # Production Keycloak
+  realm: "otus-ms"
+  client_id: "auth-proxy"
+  client_secret: "your-client-secret-here"  # ЗАМЕНИТЬ на реальный secret из Keycloak

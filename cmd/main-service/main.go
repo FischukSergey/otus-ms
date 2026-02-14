@@ -31,6 +31,11 @@ func run() error {
 		return err
 	}
 
+	// Проверяем наличие конфигурации БД (main-service требует БД)
+	if !cfg.DB.IsConfigured() {
+		return fmt.Errorf("database configuration is incomplete: please provide name, user, password, host and port")
+	}
+
 	// Создаем логгер на основе конфигурации
 	// Будет использоваться tint (цветной вывод) для format=text
 	// или JSON для format=json
