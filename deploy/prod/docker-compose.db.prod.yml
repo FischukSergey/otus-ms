@@ -5,7 +5,7 @@
 services:
   postgres:
     container_name: otus-postgres-prod
-    image: postgres:16-alpine
+    image: postgres:16  # Используем полный образ (не alpine) для поддержки SSL
     restart: always
     ports:
       - "0.0.0.0:5432:5432"
