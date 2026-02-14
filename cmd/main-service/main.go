@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -33,7 +34,7 @@ func run() error {
 
 	// Проверяем наличие конфигурации БД (main-service требует БД)
 	if !cfg.DB.IsConfigured() {
-		return fmt.Errorf("database configuration is incomplete: please provide name, user, password, host and port")
+		return errors.New("database configuration is incomplete: please provide name, user, password, host and port")
 	}
 
 	// Создаем логгер на основе конфигурации

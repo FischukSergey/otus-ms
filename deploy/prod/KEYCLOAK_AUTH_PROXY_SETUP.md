@@ -77,7 +77,7 @@ cp configs/config.auth-proxy.local.example.yaml configs/config.auth-proxy.local.
 
 ```yaml
 keycloak:
-  url: "https://fishouk-otus-ms.ru"
+  url: "https://fishouk-otus-ms.ru/auth"
   realm: "otus-ms"
   client_id: "auth-proxy"
   client_secret: "abc123xyz456..."  # Ваш реальный secret
@@ -203,6 +203,73 @@ curl -X POST http://localhost:38081/api/v1/auth/logout \
    - **Client Session Idle**: `30m` (30 минут)
    - **Client Session Max**: `10h` (10 часов)
 3. Нажмите **Save**
+
+## Создание тестового пользователя для интеграционных тестов
+
+Для запуска интеграционных тестов Auth-Proxy нужен тестовый пользователь.
+
+### Шаги создания:
+
+1. **Откройте Keycloak Admin Console:**
+   ```
+   https://fishouk-otus-ms.ru/auth/admin/
+   ```
+
+2. **Переключитесь на realm `otus-ms`** (выпадающий список в левом верхнем углу)
+
+3. **Создайте тестового пользователя:**
+   - В левом меню: **Users** → **Add user**
+   - **Username**: `test@example.com`
+   - **Email**: `test@example.com`
+   - **Email Verified**: `ON` ✅
+   - **Enabled**: `ON` ✅
+   - Нажмите **Create**
+
+4. **Установите пароль:**
+   - После создания откройте вкладку **Credentials**
+   - Нажмите **Set password**
+   - **Password**: `test123`
+   - **Temporary**: `OFF` (важно!)
+   - Нажмите **Save**
+   - Подтвердите в диалоге
+
+5. **Проверьте пользователя:**
+   ```bash
+   curl -X POST https://fishouk-otus-ms.ru/auth/realms/otus-ms/protocol/openid-connect/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "client_id=auth-proxy" \
+     -d "client_secret=ваш-client-secret" \
+     -d "grant_type=password" \
+     -d "username=test@example.com" \
+     -d "password=test123"
+   ```
+
+   Должны получить JSON с `access_token`, `refresh_token` и т.д.
+
+### Использование в тестах
+
+**Локально:**
+
+1. Создайте конфиг и добавьте в него секрет:
+   ```bash
+   cp configs/config.auth-proxy.test.example.yaml configs/config.auth-proxy.test.yaml
+   nano configs/config.auth-proxy.test.yaml
+   # Замените client_secret на реальный
+   ```
+
+2. Запустите тесты:
+   ```bash
+   task test:integration
+   ```
+
+**В CI/CD (GitHub Actions):**
+
+Добавьте в GitHub Secrets:
+- `KEYCLOAK_CLIENT_SECRET` - client secret из Keycloak
+- `TEST_KEYCLOAK_USERNAME` - username тестового пользователя (по умолчанию: `test@example.com`)
+- `TEST_KEYCLOAK_PASSWORD` - пароль тестового пользователя (по умолчанию: `test123`)
+
+Workflow автоматически подставит секреты через переменные окружения.
 
 ## Troubleshooting
 

@@ -61,9 +61,13 @@ OtusMS/
 │
 ├── tests/                    # Тесты
 │   ├── integration/         # Интеграционные тесты
+│   │   ├── README.md        # 📖 Документация по интеграционным тестам
 │   │   ├── user_test.go
 │   │   └── auth_test.go
 │   └── unit/                # Unit тесты
+├── TESTING.md               # 📖 Руководство по тестированию
+├── README.md                # Этот файл
+├── Taskfile.yml             # Task автоматизация
 │
 ├── .github/
 │   └── workflows/
@@ -169,6 +173,8 @@ OtusMS/
 - Автоматическая очистка старых образов
 
 **Total pipeline time:** ~2-3 минуты от commit до production
+
+**GitHub Secrets:** 📖 **[Документация по настройке секретов для CI/CD](.github/workflows/SECRETS.md)**
 
 ![GitHub Actions Pipeline](docs/images/github-actions.png)
 
@@ -277,6 +283,44 @@ curl http://localhost:38081/health
 # Главная страница
 curl http://localhost:38080/
 ```
+
+## Тестирование
+
+📖 **[Полное руководство по тестированию](TESTING.md)**
+
+### Быстрый старт
+
+```bash
+# Unit тесты
+task test:unit
+
+# Интеграционные тесты (требуют подготовки)
+cp configs/config.auth-proxy.test.example.yaml configs/config.auth-proxy.test.yaml
+# Отредактируйте config.auth-proxy.test.yaml - добавьте client_secret
+task test:integration
+
+# Все тесты
+task tests
+```
+
+### Что тестируется?
+
+**Unit тесты:**
+- Конфигурация и валидация
+- Бизнес-логика
+
+**Интеграционные тесты (в Docker):**
+- Main Service API (users CRUD)
+- Auth-Proxy (login/refresh/logout)
+- PostgreSQL интеграция
+
+### Особенности
+
+- **Локально:** секреты в файлах (в .gitignore), никаких `export` не нужно
+- **CI/CD:** секреты через GitHub Secrets → [документация](.github/workflows/SECRETS.md)
+- **Auth-Proxy тесты:** требуют настройки Keycloak client и тестового пользователя
+
+📖 Подробности: [TESTING.md](TESTING.md) | [tests/integration/README.md](tests/integration/README.md)
 
 ## Production деплой
 

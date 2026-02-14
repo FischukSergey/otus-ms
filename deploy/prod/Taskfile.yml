@@ -10,16 +10,19 @@ vars:
     sh: echo "${SSH_HOST:-otus-prod}"
   VPS_PATH_BE: /root/otus-microservice/prod/be
   VPS_PATH_DB: /root/otus-microservice/prod/db
+  VPS_PATH_AUTH: /root/otus-microservice/prod/auth-proxy
 
 tasks:
   # ===== Конфигурация =====
   
   config:upload:
-    desc: "Загрузить config.prod.yaml на VPS"
+    desc: "Загрузить конфиги на VPS (main-service + auth-proxy)"
     cmds:
-      - echo "📤 Загрузка config.prod.yaml на VPS..."
+      - echo "📤 Загрузка конфигурационных файлов на VPS..."
       - scp configs/config.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/configs/
-      - echo "✅ Конфиг загружен в {{.VPS_PATH_BE}}/configs/"
+      - echo "✅ config.prod.yaml загружен в {{.VPS_PATH_BE}}/configs/"
+      - scp configs/config.auth-proxy.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_AUTH}}/configs/
+      - echo "✅ config.auth-proxy.prod.yaml загружен в {{.VPS_PATH_AUTH}}/configs/"
 
   config:download:
     desc: "Скачать config.prod.yaml с VPS (backup)"
@@ -33,6 +36,11 @@ tasks:
     cmds:
       - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_BE}}/configs/config.prod.yaml"
 
+  config:edit:auth:
+    desc: "Открыть config.auth-proxy.prod.yaml на VPS в nano"
+    cmds:
+      - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_AUTH}}/configs/config.auth-proxy.prod.yaml"
+
   # ===== Мониторинг =====
 
   logs:
@@ -45,6 +53,11 @@ tasks:
     cmds:
       - ssh {{.SSH_HOST}} "docker logs otus-postgres-prod --tail=100 -f"
 
+  logs:auth:
+    desc: "Показать логи Auth-Proxy сервера"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-microservice-auth-proxy-prod --tail=100 -f"
+
   status:
     desc: "Статус контейнеров"
     cmds:
@@ -56,6 +69,12 @@ tasks:
     cmds:
       - echo "🏥 Healthcheck API сервера:"
       - ssh {{.SSH_HOST}} "curl -s http://localhost:38080/health | jq ."
+
+  health:auth:
+    desc: "Проверить healthcheck Auth-Proxy"
+    cmds:
+      - echo "🏥 Healthcheck Auth-Proxy сервера:"
+      - ssh {{.SSH_HOST}} "curl -s http://localhost:38081/health | jq ."
 
   # ===== Управление API сервером =====
 
@@ -79,6 +98,33 @@ tasks:
       - echo "▶️  Запуск API сервера..."
       - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_BE}} && docker compose -f docker-compose.be.prod.yml start"
       - echo "✅ API сервер запущен"
+
+  # ===== Управление Auth-Proxy сервером =====
+
+  auth:up:
+    desc: "Запустить Auth-Proxy сервер"
+    cmds:
+      - echo "🚀 Запуск Auth-Proxy..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AUTH}} && docker compose -f docker-compose.auth-proxy.prod.yml up -d"
+      - sleep 5
+      - task: health:auth
+      - echo "✅ Auth-Proxy запущен"
+
+  auth:down:
+    desc: "Остановить Auth-Proxy сервер"
+    cmds:
+      - echo "⏸️  Остановка Auth-Proxy..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AUTH}} && docker compose -f docker-compose.auth-proxy.prod.yml down"
+      - echo "✅ Auth-Proxy остановлен"
+
+  auth:restart:
+    desc: "Перезапустить Auth-Proxy сервер"
+    cmds:
+      - echo "🔄 Перезапуск Auth-Proxy..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AUTH}} && docker compose -f docker-compose.auth-proxy.prod.yml restart"
+      - sleep 3
+      - task: health:auth
+      - echo "✅ Auth-Proxy перезапущен"
 
   # ===== Управление БД =====
 
@@ -142,6 +188,7 @@ tasks:
       - echo "📤 Загрузка docker-compose файлов..."
       - scp deploy/prod/docker-compose.be.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/
       - scp deploy/prod/docker-compose.db.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_DB}}/
+      - scp deploy/prod/docker-compose.auth-proxy.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_AUTH}}/
       - echo "✅ Docker-compose файлы загружены"
 
   # ===== Утилиты =====
@@ -165,6 +212,7 @@ tasks:
       - echo "   SSH Host{{.SSH_HOST}}"
       - echo "   BE Path{{.VPS_PATH_BE}}"
       - echo "   DB Path{{.VPS_PATH_DB}}"
+      - echo "   Auth Path{{.VPS_PATH_AUTH}}"
       - echo ""
       - echo "💡 Настройка SSH alias в ~/.ssh/config:"
       - 'echo "   Host {{.SSH_HOST}}"'

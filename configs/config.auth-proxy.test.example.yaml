@@ -1,0 +1,19 @@
+# Auth-Proxy Configuration (Test Environment) - EXAMPLE
+# Скопируйте этот файл как config.auth-proxy.test.yaml для локального тестирования
+global:
+  env: local
+
+log:
+  level: info
+  format: text
+  service_name: auth-proxy
+
+servers:
+  client:
+    addr: 0.0.0.0:8080  # В контейнере слушаем на 8080, снаружи пробрасываем на 38081
+
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"  # Production Keycloak для тестов
+  realm: "otus-ms"
+  client_id: "auth-proxy"
+  client_secret: "your-client-secret-here"  # Замените на реальный client secret из Keycloak
