@@ -395,6 +395,16 @@ curl -X POST http://localhost:38081/api/v1/auth/login \
 
 См. полную документацию: [Feat_Authorization.md](Feat_Authorization.md)
 
+### Streamlit Admin (client/)
+
+Веб-клиент на Python/Streamlit для входа, дашборда сервисов и работы с пользователями.
+
+```bash
+cd client && pip3 install -r requirements.txt && streamlit run app.py
+```
+
+Подробнее: [client/README.md](client/README.md)
+
 ## ⚙️ Конфигурация
 
 Конфигурация загружается из YAML файлов с валидацией через `validator/v10`.

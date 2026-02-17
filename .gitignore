@@ -17,3 +17,6 @@ configs/config.auth-proxy.prod.yaml
 configs/config.auth-proxy.test.yaml
 
 /load_testing/logs
+
+/client/__pycache__
+/client/.venv

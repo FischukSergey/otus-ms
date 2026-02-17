@@ -1,0 +1,200 @@
+"""
+Клиент для Auth-Proxy и Main-service API.
+"""
+import os
+import time
+from dataclasses import dataclass
+from typing import Any
+
+import requests
+
+
+def _base_url(env_key: str, default: str) -> str:
+    url = os.getenv(env_key, default).rstrip("/")
+    return url
+
+
+def auth_proxy_url() -> str:
+    return _base_url("AUTH_PROXY_URL", "http://localhost:38081")
+
+
+def main_service_url() -> str:
+    return _base_url("MAIN_SERVICE_URL", "http://localhost:38080")
+
+
+@dataclass
+class TokenResponse:
+    access_token: str
+    refresh_token: str
+    expires_in: int
+    token_type: str = "Bearer"
+
+    @property
+    def expires_at(self) -> float:
+        return time.time() + self.expires_in
+
+
+# --- Auth-Proxy ---
+
+
+def login(username: str, password: str) -> TokenResponse | str:
+    """Логин. Возвращает TokenResponse или строку с ошибкой."""
+    url = f"{auth_proxy_url()}/api/v1/auth/login"
+    try:
+        r = requests.post(
+            url,
+            json={"username": username, "password": password},
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        data = r.json()
+        return TokenResponse(
+            access_token=data["access_token"],
+            refresh_token=data["refresh_token"],
+            expires_in=data.get("expires_in", 300),
+            token_type=data.get("token_type", "Bearer"),
+        )
+    try:
+        err = r.json().get("error", r.text)
+    except Exception:
+        err = r.text or str(r.status_code)
+    return f"{r.status_code}: {err}"
+
+
+def refresh_token(refresh_token: str) -> TokenResponse | str:
+    """Обновление access token. Возвращает TokenResponse или строку ошибки."""
+    url = f"{auth_proxy_url()}/api/v1/auth/refresh"
+    try:
+        r = requests.post(
+            url,
+            json={"refresh_token": refresh_token},
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        data = r.json()
+        return TokenResponse(
+            access_token=data["access_token"],
+            refresh_token=data["refresh_token"],
+            expires_in=data.get("expires_in", 300),
+            token_type=data.get("token_type", "Bearer"),
+        )
+    try:
+        err = r.json().get("error", r.text)
+    except Exception:
+        err = r.text or str(r.status_code)
+    return f"{r.status_code}: {err}"
+
+
+def logout(refresh_token: str) -> str | None:
+    """Logout. Возвращает None при успехе или строку с ошибкой."""
+    url = f"{auth_proxy_url()}/api/v1/auth/logout"
+    try:
+        r = requests.post(
+            url,
+            json={"refresh_token": refresh_token},
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return f"Ошибка сети: {e}"
+    if r.status_code == 204:
+        return None
+    try:
+        err = r.json().get("error", r.text)
+    except Exception:
+        err = r.text or str(r.status_code)
+    return f"{r.status_code}: {err}"
+
+
+# --- Health ---
+
+
+def health_check(base_url: str, name: str) -> dict[str, Any]:
+    """GET /health. Возвращает dict: ok, status, time, error."""
+    url = f"{base_url.rstrip('/')}/health"
+    try:
+        r = requests.get(url, timeout=5)
+        ok = r.status_code == 200
+        data = r.json() if ok else {}
+        return {
+            "ok": ok,
+            "status": data.get("status", "unknown"),
+            "time": data.get("time", ""),
+            "error": None if ok else (r.text or str(r.status_code)),
+        }
+    except requests.RequestException as e:
+        return {"ok": False, "status": "error", "time": "", "error": str(e)}
+
+
+# --- Main-service: users (требуют Bearer) ---
+
+
+def _headers(access_token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+
+def create_user(
+    access_token: str, payload: dict[str, Any]
+) -> tuple[bool, str]:
+    """POST /api/v1/users. Возвращает (success, message)."""
+    url = f"{main_service_url()}/api/v1/users"
+    try:
+        r = requests.post(
+            url,
+            json=payload,
+            headers=_headers(access_token),
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return False, f"Ошибка сети: {e}"
+    if r.status_code == 201:
+        return True, "Пользователь создан"
+    try:
+        body = r.json()
+        err = body.get("error", body.get("message", r.text))
+    except Exception:
+        err = r.text or str(r.status_code)
+    return False, f"{r.status_code}: {err}"
+
+
+def get_user(access_token: str, uuid: str) -> tuple[dict | None, str | None]:
+    """GET /api/v1/users/{uuid}. Возвращает (data, error)."""
+    url = f"{main_service_url()}/api/v1/users/{uuid}"
+    try:
+        r = requests.get(url, headers=_headers(access_token), timeout=10)
+    except requests.RequestException as e:
+        return None, f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        return r.json(), None
+    try:
+        body = r.json()
+        err = body.get("error", body.get("message", r.text))
+    except Exception:
+        err = r.text or str(r.status_code)
+    return None, f"{r.status_code}: {err}"
+
+
+def delete_user(access_token: str, uuid: str) -> tuple[bool, str]:
+    """DELETE /api/v1/users/{uuid}. Возвращает (success, message)."""
+    url = f"{main_service_url()}/api/v1/users/{uuid}"
+    try:
+        r = requests.delete(url, headers=_headers(access_token), timeout=10)
+    except requests.RequestException as e:
+        return False, f"Ошибка сети: {e}"
+    if r.status_code in (200, 204):
+        return True, "Пользователь удалён (мягкое удаление)"
+    try:
+        body = r.json()
+        err = body.get("error", body.get("message", r.text))
+    except Exception:
+        err = r.text or str(r.status_code)
+    return False, f"{r.status_code}: {err}"
