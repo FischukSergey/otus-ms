@@ -12,6 +12,7 @@ import (
 
 	"github.com/FischukSergey/otus-ms/internal/config"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
+	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
 	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
@@ -28,10 +29,11 @@ type APIServer struct {
 
 // APIServerDeps содержит зависимости для инициализации API сервера.
 type APIServerDeps struct {
-	Addr    string
-	Config  config.Config
-	Logger  *slog.Logger
-	Storage *store.Storage
+	Addr        string
+	Config      config.Config
+	Logger      *slog.Logger
+	Storage     *store.Storage
+	JWKSManager *jwks.Manager // JWKS Manager для валидации JWT (может быть nil)
 }
 
 // NewAPIServer создает и настраивает простой API сервер с chi роутером.

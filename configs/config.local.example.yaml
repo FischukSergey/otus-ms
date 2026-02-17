@@ -26,3 +26,17 @@ db:
   ssl_mode: disable # database ssl mode
   ssl_root_cert: # database ssl root cert
   ssl_key: # database ssl key
+
+jwt:
+  # JWKS URL для автоматической загрузки публичных ключей (рекомендуется)
+  # Keycloak автоматически публикует свои ключи на этом endpoint
+  jwks_url: "https://fishouk-otus-ms.ru/auth/realms/otus-ms/protocol/openid-connect/certs"
+  
+  # Issuer - URL вашего Keycloak realm
+  issuer: "https://fishouk-otus-ms.ru/auth/realms/otus-ms"
+  
+  # Audience - Client ID вашего микросервиса, зарегистрированного в Keycloak
+  audience: "main-service"
+  
+  # Время кеширования JWKS в секундах (опционально, по умолчанию 600 = 10 минут)
+  cache_duration: 600

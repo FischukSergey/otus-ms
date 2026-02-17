@@ -7,6 +7,7 @@ type Config struct {
 	Servers  ServersConfig  `yaml:"servers"`
 	DB       DBConfig       `yaml:"db"`
 	Keycloak KeycloakConfig `yaml:"keycloak"`
+	JWT      JWTConfig      `yaml:"jwt"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -80,4 +81,27 @@ type KeycloakConfig struct {
 // IsConfigured проверяет, что конфигурация Keycloak заполнена.
 func (k KeycloakConfig) IsConfigured() bool {
 	return k.URL != "" && k.Realm != "" && k.ClientID != "" && k.ClientSecret != ""
+}
+
+// JWTConfig содержит настройки для JWT валидации.
+// Используется в main-service для проверки JWT токенов от Keycloak.
+type JWTConfig struct {
+	// JWKS URL для автоматической загрузки публичных ключей
+	JWKSURL       string `yaml:"jwks_url"`       // URL к JWKS endpoint Keycloak
+	Issuer        string `yaml:"issuer"`         // URL Keycloak realm
+	Audience      string `yaml:"audience"`       // Client ID
+	CacheDuration int    `yaml:"cache_duration"` // Время кеширования JWKS в секундах (по умолчанию 600 = 10 минут)
+}
+
+// IsConfigured проверяет, что конфигурация JWT заполнена.
+func (j JWTConfig) IsConfigured() bool {
+	return j.JWKSURL != "" && j.Issuer != ""
+}
+
+// GetCacheDuration возвращает время кеширования JWKS или значение по умолчанию.
+func (j JWTConfig) GetCacheDuration() int {
+	if j.CacheDuration > 0 {
+		return j.CacheDuration
+	}
+	return 600 // 10 минут по умолчанию
 }

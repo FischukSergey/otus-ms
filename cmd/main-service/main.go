@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/FischukSergey/otus-ms/internal/config"
+	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/logger"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
 	"github.com/FischukSergey/otus-ms/internal/store"
@@ -92,12 +93,38 @@ func run() error {
 	}
 	appLogger.Info("Database migrations completed successfully")
 
+	// Инициализируем JWKS Manager (если настроен)
+	var jwksManager *jwks.Manager
+	if cfg.JWT.IsConfigured() && cfg.JWT.JWKSURL != "" {
+		appLogger.Info("Initializing JWKS Manager...")
+		var err error
+		jwksManager, err = jwks.NewManager(
+			cfg.JWT.JWKSURL,
+			cfg.JWT.GetCacheDuration(),
+			appLogger,
+		)
+		if err != nil {
+			return fmt.Errorf("init JWKS Manager: %w", err)
+		}
+		// Закрываем менеджер при остановке
+		defer func() {
+			appLogger.Info("Closing JWKS Manager...")
+			if err := jwksManager.Close(); err != nil {
+				appLogger.Error("Error closing JWKS Manager", "error", err)
+			}
+		}()
+		appLogger.Info("JWKS Manager initialized successfully")
+	} else {
+		appLogger.Info("JWKS Manager not configured, JWT validation will be disabled")
+	}
+
 	// Создаем API сервер
 	apiServer := NewAPIServer(&APIServerDeps{
-		Addr:    cfg.Servers.Client.Addr,
-		Config:  cfg,
-		Logger:  appLogger,
-		Storage: storage,
+		Addr:        cfg.Servers.Client.Addr,
+		Config:      cfg,
+		Logger:      appLogger,
+		Storage:     storage,
+		JWKSManager: jwksManager,
 	})
 
 	// Создаем и запускаем Debug сервер
