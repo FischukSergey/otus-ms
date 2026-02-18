@@ -22,6 +22,10 @@ def main_service_url() -> str:
     return _base_url("MAIN_SERVICE_URL", "http://localhost:38080")
 
 
+def loki_url() -> str:
+    return _base_url("LOKI_URL", "http://localhost:3100")
+
+
 @dataclass
 class TokenResponse:
     access_token: str
@@ -181,6 +185,103 @@ def get_user(access_token: str, uuid: str) -> tuple[dict | None, str | None]:
     except Exception:
         err = r.text or str(r.status_code)
     return None, f"{r.status_code}: {err}"
+
+
+# --- Loki: логи ---
+
+
+def get_logs(
+    service: str | None = None,
+    level: str | None = None,
+    limit: int = 100,
+    hours: int = 1,
+) -> tuple[list[dict], str | None]:
+    """
+    Запрос логов из Loki за последние N часов.
+    Возвращает (список записей, ошибка или None).
+    Запись: {ts, service, level, msg, container, raw}
+    """
+    import time as _time
+
+    label_sel = '{container=~"otus-microservice-.*"}'
+    filters = []
+    if service:
+        label_sel = f'{{container="{service}"}}'
+    if level:
+        filters.append(f'level="{level}"')
+
+    query = label_sel
+    if filters:
+        query += " | " + " | ".join(filters)
+
+    end_ns = int(_time.time() * 1e9)
+    start_ns = end_ns - hours * 3600 * int(1e9)
+
+    url = f"{loki_url()}/loki/api/v1/query_range"
+    try:
+        r = requests.get(
+            url,
+            params={
+                "query": query,
+                "limit": limit,
+                "start": start_ns,
+                "end": end_ns,
+                "direction": "backward",
+            },
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return [], f"Ошибка сети: {e}"
+
+    if r.status_code != 200:
+        return [], f"{r.status_code}: {r.text[:200]}"
+
+    rows: list[dict] = []
+    try:
+        data = r.json()
+        for stream in data.get("data", {}).get("result", []):
+            labels = stream.get("stream", {})
+            for ts_ns, line in stream.get("values", []):
+                import json as _json
+                import datetime as _dt
+
+                ts_sec = int(ts_ns) / 1e9
+                ts_str = _dt.datetime.utcfromtimestamp(
+                    ts_sec
+                ).strftime("%Y-%m-%d %H:%M:%S")
+                try:
+                    parsed = _json.loads(line)
+                    msg = parsed.get("msg", line)
+                    svc = parsed.get(
+                        "service", labels.get("service", "")
+                    )
+                    lvl = parsed.get(
+                        "level", labels.get("level", "")
+                    )
+                except Exception:
+                    msg = line
+                    svc = labels.get("service", "")
+                    lvl = labels.get("level", "")
+                rows.append({
+                    "ts": ts_str,
+                    "service": svc,
+                    "level": lvl.upper(),
+                    "msg": msg,
+                    "raw": line,
+                })
+    except Exception as e:
+        return [], f"Ошибка разбора ответа: {e}"
+
+    return rows, None
+
+
+def loki_health() -> bool:
+    """Проверка доступности Loki."""
+    try:
+        r = requests.get(f"{loki_url()}/ready", timeout=3)
+        return r.status_code == 200
+    except requests.RequestException:
+        return False
 
 
 def delete_user(access_token: str, uuid: str) -> tuple[bool, str]:

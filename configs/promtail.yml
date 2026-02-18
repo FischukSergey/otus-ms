@@ -1,0 +1,50 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn   # не засоряем логи самого Promtail
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://otus-loki-prod:3100/loki/api/v1/push
+    batchwait: 3s
+    batchsize: 1048576   # 1 MB
+
+scrape_configs:
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+
+    relabel_configs:
+      # Имя контейнера без ведущего /
+      - source_labels: [__meta_docker_container_name]
+        regex: /(.*)
+        target_label: container
+
+      # Только наши сервисы (otus-microservice-*)
+      - source_labels: [container]
+        regex: "otus-microservice-.*"
+        action: keep
+
+    pipeline_stages:
+      # Парсим JSON из Go-сервисов (slog JSON format)
+      - json:
+          expressions:
+            level:   level
+            msg:     msg
+            path:    path      # поле HTTP-пути из LoggerMiddleware
+            service: service
+
+      # Отбрасываем healthcheck-логи по пути /health
+      # Покрывает оба события: "request started" и "request completed"
+      - drop:
+          source:     path
+          expression: "^/health$"
+
+      # Пробрасываем level и service как labels Loki для быстрой фильтрации
+      - labels:
+          level:
+          service:
+          container:

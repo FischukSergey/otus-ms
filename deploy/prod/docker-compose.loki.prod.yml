@@ -1,0 +1,47 @@
+services:
+  loki:
+    container_name: otus-loki-prod
+    image: grafana/loki:3.0.0
+    restart: always
+    ports:
+      - "127.0.0.1:3100:3100"   # только localhost, не наружу
+    volumes:
+      - ./configs/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki.yml
+    mem_limit: 256m
+    networks:
+      - otus_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider",
+             "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  promtail:
+    container_name: otus-promtail-prod
+    image: grafana/promtail:3.0.0
+    restart: always
+    volumes:
+      - ./configs/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/promtail.yml
+    mem_limit: 64m
+    networks:
+      - otus_network
+    depends_on:
+      loki:
+        condition: service_healthy
+
+networks:
+  otus_network:
+    name: otus_network
+    driver: bridge
+    external: true
+
+volumes:
+  loki_data:
+    name: otus_loki_data_prod

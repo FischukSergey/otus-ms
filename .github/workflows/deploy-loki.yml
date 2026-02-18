@@ -1,0 +1,158 @@
+name: Deploy Loki + Promtail to Production (Manual)
+
+on:
+  # ВРЕМЕННО: запуск из ветки feat/AgregatorService без мержа в main
+  # После мержа в main — удалить push триггер!
+  push:
+    branches:
+      - feat/AgregatorService
+    paths:
+      - '.github/workflows/deploy-loki.yml'
+      - 'configs/loki.yml'
+      - 'configs/promtail.yml'
+      - 'deploy/prod/docker-compose.loki.prod.yml'
+
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Действие'
+        required: true
+        default: 'up'
+        type: choice
+        options:
+          - up        # Запустить (с обновлением конфигов)
+          - down      # Остановить (данные сохраняются)
+          - restart   # Перезапустить
+          - logs      # Показать последние логи
+          - recreate  # Пересоздать контейнеры
+
+env:
+  VPS_PATH: /root/otus-microservice/prod/loki
+  COMPOSE_FILE: docker-compose.loki.prod.yml
+
+jobs:
+  deploy-loki:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve inputs (defaults for push trigger)
+        id: ctx
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "action=up" >> $GITHUB_OUTPUT
+            echo "▶️  Push-триггер: action=up"
+          else
+            echo "action=${{ inputs.action }}" >> $GITHUB_OUTPUT
+            echo "▶️  Manual-триггер: action=${{ inputs.action }}"
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/${{ env.COMPOSE_FILE }}"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
+
+      - name: Copy Loki config to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "configs/loki.yml"
+          target: "${{ env.VPS_PATH }}/configs"
+          strip_components: 1
+
+      - name: Copy Promtail config to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "configs/promtail.yml"
+          target: "${{ env.VPS_PATH }}/configs"
+          strip_components: 1
+
+      - name: Execute action on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p ${{ env.VPS_PATH }}/configs
+            cd ${{ env.VPS_PATH }}
+
+            if [ ! -f ${{ env.COMPOSE_FILE }} ]; then
+              echo "❌ ${{ env.COMPOSE_FILE }} не найден!"
+              exit 1
+            fi
+
+            echo "🔗 Проверка Docker-сети otus_network..."
+            docker network inspect otus_network > /dev/null 2>&1 \
+              || docker network create --driver bridge otus_network
+            echo "✅ Сеть otus_network готова"
+
+            case "${{ steps.ctx.outputs.action }}" in
+              up)
+                echo "🔄 Остановка старых контейнеров..."
+                docker compose -f ${{ env.COMPOSE_FILE }} down || true
+
+                echo "⬇️  Скачивание образов..."
+                docker compose -f ${{ env.COMPOSE_FILE }} pull
+
+                echo "🚀 Запуск Loki + Promtail..."
+                docker compose -f ${{ env.COMPOSE_FILE }} up -d
+
+                echo "⏳ Ожидание готовности Loki..."
+                sleep 20
+
+                docker compose -f ${{ env.COMPOSE_FILE }} ps
+                echo "✅ Loki + Promtail запущены!"
+                ;;
+
+              down)
+                echo "⏸️  Остановка (данные сохраняются)..."
+                docker compose -f ${{ env.COMPOSE_FILE }} down
+                echo "✅ Остановлено"
+                ;;
+
+              restart)
+                echo "🔄 Перезапуск..."
+                docker compose -f ${{ env.COMPOSE_FILE }} restart
+                sleep 15
+                docker compose -f ${{ env.COMPOSE_FILE }} ps
+                echo "✅ Перезапущено"
+                ;;
+
+              logs)
+                echo "📋 Логи Loki + Promtail (последние 200 строк):"
+                docker compose -f ${{ env.COMPOSE_FILE }} logs --tail=200
+                ;;
+
+              recreate)
+                echo "⬇️  Скачивание образов..."
+                docker compose -f ${{ env.COMPOSE_FILE }} pull
+
+                echo "🔄 Пересоздание контейнеров..."
+                docker compose -f ${{ env.COMPOSE_FILE }} down
+                docker compose -f ${{ env.COMPOSE_FILE }} up -d --force-recreate
+                sleep 20
+                docker compose -f ${{ env.COMPOSE_FILE }} ps
+                echo "✅ Пересоздано"
+                ;;
+            esac
+
+            echo ""
+            echo "ℹ️  Статус:"
+            docker ps | grep -E "loki|promtail" || echo "Контейнеры не запущены"
+
+            echo "🧹 Очистка..."
+            docker image prune -f || true

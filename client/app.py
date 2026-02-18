@@ -11,8 +11,11 @@ from api import (
     create_user,
     get_user,
     delete_user,
+    get_logs,
     health_check,
     login,
+    loki_health,
+    loki_url,
     logout,
     main_service_url,
     refresh_token,
@@ -191,12 +194,72 @@ def render_users():
                     st.error(msg)
 
 
+_LEVEL_COLORS = {
+    "ERROR": "🔴",
+    "WARN":  "🟡",
+    "WARNING": "🟡",
+    "INFO":  "🔵",
+    "DEBUG": "⚪",
+}
+
+_SERVICES = [
+    ("Все сервисы", None),
+    ("main-service", "otus-microservice-be-prod"),
+    ("auth-proxy",   "otus-microservice-auth-proxy-prod"),
+]
+
+_LEVELS = ["Все уровни", "ERROR", "WARN", "INFO", "DEBUG"]
+
+
 def render_logs():
     st.header("Логи")
-    st.info(
-        "API для просмотра логов пока не реализован. "
-        "Логи сервисов можно смотреть через docker compose logs или Prometheus (порт 39000)."
-    )
+
+    if not loki_health():
+        st.error(
+            f"Loki недоступен ({loki_url()}). "
+            "Убедитесь, что стек Loki + Promtail запущен."
+        )
+        return
+
+    # --- Фильтры ---
+    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+    with col1:
+        svc_label = st.selectbox(
+            "Сервис", [s[0] for s in _SERVICES], key="log_svc"
+        )
+        container = next(s[1] for s in _SERVICES if s[0] == svc_label)
+    with col2:
+        level_label = st.selectbox("Уровень", _LEVELS, key="log_lvl")
+        level = None if level_label == "Все уровни" else level_label
+    with col3:
+        hours = st.selectbox(
+            "Период", [1, 3, 6, 12, 24], format_func=lambda h: f"Последние {h}ч",
+            key="log_hours",
+        )
+    with col4:
+        limit = st.number_input("Строк", min_value=10, max_value=500,
+                                value=100, step=10, key="log_limit")
+
+    if st.button("Обновить", key="btn_logs"):
+        rows, err = get_logs(
+            service=container, level=level,
+            limit=int(limit), hours=int(hours),
+        )
+        if err:
+            st.error(err)
+        elif not rows:
+            st.info("Логов не найдено за выбранный период.")
+        else:
+            st.caption(f"Найдено записей: {len(rows)}")
+            for row in rows:
+                icon = _LEVEL_COLORS.get(row["level"], "⚫")
+                with st.container():
+                    st.markdown(
+                        f"`{row['ts']}` {icon} **{row['level']}** "
+                        f"[{row['service']}] — {row['msg']}"
+                    )
+    else:
+        st.caption("Нажмите «Обновить» для загрузки логов.")
 
 
 def main():
