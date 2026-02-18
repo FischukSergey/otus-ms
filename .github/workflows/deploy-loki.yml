@@ -3,6 +3,7 @@ name: Deploy Loki + Promtail to Production (Manual)
 on:
   # ВРЕМЕННО: запуск из ветки feat/AgregatorService без мержа в main
   # После мержа в main — удалить push триггер!
+  #
   push:
     branches:
       - feat/AgregatorService
