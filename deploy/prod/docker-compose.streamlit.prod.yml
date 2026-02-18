@@ -9,6 +9,7 @@ services:
       # Внутренние адреса по Docker-сети otus_network (без выхода на VPS host)
       - AUTH_PROXY_URL=http://otus-microservice-auth-proxy-prod:38081
       - MAIN_SERVICE_URL=http://otus-microservice-be-prod:38080
+      - STREAMLIT_SERVER_BASE_URL_PATH=/admin 
     networks:
       - otus_network
     healthcheck:
