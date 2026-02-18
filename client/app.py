@@ -115,7 +115,7 @@ def render_sidebar():
 
 def render_dashboard():
     st.header("Состояние сервисов")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.subheader("Auth-Proxy")
         info = health_check(auth_proxy_url(), "Auth-Proxy")
@@ -132,7 +132,17 @@ def render_dashboard():
             st.caption(f"Время: {info['time']}")
         else:
             st.error(info.get("error", "Недоступен"))
-    st.caption(f"Auth-Proxy: {auth_proxy_url()} | Main: {main_service_url()}")
+    with col3:
+        st.subheader("Loki")
+        if loki_health():
+            st.success("Статус: ok")
+        else:
+            st.error("Недоступен")
+    st.caption(
+        f"Auth-Proxy: {auth_proxy_url()} | "
+        f"Main: {main_service_url()} | "
+        f"Loki: {loki_url()}"
+    )
 
 
 def render_users():
