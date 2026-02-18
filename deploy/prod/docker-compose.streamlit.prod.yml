@@ -1,0 +1,26 @@
+services:
+  otus-streamlit-client:
+    container_name: otus-streamlit-client-prod
+    image: cr.selcloud.ru/otus-microservice-be/streamlit-client:latest
+    restart: always
+    ports:
+      - "0.0.0.0:38085:8501"  # Streamlit UI (внешний 38085 → внутренний 8501)
+    environment:
+      # Внутренние адреса по Docker-сети otus_network (без выхода на VPS host)
+      - AUTH_PROXY_URL=http://otus-microservice-auth-proxy-prod:38081
+      - MAIN_SERVICE_URL=http://otus-microservice-be-prod:38080
+    networks:
+      - otus_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  otus_network:
+    name: otus_network
+    driver: bridge
+    # Используем существующую сеть, созданную другими сервисами
+    external: true
