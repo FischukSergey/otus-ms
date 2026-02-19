@@ -26,7 +26,7 @@ const docTemplate = `{
     "paths": {
         "/api/v1/auth/login": {
             "post": {
-                "description": "Аутентификация пользователя через Keycloak. Возвращает access_token и refresh_token.",
+                "description": "Аутентификация через Keycloak. Возвращает access_token и refresh_token.",
                 "consumes": [
                     "application/json"
                 ],
@@ -72,7 +72,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/logout": {
             "post": {
-                "description": "Инвалидирует refresh_token в Keycloak. Клиент должен самостоятельно удалить access_token.",
+                "description": "Инвалидирует refresh_token в Keycloak.",
                 "consumes": [
                     "application/json"
                 ],

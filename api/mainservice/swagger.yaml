@@ -68,8 +68,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Создаёт нового пользователя в системе. UUID и email должны быть
-        уникальными.
+      description: Создаёт нового пользователя. UUID и email должны быть уникальными.
       parameters:
       - description: Данные нового пользователя
         in: body
@@ -85,11 +84,11 @@ paths:
         "400":
           description: Невалидный запрос или ошибка валидации
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Создать пользователя
@@ -97,11 +96,9 @@ paths:
       - users
   /api/v1/users/{uuid}:
     delete:
-      description: Выполняет мягкое удаление пользователя (soft delete). Запись остаётся
-        в БД с флагом deleted=true.
+      description: Мягкое удаление (soft delete). Запись остаётся в БД с флагом deleted=true.
       parameters:
-      - description: UUID пользователя
-        example: '"550e8400-e29b-41d4-a716-446655440000"'
+      - description: 'UUID пользователя (формат: uuid4)'
         in: path
         name: uuid
         required: true
@@ -114,26 +111,25 @@ paths:
         "400":
           description: Невалидный UUID
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
         "404":
           description: Пользователь не найден
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Удалить пользователя
       tags:
       - users
     get:
-      description: Возвращает данные пользователя по его UUID. Если пользователь мягко
-        удалён — возвращается с полем deleted=true.
+      description: Возвращает данные пользователя по UUID. Мягко удалённый вернётся
+        с deleted=true.
       parameters:
-      - description: UUID пользователя
-        example: '"550e8400-e29b-41d4-a716-446655440000"'
+      - description: 'UUID пользователя (формат: uuid4)'
         in: path
         name: uuid
         required: true
@@ -148,15 +144,15 @@ paths:
         "400":
           description: Невалидный UUID
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
         "404":
           description: Пользователь не найден
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить пользователя

@@ -31,7 +31,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт нового пользователя в системе. UUID и email должны быть уникальными.",
+                "description": "Создаёт нового пользователя. UUID и email должны быть уникальными.",
                 "consumes": [
                     "application/json"
                 ],
@@ -60,13 +60,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный запрос или ошибка валидации",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
@@ -79,7 +79,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает данные пользователя по его UUID. Если пользователь мягко удалён — возвращается с полем deleted=true.",
+                "description": "Возвращает данные пользователя по UUID. Мягко удалённый вернётся с deleted=true.",
                 "produces": [
                     "application/json"
                 ],
@@ -90,8 +90,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "\"550e8400-e29b-41d4-a716-446655440000\"",
-                        "description": "UUID пользователя",
+                        "description": "UUID пользователя (формат: uuid4)",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -107,19 +106,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный UUID",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Пользователь не найден",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
@@ -130,7 +129,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Выполняет мягкое удаление пользователя (soft delete). Запись остаётся в БД с флагом deleted=true.",
+                "description": "Мягкое удаление (soft delete). Запись остаётся в БД с флагом deleted=true.",
                 "produces": [
                     "application/json"
                 ],
@@ -141,8 +140,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "\"550e8400-e29b-41d4-a716-446655440000\"",
-                        "description": "UUID пользователя",
+                        "description": "UUID пользователя (формат: uuid4)",
                         "name": "uuid",
                         "in": "path",
                         "required": true
@@ -155,19 +153,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный UUID",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Пользователь не найден",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     }
                 }

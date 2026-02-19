@@ -66,8 +66,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Аутентификация пользователя через Keycloak. Возвращает access_token
-        и refresh_token.
+      description: Аутентификация через Keycloak. Возвращает access_token и refresh_token.
       parameters:
       - description: Логин и пароль
         in: body
@@ -97,8 +96,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Инвалидирует refresh_token в Keycloak. Клиент должен самостоятельно
-        удалить access_token.
+      description: Инвалидирует refresh_token в Keycloak.
       parameters:
       - description: Refresh token для инвалидации
         in: body
