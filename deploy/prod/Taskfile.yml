@@ -11,6 +11,7 @@ vars:
   VPS_PATH_BE: /root/otus-microservice/prod/be
   VPS_PATH_DB: /root/otus-microservice/prod/db
   VPS_PATH_AUTH: /root/otus-microservice/prod/auth-proxy
+  VPS_PATH_SWAGGER: /root/otus-microservice/prod/swagger
 
 tasks:
   # ===== Конфигурация =====
@@ -190,6 +191,28 @@ tasks:
       - scp deploy/prod/docker-compose.db.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_DB}}/
       - scp deploy/prod/docker-compose.auth-proxy.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_AUTH}}/
       - echo "✅ Docker-compose файлы загружены"
+
+  # ===== Swagger UI =====
+
+  swagger:up:
+    desc: "Запустить Swagger UI на VPS"
+    cmds:
+      - echo "🚀 Запуск Swagger UI..."
+      - scp deploy/prod/docker-compose.swagger.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_SWAGGER}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_SWAGGER}} && docker compose -f docker-compose.swagger.prod.yml pull && docker compose -f docker-compose.swagger.prod.yml up -d"
+      - echo "✅ Swagger UI запущен: https://fishouk-otus-ms.ru/swagger/"
+
+  swagger:down:
+    desc: "Остановить Swagger UI на VPS"
+    cmds:
+      - echo "⏹️  Остановка Swagger UI..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_SWAGGER}} && docker compose -f docker-compose.swagger.prod.yml down"
+      - echo "✅ Swagger UI остановлен"
+
+  swagger:logs:
+    desc: "Показать логи Swagger UI"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs swagger-ui-prod --tail=100 -f"
 
   # ===== Утилиты =====
 
