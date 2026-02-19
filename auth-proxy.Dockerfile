@@ -6,19 +6,11 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Устанавливаем swag CLI для генерации swagger docs
-RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
-
 # Копируем исходный код
 COPY . .
 
-# Генерируем swagger docs для auth-proxy
-RUN /go/bin/swag init -g cmd/auth-proxy/main.go -o api/authproxy \
-    --parseInternal \
-    --parseDependency \
-    --exclude internal/handlers/user
-
 # Собираем бинарник auth-proxy
+# Swagger docs берутся из закоммиченных api/authproxy/ (генерируются локально через swag init)
 RUN CGO_ENABLED=0 go build -o auth-proxy ./cmd/auth-proxy
 
 # Финальный образ

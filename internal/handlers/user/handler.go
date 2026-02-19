@@ -50,7 +50,19 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode 
 	}
 }
 
-// @Router       /api/v1/users [post].
+// Create обрабатывает POST /api/v1/users - создание нового пользователя.
+//
+// @Summary      Создать пользователя
+// @Description  Создаёт нового пользователя. UUID и email должны быть уникальными.
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        user  body      userService.CreateRequest  true  "Данные нового пользователя"
+// @Success      201
+// @Failure      400   {object}  ErrorResponse  "Невалидный запрос или ошибка валидации"
+// @Failure      500   {object}  ErrorResponse  "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	var req userService.CreateRequest
@@ -79,7 +91,19 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// @Router       /api/v1/users/{uuid} [get].
+// Get обрабатывает GET /api/v1/users/{uuid} - получение пользователя по UUID.
+//
+// @Summary      Получить пользователя
+// @Description  Возвращает данные пользователя по UUID. Мягко удалённый вернётся с deleted=true.
+// @Tags         users
+// @Produce      json
+// @Param        uuid  path      string                true  "UUID пользователя (формат: uuid4)"
+// @Success      200   {object}  userService.Response  "Данные пользователя"
+// @Failure      400   {object}  ErrorResponse         "Невалидный UUID"
+// @Failure      404   {object}  ErrorResponse         "Пользователь не найден"
+// @Failure      500   {object}  ErrorResponse         "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users/{uuid} [get]
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
@@ -114,7 +138,19 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// @Router       /api/v1/users/{uuid} [delete].
+// Delete обрабатывает DELETE /api/v1/users/{uuid} - мягкое удаление пользователя.
+//
+// @Summary      Удалить пользователя
+// @Description  Мягкое удаление (soft delete). Запись остаётся в БД с флагом deleted=true.
+// @Tags         users
+// @Produce      json
+// @Param        uuid  path  string  true  "UUID пользователя (формат: uuid4)"
+// @Success      204
+// @Failure      400  {object}  ErrorResponse  "Невалидный UUID"
+// @Failure      404  {object}  ErrorResponse  "Пользователь не найден"
+// @Failure      500  {object}  ErrorResponse  "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users/{uuid} [delete]
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
