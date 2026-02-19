@@ -1,0 +1,170 @@
+basePath: /
+definitions:
+  github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_handlers_user.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  user.CreateRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      firstName:
+        maxLength: 255
+        type: string
+      lastName:
+        maxLength: 255
+        type: string
+      middleName:
+        maxLength: 255
+        type: string
+      uuid:
+        type: string
+    required:
+    - email
+    - uuid
+    type: object
+  user.Response:
+    properties:
+      createdAt:
+        type: string
+      deleted:
+        type: boolean
+      deletedAt:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      middleName:
+        type: string
+      role:
+        type: string
+      uuid:
+        type: string
+    type: object
+host: fishouk-otus-ms.ru
+info:
+  contact:
+    name: OtusMS Support
+    url: https://github.com/FischukSergey/otus-ms
+  description: 'Введите токен в формате: Bearer {token}'
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: OtusMS Main Service API
+  version: 1.0.0
+paths:
+  /api/v1/users:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт нового пользователя в системе. UUID и email должны быть
+        уникальными.
+      parameters:
+      - description: Данные нового пользователя
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/user.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ""
+        "400":
+          description: Невалидный запрос или ошибка валидации
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать пользователя
+      tags:
+      - users
+  /api/v1/users/{uuid}:
+    delete:
+      description: Выполняет мягкое удаление пользователя (soft delete). Запись остаётся
+        в БД с флагом deleted=true.
+      parameters:
+      - description: UUID пользователя
+        example: '"550e8400-e29b-41d4-a716-446655440000"'
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Невалидный UUID
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+        "404":
+          description: Пользователь не найден
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить пользователя
+      tags:
+      - users
+    get:
+      description: Возвращает данные пользователя по его UUID. Если пользователь мягко
+        удалён — возвращается с полем deleted=true.
+      parameters:
+      - description: UUID пользователя
+        example: '"550e8400-e29b-41d4-a716-446655440000"'
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные пользователя
+          schema:
+            $ref: '#/definitions/user.Response'
+        "400":
+          description: Невалидный UUID
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+        "404":
+          description: Пользователь не найден
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/internal_handlers_user.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить пользователя
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

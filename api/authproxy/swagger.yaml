@@ -1,0 +1,155 @@
+basePath: /
+definitions:
+  github.com_FischukSergey_otus-ms_internal_handlers_auth.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_handlers_auth.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  keycloak.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  keycloak.LogoutRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  keycloak.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  keycloak.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      scope:
+        type: string
+      token_type:
+        type: string
+    type: object
+host: fishouk-otus-ms.ru
+info:
+  contact:
+    name: OtusMS Support
+    url: https://github.com/FischukSergey/otus-ms
+  description: API для аутентификации пользователей через Keycloak в проекте OtusMS.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: OtusMS Auth-Proxy API
+  version: 1.0.0
+paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация пользователя через Keycloak. Возвращает access_token
+        и refresh_token.
+      parameters:
+      - description: Логин и пароль
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/keycloak.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT токены
+          schema:
+            $ref: '#/definitions/keycloak.TokenResponse'
+        "400":
+          description: Невалидный запрос
+          schema:
+            $ref: '#/definitions/internal_handlers_auth.ErrorResponse'
+        "401":
+          description: Неверные учётные данные
+          schema:
+            $ref: '#/definitions/internal_handlers_auth.ErrorResponse'
+      summary: Войти в систему
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Инвалидирует refresh_token в Keycloak. Клиент должен самостоятельно
+        удалить access_token.
+      parameters:
+      - description: Refresh token для инвалидации
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/keycloak.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Невалидный запрос
+          schema:
+            $ref: '#/definitions/internal_handlers_auth.ErrorResponse'
+        "500":
+          description: Ошибка при logout
+          schema:
+            $ref: '#/definitions/internal_handlers_auth.ErrorResponse'
+      summary: Выйти из системы
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Обновляет access_token по refresh_token. Старый refresh_token инвалидируется.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/keycloak.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Новые JWT токены
+          schema:
+            $ref: '#/definitions/keycloak.TokenResponse'
+        "400":
+          description: Невалидный запрос
+          schema:
+            $ref: '#/definitions/internal_handlers_auth.ErrorResponse'
+        "401":
+          description: Невалидный или истёкший refresh_token
+          schema:
+            $ref: '#/definitions/internal_handlers_auth.ErrorResponse'
+      summary: Обновить токен
+      tags:
+      - auth
+swagger: "2.0"

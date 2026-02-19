@@ -1,0 +1,28 @@
+services:
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: swagger-ui-prod
+    restart: always
+    environment:
+      # Базовый путь — совпадает с location в nginx
+      BASE_URL: /swagger
+      # Список spec-файлов для dropdown в UI.
+      # Браузер пользователя запрашивает эти URL напрямую,
+      # поэтому используем публичный домен (проксируется nginx).
+      URLS: >-
+        [
+          {"url": "https://fishouk-otus-ms.ru/api/main-service/swagger/doc.json", "name": "Main Service (Users)"},
+          {"url": "https://fishouk-otus-ms.ru/api/auth-proxy/swagger/doc.json",   "name": "Auth Proxy"}
+        ]
+      URLS_PRIMARY_NAME: "Main Service (Users)"
+      # Включаем кнопку "Authorize" для BearerAuth
+      PERSIST_AUTHORIZATION: "true"
+    ports:
+      - "127.0.0.1:38090:8080"  # только localhost, внешний доступ — через nginx
+    networks:
+      - otus_network
+
+networks:
+  otus_network:
+    name: otus_network
+    external: true

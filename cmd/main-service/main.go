@@ -1,3 +1,21 @@
+// @title           OtusMS Main Service API
+// @version         1.0.0
+// @description     API для управления пользователями микросервисного учебного проекта OtusMS.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   OtusMS Support
+// @contact.url    https://github.com/FischukSergey/otus-ms
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      fishouk-otus-ms.ru
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Введите токен в формате: Bearer {token}
 package main
 
 import (

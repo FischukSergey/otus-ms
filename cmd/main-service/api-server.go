@@ -9,7 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 
+	_ "github.com/FischukSergey/otus-ms/api/mainservice" // swagger docs
 	"github.com/FischukSergey/otus-ms/internal/config"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
 	"github.com/FischukSergey/otus-ms/internal/jwks"
@@ -61,6 +63,11 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	// Роуты
 	router.Get("/", apiSrv.handleRoot)
 	router.Get("/health", apiSrv.handleHealth)
+
+	// Swagger UI
+	router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	// API роуты для работы с пользователями
 	router.Route("/api/v1/users", func(r chi.Router) {

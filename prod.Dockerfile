@@ -6,8 +6,17 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Устанавливаем swag CLI для генерации swagger docs
+RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
+
 # Копируем исходный код
 COPY . .
+
+# Генерируем swagger docs для main-service
+RUN /go/bin/swag init -g cmd/main-service/main.go -o api/mainservice \
+    --parseInternal \
+    --parseDependency \
+    --exclude internal/handlers/auth
 
 # Собираем бинарник main-service
 RUN CGO_ENABLED=0 go build -o main-service ./cmd/main-service

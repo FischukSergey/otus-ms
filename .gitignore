@@ -6,6 +6,7 @@
 *.test
 
 /main-service
+/auth-proxy
 
 /vendor
 

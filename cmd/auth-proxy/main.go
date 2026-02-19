@@ -1,3 +1,16 @@
+// @title           OtusMS Auth-Proxy API
+// @version         1.0.0
+// @description     API для аутентификации пользователей через Keycloak в проекте OtusMS.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   OtusMS Support
+// @contact.url    https://github.com/FischukSergey/otus-ms
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      fishouk-otus-ms.ru
+// @BasePath  /
 package main
 
 import (

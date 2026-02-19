@@ -84,6 +84,17 @@ func getClientIP(r *http.Request) string {
 }
 
 // Login обрабатывает POST /api/v1/auth/login - аутентификация пользователя.
+//
+// @Summary      Войти в систему
+// @Description  Аутентификация пользователя через Keycloak. Возвращает access_token и refresh_token.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      keycloak.LoginRequest   true  "Логин и пароль"
+// @Success      200          {object}  keycloak.TokenResponse  "JWT токены"
+// @Failure      400          {object}  ErrorResponse           "Невалидный запрос"
+// @Failure      401          {object}  ErrorResponse           "Неверные учётные данные"
+// @Router       /api/v1/auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	clientIP := getClientIP(r)
@@ -127,6 +138,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Refresh обрабатывает POST /api/v1/auth/refresh - обновление access token.
+//
+// @Summary      Обновить токен
+// @Description  Обновляет access_token по refresh_token. Старый refresh_token инвалидируется.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token  body      keycloak.RefreshRequest  true  "Refresh token"
+// @Success      200    {object}  keycloak.TokenResponse   "Новые JWT токены"
+// @Failure      400    {object}  ErrorResponse            "Невалидный запрос"
+// @Failure      401    {object}  ErrorResponse            "Невалидный или истёкший refresh_token"
+// @Router       /api/v1/auth/refresh [post]
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	clientIP := getClientIP(r)
@@ -166,6 +188,17 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 }
 
 // Logout обрабатывает POST /api/v1/auth/logout - logout пользователя.
+//
+// @Summary      Выйти из системы
+// @Description  Инвалидирует refresh_token в Keycloak. Клиент должен самостоятельно удалить access_token.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token  body  keycloak.LogoutRequest  true  "Refresh token для инвалидации"
+// @Success      204
+// @Failure      400  {object}  ErrorResponse  "Невалидный запрос"
+// @Failure      500  {object}  ErrorResponse  "Ошибка при logout"
+// @Router       /api/v1/auth/logout [post]
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	clientIP := getClientIP(r)

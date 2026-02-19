@@ -1,0 +1,234 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API для аутентификации пользователей через Keycloak в проекте OtusMS.",
+        "title": "OtusMS Auth-Proxy API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "OtusMS Support",
+            "url": "https://github.com/FischukSergey/otus-ms"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0.0"
+    },
+    "host": "fishouk-otus-ms.ru",
+    "basePath": "/",
+    "paths": {
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Аутентификация пользователя через Keycloak. Возвращает access_token и refresh_token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Войти в систему",
+                "parameters": [
+                    {
+                        "description": "Логин и пароль",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "JWT токены",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверные учётные данные",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "description": "Инвалидирует refresh_token в Keycloak. Клиент должен самостоятельно удалить access_token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Выйти из системы",
+                "parameters": [
+                    {
+                        "description": "Refresh token для инвалидации",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.LogoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Невалидный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка при logout",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "Обновляет access_token по refresh_token. Старый refresh_token инвалидируется.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Обновить токен",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Новые JWT токены",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Невалидный или истёкший refresh_token",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github.com_FischukSergey_otus-ms_internal_handlers_auth.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers_auth.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.LogoutRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.RefreshRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "refresh_expires_in": {
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
