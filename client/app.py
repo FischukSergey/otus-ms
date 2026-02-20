@@ -263,11 +263,37 @@ def render_logs():
             st.caption(f"Найдено записей: {len(rows)}")
             for row in rows:
                 icon = _LEVEL_COLORS.get(row["level"], "⚫")
-                with st.container():
-                    st.markdown(
-                        f"`{row['ts']}` {icon} **{row['level']}** "
-                        f"[{row['service']}] — {row['msg']}"
+                # Краткая строка для заголовка expander
+                http_hint = ""
+                if row["method"] and row["path"]:
+                    http_hint = (
+                        f" | `{row['method']} {row['path']}`"
+                        + (f" → {row['status']}" if row["status"] else "")
                     )
+                summary = (
+                    f"`{row['ts']}` {icon} **{row['level']}**"
+                    f" [{row['service']}] — {row['msg']}{http_hint}"
+                )
+                with st.expander(summary, expanded=False):
+                    # Доп. поля — только если есть значение
+                    detail_cols = [
+                        ("Method",   row["method"]),
+                        ("Path",     row["path"]),
+                        ("Status",   str(row["status"])),
+                        ("Duration", f"{row['duration_ms']} ms"
+                         if row["duration_ms"] != "" else ""),
+                        ("IP",       row["remote_addr"]),
+                    ]
+                    visible = [(k, v) for k, v in detail_cols if v]
+                    if visible:
+                        cols = st.columns(len(visible))
+                        for col, (k, v) in zip(cols, visible):
+                            col.metric(k, v)
+                    if row["request_id"]:
+                        st.caption(
+                            f"request_id: `{row['request_id']}`"
+                        )
+                    st.code(row["raw"], language="json")
     else:
         st.caption("Нажмите «Обновить» для загрузки логов.")
 

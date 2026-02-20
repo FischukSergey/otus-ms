@@ -251,24 +251,37 @@ def get_logs(
                 ).strftime("%Y-%m-%d %H:%M:%S")
                 try:
                     parsed = _json.loads(line)
-                    msg = parsed.get("msg", line)
-                    svc = parsed.get(
-                        "service", labels.get("service", "")
-                    )
-                    lvl = parsed.get(
-                        "level", labels.get("level", "")
-                    )
+                    rows.append({
+                        "ts":          ts_str,
+                        "service":     parsed.get(
+                            "service", labels.get("service", "")
+                        ),
+                        "level":       parsed.get(
+                            "level", labels.get("level", "")
+                        ).upper(),
+                        "msg":         parsed.get("msg", ""),
+                        "method":      parsed.get("method", ""),
+                        "path":        parsed.get("path", ""),
+                        "status":      parsed.get("status", ""),
+                        "duration_ms": parsed.get("duration_ms", ""),
+                        "remote_addr": parsed.get("remote_addr", ""),
+                        "request_id":  parsed.get("request_id", ""),
+                        "raw":         line,
+                    })
                 except Exception:
-                    msg = line
-                    svc = labels.get("service", "")
-                    lvl = labels.get("level", "")
-                rows.append({
-                    "ts": ts_str,
-                    "service": svc,
-                    "level": lvl.upper(),
-                    "msg": msg,
-                    "raw": line,
-                })
+                    rows.append({
+                        "ts":          ts_str,
+                        "service":     labels.get("service", ""),
+                        "level":       labels.get("level", "").upper(),
+                        "msg":         line,
+                        "method":      "",
+                        "path":        "",
+                        "status":      "",
+                        "duration_ms": "",
+                        "remote_addr": "",
+                        "request_id":  "",
+                        "raw":         line,
+                    })
     except Exception as e:
         return [], f"Ошибка разбора ответа: {e}"
 
