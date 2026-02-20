@@ -43,6 +43,25 @@ services:
       retries: 5
       start_period: 10s
 
+  auth-proxy:
+    container_name: otusms-auth-proxy-test
+    build:
+      context: ../..
+      dockerfile: auth-proxy.Dockerfile
+    ports:
+      - "38081:8080"   # Auth-Proxy API
+    command: ["./auth-proxy", "-config", "/app/configs/config.auth-proxy.test.yaml"]
+    volumes:
+      - ../../configs/config.auth-proxy.test.yaml:/app/configs/config.auth-proxy.test.yaml:ro
+    networks:
+      - otusms_test_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 networks:
   otusms_test_network:
     name: otusms_test_network

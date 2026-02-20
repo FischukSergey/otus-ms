@@ -1,0 +1,160 @@
+name: Deploy Keycloak to Production (Manual)
+
+on:
+  # ВРЕМЕННО: Для запуска из ветки UpKeycloak без мержа в main
+  # После мержа в main - удалить push триггер!
+  # push:
+  #   branches:
+  #     - UpKeycloak
+  #   paths:
+  #     - '.github/workflows/deploy-keycloak.yml'
+  #     - 'deploy/prod/docker-compose.keycloak*.yml'
+  
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Что развернуть'
+        required: true
+        type: choice
+        options:
+          - all           # Keycloak + PostgreSQL вместе
+          - keycloak      # Только Keycloak
+          - database      # Только PostgreSQL для Keycloak
+      action:
+        description: 'Действие'
+        required: true
+        default: 'up'
+        type: choice
+        options:
+          - up           # Запустить
+          - down         # Остановить (БЕЗ удаления данных)
+          - restart      # Перезапустить
+          - logs         # Показать логи
+          - recreate     # Пересоздать контейнеры
+
+env:
+  VPS_PATH: /root/otus-microservice/prod/keycloak
+
+jobs:
+  deploy-keycloak:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set default inputs for push trigger
+        id: set-defaults
+        run: |
+          # Если workflow запущен через push (не manual), используем дефолтные значения
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "target=all" >> $GITHUB_OUTPUT
+            echo "action=up" >> $GITHUB_OUTPUT
+            echo "🔄 Push trigger detected - using default values: target=all, action=up"
+          else
+            echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
+            echo "action=${{ inputs.action }}" >> $GITHUB_OUTPUT
+            echo "✅ Manual trigger - using user inputs"
+          fi
+
+      - name: Determine compose file
+        id: compose-file
+        run: |
+          case "${{ steps.set-defaults.outputs.target }}" in
+            all)
+              echo "file=docker-compose.keycloak-all.prod.yml" >> $GITHUB_OUTPUT
+              echo "description=Keycloak + PostgreSQL" >> $GITHUB_OUTPUT
+              ;;
+            keycloak)
+              echo "file=docker-compose.keycloak.prod.yml" >> $GITHUB_OUTPUT
+              echo "description=Keycloak" >> $GITHUB_OUTPUT
+              ;;
+            database)
+              echo "file=docker-compose.keycloak-db.prod.yml" >> $GITHUB_OUTPUT
+              echo "description=PostgreSQL для Keycloak" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/${{ steps.compose-file.outputs.file }}"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
+
+      - name: Execute action on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            # Создаем директорию если нет
+            mkdir -p ${{ env.VPS_PATH }}
+            cd ${{ env.VPS_PATH }}
+            
+            # Создаем .env файл если его нет
+            if [ ! -f .env ]; then
+              cat > .env <<EOF
+            KEYCLOAK_DB_PASSWORD=${{ secrets.KEYCLOAK_DB_PASSWORD }}
+            KEYCLOAK_ADMIN_USER=${{ secrets.KEYCLOAK_ADMIN_USER }}
+            KEYCLOAK_ADMIN_PASSWORD=${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+            KEYCLOAK_HOSTNAME=${{ secrets.KEYCLOAK_HOSTNAME }}
+            EOF
+              echo "✅ Создан .env файл"
+            fi
+            
+            COMPOSE_FILE="${{ steps.compose-file.outputs.file }}"
+            TARGET="${{ steps.compose-file.outputs.description }}"
+            
+            case "${{ steps.set-defaults.outputs.action }}" in
+              up)
+                echo "🚀 Запуск: $TARGET"
+                docker compose -f $COMPOSE_FILE up -d
+                sleep 15
+                docker compose -f $COMPOSE_FILE ps
+                echo "✅ $TARGET запущен"
+                echo ""
+                echo "ℹ️  Keycloak Admin Console: http://${{ secrets.KEYCLOAK_HOSTNAME }}:8080"
+                echo "ℹ️  Admin User: ${{ secrets.KEYCLOAK_ADMIN_USER }}"
+                ;;
+              down)
+                echo "⏸️  Остановка: $TARGET (данные сохраняются)"
+                docker compose -f $COMPOSE_FILE down
+                echo "✅ $TARGET остановлен"
+                ;;
+              restart)
+                echo "🔄 Перезапуск: $TARGET"
+                docker compose -f $COMPOSE_FILE restart
+                sleep 15
+                docker compose -f $COMPOSE_FILE ps
+                echo "✅ $TARGET перезапущен"
+                ;;
+              logs)
+                echo "📋 Логи: $TARGET (последние 200 строк)"
+                docker compose -f $COMPOSE_FILE logs --tail=200
+                ;;
+              recreate)
+                echo "🔄 Пересоздание: $TARGET"
+                docker compose -f $COMPOSE_FILE down
+                docker compose -f $COMPOSE_FILE up -d --force-recreate
+                sleep 15
+                docker compose -f $COMPOSE_FILE ps
+                echo "✅ $TARGET пересоздан"
+                ;;
+            esac
+            
+            echo ""
+            echo "ℹ️  Статус контейнеров Keycloak:"
+            docker ps | grep keycloak || echo "Keycloak контейнеры не запущены"
+            
+            echo ""
+            echo "ℹ️  Сети Docker:"
+            docker network ls | grep otus
+            
+            echo ""
+            echo "ℹ️  Volumes:"
+            docker volume ls | grep keycloak || echo "Keycloak volumes не найдены"

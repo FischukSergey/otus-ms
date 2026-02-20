@@ -23,12 +23,20 @@
 ### Быстрый старт
 
 ```bash
+# Подготовка (только первый раз)
+cp configs/config.auth-proxy.test.example.yaml configs/config.auth-proxy.test.yaml
+
+# Отредактируйте config.auth-proxy.test.yaml - замените client_secret на реальный
+nano configs/config.auth-proxy.test.yaml
+
 # Запуск интеграционных тестов (все автоматически)
 task test:integration
 
 # Или напрямую с тегом
 go test -tags=integration -v ./tests/integration/...
 ```
+
+> **Примечание:** Секреты хранятся прямо в `config.auth-proxy.test.yaml` (файл в .gitignore), никаких `export` не нужно!
 
 Эта команда:
 1. Останавливает старые контейнеры
@@ -40,19 +48,26 @@ go test -tags=integration -v ./tests/integration/...
 ### Ручной режим (для отладки)
 
 ```bash
-# 1. Поднять окружение
+# 1. Убедитесь что config.auth-proxy.test.yaml содержит реальный client_secret
+
+# 2. Поднять окружение
 task test:env:up
 
-# 2. Запустить тесты
-go test -v ./tests/integration/...
-
 # 3. Проверить API вручную
-curl http://localhost:8081/health
+curl http://localhost:8081/health           # Main Service
+curl http://localhost:38081/health          # Auth-Proxy
 
-# 4. Посмотреть логи
+# 4. Запустить тесты
+go test -tags=integration -v ./tests/integration/...
+
+# 5. Или запустить только Auth тесты
+go test -tags=integration -v ./tests/integration -run TestAuth
+
+# 6. Посмотреть логи
 task test:env:logs
+docker logs otusms-auth-proxy-test
 
-# 5. Остановить окружение
+# 7. Остановить окружение
 task test:env:down
 ```
 
@@ -72,6 +87,26 @@ task test:env:down
 - Ошибки возвращают 400 Bad Request
 
 **TestHealthCheck** - проверка health endpoint
+
+### auth_test.go
+
+**TestAuthProxyHealthCheck** - проверка работоспособности Auth-Proxy
+
+**TestLoginSuccess** - успешный логин:
+- Отправка username + password
+- Получение access_token и refresh_token
+
+**TestLoginInvalidCredentials** - логин с неверными credentials
+
+**TestLoginMissingFields** - валидация обязательных полей
+
+**TestRefreshTokenSuccess** - обновление токена через refresh_token
+
+**TestRefreshTokenInvalid** - попытка refresh с невалидным токеном
+
+**TestLogoutSuccess** - logout и проверка инвалидации токена
+
+**TestAuthFullFlow** - полный цикл: Login → Refresh → Logout
 
 ## Конфигурация
 
@@ -98,6 +133,12 @@ db:
 - Внутренний порт: 8080
 - Healthcheck: wget /health
 - depends_on: postgres (с condition: service_healthy)
+
+**Auth-Proxy:**
+- Внешний порт: 38081
+- Внутренний порт: 8080
+- Healthcheck: curl /health
+- Требуется: KEYCLOAK_CLIENT_SECRET в env
 
 ## CI/CD
 

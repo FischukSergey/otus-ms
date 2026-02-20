@@ -1,0 +1,19 @@
+# Auth-Proxy Configuration (Production) - EXAMPLE
+# Скопируйте этот файл на VPS как config.auth-proxy.prod.yaml и заполните реальными значениями
+global:
+  env: prod
+
+log:
+  level: info
+  format: json
+  service_name: auth-proxy
+
+servers:
+  client:
+    addr: 0.0.0.0:38081  # Auth-Proxy API
+
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"  # Production Keycloak
+  realm: "otus-ms"
+  client_id: "auth-proxy"
+  client_secret: "your-client-secret-here"  # ЗАМЕНИТЬ на реальный secret из Keycloak

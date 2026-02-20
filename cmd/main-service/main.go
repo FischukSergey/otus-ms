@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -29,6 +30,11 @@ func run() error {
 	cfg, err := config.ParseAndValidate(*configPath)
 	if err != nil {
 		return err
+	}
+
+	// Проверяем наличие конфигурации БД (main-service требует БД)
+	if !cfg.DB.IsConfigured() {
+		return errors.New("database configuration is incomplete: please provide name, user, password, host and port")
 	}
 
 	// Создаем логгер на основе конфигурации

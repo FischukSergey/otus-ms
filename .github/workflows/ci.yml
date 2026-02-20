@@ -77,10 +77,11 @@ jobs:
         run: |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       
-      - name: Build application
+      - name: Build applications
         run: |
-          echo "🔨 Сборка приложения..."
+          echo "🔨 Сборка приложений..."
           task build
+          go build -o auth-proxy ./cmd/auth-proxy
       
       - name: Start API server in background
         run: |
@@ -91,17 +92,40 @@ jobs:
       
       - name: Wait for API server
         run: |
-          echo "⏳ Ожидание готовности сервера..."
+          echo "⏳ Ожидание готовности API сервера..."
           for i in {1..30}; do
             if curl -f http://localhost:8080/health > /dev/null 2>&1; then
-              echo "✅ Сервер готов"
+              echo "✅ API сервер готов"
               exit 0
             fi
             echo "Попытка $i/30..."
             sleep 1
           done
-          echo "❌ Сервер не запустился"
+          echo "❌ API сервер не запустился"
           exit 1
+      
+      - name: Start Auth-Proxy in background
+        run: |
+          echo "🚀 Запуск Auth-Proxy..."
+          ./auth-proxy -config configs/config.auth-proxy.ci.yaml &
+          echo $! > auth_proxy.pid
+          sleep 3
+        env:
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      
+      - name: Wait for Auth-Proxy
+        run: |
+          echo "⏳ Ожидание готовности Auth-Proxy..."
+          for i in {1..30}; do
+            if curl -f http://localhost:38081/health > /dev/null 2>&1; then
+              echo "✅ Auth-Proxy готов"
+              exit 0
+            fi
+            echo "Попытка $i/30..."
+            sleep 1
+          done
+          echo "⚠️  Auth-Proxy не запустился (возможно не настроен KEYCLOAK_CLIENT_SECRET)"
+          echo "Auth-Proxy тесты будут пропущены"
       
       - name: Run integration tests
         run: |
@@ -109,12 +133,18 @@ jobs:
           go test -race -count=1 -v -tags=integration ./tests/integration/...
         env:
           TEST_SERVER_URL: http://localhost:8080
+          TEST_AUTH_PROXY_URL: http://localhost:38081
+          TEST_KEYCLOAK_USERNAME: ${{ secrets.TEST_KEYCLOAK_USERNAME }}
+          TEST_KEYCLOAK_PASSWORD: ${{ secrets.TEST_KEYCLOAK_PASSWORD }}
       
-      - name: Stop API server
+      - name: Stop servers
         if: always()
         run: |
           if [ -f api_server.pid ]; then
             kill $(cat api_server.pid) || true
+          fi
+          if [ -f auth_proxy.pid ]; then
+            kill $(cat auth_proxy.pid) || true
           fi
 
   build-and-deploy:

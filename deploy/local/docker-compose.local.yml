@@ -72,6 +72,28 @@ services:
       timeout: 5s
       retries: 3
 
+  auth-proxy:
+    container_name: otusms-auth-proxy-local
+    build:
+      context: ../..
+      dockerfile: auth-proxy.Dockerfile
+    profiles:
+      - auth  # Запускается с профилем: docker compose --profile auth up
+    restart: unless-stopped
+    ports:
+      - "38081:38081"  # API port
+    volumes:
+      - ../../configs/config.auth-proxy.local.yaml:/app/configs/config.auth-proxy.local.yaml:ro
+      - auth_proxy_logs:/app/logs
+    command: ["./auth-proxy", "-config", "/app/configs/config.auth-proxy.local.yaml"]
+    networks:
+      - otusms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:38081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 networks:
   otusms_network:
     name: otusms_local_network
@@ -84,4 +106,6 @@ volumes:
     name: otusms_prometheus_data_local
   alertmanager_data:
     name: otusms_alertmanager_data_local
+  auth_proxy_logs:
+    name: otusms_auth_proxy_logs_local
 

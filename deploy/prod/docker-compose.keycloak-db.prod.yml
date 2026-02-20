@@ -1,0 +1,35 @@
+# PostgreSQL для Keycloak Production
+# Запускается ОДИН РАЗ вручную через GitHub Actions и живет постоянно
+# Не перезапускается при деплое Keycloak сервера
+
+services:
+  keycloak-postgres:
+    container_name: otus-keycloak-postgres-prod
+    image: postgres:16-alpine
+    restart: always
+    ports:
+      # БД доступна только с localhost для бэкапов и управления
+      - "127.0.0.1:5433:5432"  # Порт 5433, не конфликтует с основной БД
+    environment:
+      - POSTGRES_DB=keycloak_db
+      - POSTGRES_USER=keycloak_user
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:-CHANGE_ME}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    networks:
+      - otus_network  # Общая сеть с вашими сервисами
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak_user -d keycloak_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  otus_network:
+    external: true
+    name: otus_network
+
+volumes:
+  keycloak_postgres_data:
+    name: otus_keycloak_postgres_data

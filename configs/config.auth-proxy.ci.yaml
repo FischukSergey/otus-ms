@@ -1,0 +1,20 @@
+# Auth-Proxy Configuration (CI/CD Environment)
+# Этот конфиг используется в GitHub Actions
+# Секреты берутся из переменных окружения
+global:
+  env: local
+
+log:
+  level: info
+  format: text
+  service_name: auth-proxy
+
+servers:
+  client:
+    addr: 0.0.0.0:8080
+
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"
+  realm: "otus-ms"
+  client_id: "auth-proxy"
+  client_secret: "${KEYCLOAK_CLIENT_SECRET}"  # Из GitHub Secrets
