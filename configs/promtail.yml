@@ -43,6 +43,11 @@ scrape_configs:
           source:     path
           expression: "^/health$"
 
+      # Отбрасываем внутренние Streamlit-запросы (/_stcore/*)
+      - drop:
+          source:     path
+          expression: "^/_stcore/.*"
+
       # Пробрасываем level и service как labels Loki для быстрой фильтрации
       - labels:
           level:
