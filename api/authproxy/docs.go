@@ -26,17 +26,222 @@ const docTemplate = `{
     "paths": {
         "/api/v1/auth/login": {
             "post": {
-                "responses": {}
+                "description": "Аутентифицирует пользователя и возвращает access и refresh токены.\nТокены получаются от Keycloak.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Вход в систему",
+                "parameters": [
+                    {
+                        "description": "Учетные данные пользователя",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Токены успешно получены",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидный запрос или отсутствуют обязательные поля",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверные учетные данные",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера или ошибка Keycloak",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/auth/logout": {
             "post": {
-                "responses": {}
+                "description": "Инвалидирует refresh токен в Keycloak, завершая сессию пользователя.\nПосле logout токены становятся недействительными.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Выход из системы",
+                "parameters": [
+                    {
+                        "description": "Refresh токен для инвалидации",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.LogoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Выход выполнен успешно"
+                    },
+                    "400": {
+                        "description": "Невалидный запрос или отсутствует refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка при выполнении logout в Keycloak",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/auth/refresh": {
             "post": {
-                "responses": {}
+                "description": "Обменивает refresh токен на новую пару access и refresh токенов.\nПозволяет продлить сессию пользователя без повторного ввода пароля.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Обновление токена",
+                "parameters": [
+                    {
+                        "description": "Refresh токен",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Новые токены успешно получены",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидный запрос или отсутствует refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Невалидный или истекший refresh токен",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера или ошибка Keycloak",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "keycloak.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "error_description": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.LogoutRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.RefreshRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "refresh_expires_in": {
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
             }
         }
     }

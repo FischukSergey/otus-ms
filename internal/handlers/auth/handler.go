@@ -83,6 +83,19 @@ func getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
+// Login выполняет аутентификацию пользователя через Keycloak.
+//
+// @Summary      Вход в систему
+// @Description  Аутентифицирует пользователя и возвращает access и refresh токены.
+// @Description  Токены получаются от Keycloak.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      keycloak.LoginRequest   true  "Учетные данные пользователя"
+// @Success      200          {object}  keycloak.TokenResponse  "Токены успешно получены"
+// @Failure      400          {object}  keycloak.ErrorResponse  "Невалидный запрос или отсутствуют обязательные поля"
+// @Failure      401          {object}  keycloak.ErrorResponse  "Неверные учетные данные"
+// @Failure      500          {object}  keycloak.ErrorResponse  "Внутренняя ошибка сервера или ошибка Keycloak"
 // @Router       /api/v1/auth/login [post].
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
@@ -126,6 +139,19 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, r, http.StatusOK, tokens)
 }
 
+// Refresh обновляет access токен используя refresh токен.
+//
+// @Summary      Обновление токена
+// @Description  Обменивает refresh токен на новую пару access и refresh токенов.
+// @Description  Позволяет продлить сессию пользователя без повторного ввода пароля.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token    body      keycloak.RefreshRequest  true  "Refresh токен"
+// @Success      200      {object}  keycloak.TokenResponse   "Новые токены успешно получены"
+// @Failure      400      {object}  keycloak.ErrorResponse   "Невалидный запрос или отсутствует refresh token"
+// @Failure      401      {object}  keycloak.ErrorResponse   "Невалидный или истекший refresh токен"
+// @Failure      500      {object}  keycloak.ErrorResponse   "Внутренняя ошибка сервера или ошибка Keycloak"
 // @Router       /api/v1/auth/refresh [post].
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
@@ -165,6 +191,18 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, r, http.StatusOK, tokens)
 }
 
+// Logout завершает сессию пользователя и инвалидирует токены.
+//
+// @Summary      Выход из системы
+// @Description  Инвалидирует refresh токен в Keycloak, завершая сессию пользователя.
+// @Description  После logout токены становятся недействительными.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token    body  keycloak.LogoutRequest  true  "Refresh токен для инвалидации"
+// @Success      204      "Выход выполнен успешно"
+// @Failure      400      {object}  keycloak.ErrorResponse  "Невалидный запрос или отсутствует refresh token"
+// @Failure      500      {object}  keycloak.ErrorResponse  "Ошибка при выполнении logout в Keycloak"
 // @Router       /api/v1/auth/logout [post].
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
