@@ -77,35 +77,50 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 		// Защищённые роуты - требуется валидный JWT
 		r.Group(func(r chi.Router) {
 			// JWT валидация для всех роутов в группе
-			// ВАЖНО: JWKSManager должен быть инициализирован в main.go
-			if deps.JWKSManager != nil {
+			// Применяется если JWT настроен (production) или в тестовом режиме
+			if deps.Config.JWT.IsConfigured() {
+				// Определяем issuer и audience
+				issuer := deps.Config.JWT.Issuer
+				audience := deps.Config.JWT.Audience
+
+				// Если не указаны явно, пытаемся взять из Keycloak конфига
+				if issuer == "" && deps.Config.Keycloak.IsConfigured() {
+					issuer = deps.Config.Keycloak.Issuer()
+				}
+				if audience == "" && deps.Config.Keycloak.IsConfigured() {
+					audience = deps.Config.Keycloak.ClientID
+				}
+
 				r.Use(custommiddleware.ValidateJWT(
 					custommiddleware.JWTConfig{
-						Issuer:   deps.Config.Keycloak.Issuer(),
-						Audience: deps.Config.Keycloak.ClientID,
+						Issuer:     issuer,
+						Audience:   audience,
+						SkipVerify: deps.Config.JWT.SkipVerify,
 					},
-					deps.JWKSManager,
+					deps.JWKSManager, // Может быть nil в тестовом режиме
 					deps.Logger,
 				))
-			}
 
-			// Роуты для работы с пользователями
-			r.Route("/users", func(r chi.Router) {
-				// Только для администраторов
-				r.Group(func(r chi.Router) {
-					r.Use(custommiddleware.RequireAdmin(deps.Logger))
-					r.Post("/", userHandler.Create)        // Создать пользователя
-					r.Get("/{uuid}", userHandler.Get)      // Получить любого пользователя
-					r.Delete("/{uuid}", userHandler.Delete) // Удалить пользователя
+				// Роуты для работы с пользователями
+				r.Route("/users", func(r chi.Router) {
+					// Только для администраторов
+					r.Group(func(r chi.Router) {
+						r.Use(custommiddleware.RequireAdmin(deps.Logger))
+						r.Post("/", userHandler.Create)         // Создать пользователя
+						r.Get("/{uuid}", userHandler.Get)       // Получить любого пользователя
+						r.Delete("/{uuid}", userHandler.Delete) // Удалить пользователя
+					})
+
+					// Для пользователей с ролью user или admin (если понадобятся)
+					// r.Group(func(r chi.Router) {
+					//     r.Use(custommiddleware.RequireUser(deps.Logger))
+					//     r.Get("/me", userHandler.GetMe)     // Получить свой профиль
+					//     r.Put("/me", userHandler.UpdateMe)  // Обновить свой профиль
+					// })
 				})
-
-				// Для пользователей с ролью user или admin (если понадобятся)
-				// r.Group(func(r chi.Router) {
-				//     r.Use(custommiddleware.RequireUser(deps.Logger))
-				//     r.Get("/me", userHandler.GetMe)     // Получить свой профиль
-				//     r.Put("/me", userHandler.UpdateMe)  // Обновить свой профиль
-				// })
-			})
+			} else {
+				deps.Logger.Warn("JWT not configured - API endpoints are UNPROTECTED! This should only happen in development.")
+			}
 		})
 	})
 

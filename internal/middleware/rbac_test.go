@@ -1,4 +1,4 @@
-package middleware
+package middleware_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/FischukSergey/otus-ms/internal/middleware"
 )
 
 func TestRequireRole(t *testing.T) {
@@ -89,25 +91,25 @@ func TestRequireRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаём claims с нужными ролями
-			claims := &JWTClaims{
+			claims := &middleware.JWTClaims{
 				Sub:   "test-user-id",
 				Email: "test@example.com",
 			}
 			claims.RealmAccess.Roles = tt.userRoles
 
 			// Создаём контекст с claims
-			ctx := context.WithValue(context.Background(), ContextKeyClaims, claims)
-			req := httptest.NewRequest("GET", "/test", nil).WithContext(ctx)
+			ctx := context.WithValue(context.Background(), middleware.ContextKeyClaims, claims)
+			req := httptest.NewRequest(http.MethodGet, "/test", nil).WithContext(ctx)
 			rec := httptest.NewRecorder()
 
 			// Создаём test handler
-			testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte("success"))
 			})
 
 			// Применяем RBAC middleware
-			handler := RequireRole(tt.requiredRoles, logger)(testHandler)
+			handler := middleware.RequireRole(tt.requiredRoles, logger)(testHandler)
 
 			// Выполняем запрос
 			handler.ServeHTTP(rec, req)
@@ -125,17 +127,17 @@ func TestRequireRole_MissingClaims(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	// Создаём запрос БЕЗ claims в контексте
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
 	// Создаём test handler
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("success"))
 	})
 
 	// Применяем RBAC middleware
-	handler := RequireRole([]string{"user"}, logger)(testHandler)
+	handler := middleware.RequireRole([]string{"user"}, logger)(testHandler)
 
 	// Выполняем запрос
 	handler.ServeHTTP(rec, req)
@@ -172,21 +174,21 @@ func TestRequireAdmin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims := &JWTClaims{
+			claims := &middleware.JWTClaims{
 				Sub:   "test-user-id",
 				Email: "test@example.com",
 			}
 			claims.RealmAccess.Roles = tt.userRoles
 
-			ctx := context.WithValue(context.Background(), ContextKeyClaims, claims)
-			req := httptest.NewRequest("GET", "/admin/test", nil).WithContext(ctx)
+			ctx := context.WithValue(context.Background(), middleware.ContextKeyClaims, claims)
+			req := httptest.NewRequest(http.MethodGet, "/admin/test", nil).WithContext(ctx)
 			rec := httptest.NewRecorder()
 
-			testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			handler := RequireAdmin(logger)(testHandler)
+			handler := middleware.RequireAdmin(logger)(testHandler)
 			handler.ServeHTTP(rec, req)
 
 			assert.Equal(t, tt.expectedStatus, rec.Code)
@@ -231,21 +233,21 @@ func TestRequireUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims := &JWTClaims{
+			claims := &middleware.JWTClaims{
 				Sub:   "test-user-id",
 				Email: "test@example.com",
 			}
 			claims.RealmAccess.Roles = tt.userRoles
 
-			ctx := context.WithValue(context.Background(), ContextKeyClaims, claims)
-			req := httptest.NewRequest("GET", "/user/test", nil).WithContext(ctx)
+			ctx := context.WithValue(context.Background(), middleware.ContextKeyClaims, claims)
+			req := httptest.NewRequest(http.MethodGet, "/user/test", nil).WithContext(ctx)
 			rec := httptest.NewRecorder()
 
-			testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			handler := RequireUser(logger)(testHandler)
+			handler := middleware.RequireUser(logger)(testHandler)
 			handler.ServeHTTP(rec, req)
 
 			assert.Equal(t, tt.expectedStatus, rec.Code)

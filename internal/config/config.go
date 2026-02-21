@@ -84,7 +84,7 @@ func (k KeycloakConfig) IsConfigured() bool {
 }
 
 // Issuer возвращает issuer URL для JWT токенов (realm URL).
-// Формат: {keycloak_url}/realms/{realm_name}
+// Формат: {keycloak_url}/realms/{realm_name}.
 func (k KeycloakConfig) Issuer() string {
 	return k.URL + "/realms/" + k.Realm
 }
@@ -97,10 +97,16 @@ type JWTConfig struct {
 	Issuer        string `yaml:"issuer"`         // URL Keycloak realm
 	Audience      string `yaml:"audience"`       // Client ID
 	CacheDuration int    `yaml:"cache_duration"` // Время кеширования JWKS в секундах (по умолчанию 600 = 10 минут)
+	SkipVerify    bool   `yaml:"skip_verify"`    // Пропустить проверку подписи JWT (только для тестов!)
 }
 
 // IsConfigured проверяет, что конфигурация JWT заполнена.
 func (j JWTConfig) IsConfigured() bool {
+	// В тестовом режиме достаточно только issuer
+	if j.SkipVerify {
+		return j.Issuer != ""
+	}
+	// В production режиме требуется JWKS URL и issuer
 	return j.JWKSURL != "" && j.Issuer != ""
 }
 
