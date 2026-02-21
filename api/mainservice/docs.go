@@ -31,7 +31,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт нового пользователя. UUID и email должны быть уникальными.",
+                "description": "Создаёт нового пользователя. UUID и email должны быть уникальными. Требуется роль admin.",
                 "consumes": [
                     "application/json"
                 ],
@@ -41,7 +41,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Создать пользователя",
+                "summary": "Создать пользователя (только admin)",
                 "parameters": [
                     {
                         "description": "Данные нового пользователя",
@@ -63,6 +63,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Не авторизован - отсутствует или невалидный JWT токен",
+                        "schema": {
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Доступ запрещён - недостаточно прав (требуется роль admin)",
+                        "schema": {
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
@@ -79,14 +91,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает данные пользователя по UUID. Мягко удалённый вернётся с deleted=true.",
+                "description": "Возвращает данные пользователя по UUID. Мягко удалённый вернётся с deleted=true. Требуется роль admin.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Получить пользователя",
+                "summary": "Получить пользователя (только admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -105,6 +117,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Невалидный UUID",
+                        "schema": {
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован - отсутствует или невалидный JWT токен",
+                        "schema": {
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Доступ запрещён - недостаточно прав (требуется роль admin)",
                         "schema": {
                             "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
@@ -129,14 +153,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Мягкое удаление (soft delete). Запись остаётся в БД с флагом deleted=true.",
+                "description": "Мягкое удаление (soft delete). Запись остаётся в БД с флагом deleted=true. Требуется роль admin.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Удалить пользователя",
+                "summary": "Удалить пользователя (только admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -148,10 +172,22 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "204": {
-                        "description": ""
+                        "description": "Пользователь успешно удалён"
                     },
                     "400": {
                         "description": "Невалидный UUID",
+                        "schema": {
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован - отсутствует или невалидный JWT токен",
+                        "schema": {
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Доступ запрещён - недостаточно прав (требуется роль admin)",
                         "schema": {
                             "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
@@ -266,7 +302,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "OtusMS Main Service API",
-	Description:      "Введите токен в формате: Bearer {token}",
+	Description:      "JWT токен в формате: Bearer {token}. Токен должен содержать роли в claim realm_access.roles",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 }
