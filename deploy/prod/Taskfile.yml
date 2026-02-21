@@ -12,18 +12,43 @@ vars:
   VPS_PATH_DB: /root/otus-microservice/prod/db
   VPS_PATH_AUTH: /root/otus-microservice/prod/auth-proxy
   VPS_PATH_SWAGGER: /root/otus-microservice/prod/swagger
+  VPS_PATH_MONITORING: /root/otus-microservice/prod/monitoring
 
 tasks:
   # ===== Конфигурация =====
-  
+
   config:upload:
     desc: "Загрузить конфиги на VPS (main-service + auth-proxy)"
     cmds:
       - echo "📤 Загрузка конфигурационных файлов на VPS..."
       - scp configs/config.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/configs/
-      - echo "✅ config.prod.yaml загружен в {{.VPS_PATH_BE}}/configs/"
+      - echo "✅ config.prod.yaml → {{.VPS_PATH_BE}}/configs/"
       - scp configs/config.auth-proxy.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_AUTH}}/configs/
-      - echo "✅ config.auth-proxy.prod.yaml загружен в {{.VPS_PATH_AUTH}}/configs/"
+      - echo "✅ config.auth-proxy.prod.yaml → {{.VPS_PATH_AUTH}}/configs/"
+
+  config:upload:monitoring:
+    desc: "Загрузить конфиги мониторинга на VPS (prometheus, loki, promtail, alertmanager)"
+    cmds:
+      - echo "📤 Загрузка конфигов мониторинга на VPS..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_MONITORING}}/configs"
+      - scp configs/prometheus.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ prometheus.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/prometheus_alerts.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ prometheus_alerts.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/alertmanager.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ alertmanager.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/loki.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ loki.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/promtail.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ promtail.yml → {{.VPS_PATH_MONITORING}}/configs/"
+
+  config:upload:all:
+    desc: "Загрузить ВСЕ конфигурационные файлы на VPS (сервисы + мониторинг)"
+    cmds:
+      - echo "🚀 Полная загрузка конфигурационных файлов на VPS..."
+      - task: config:upload
+      - task: config:upload:monitoring
+      - echo "🎉 Все конфигурационные файлы успешно загружены на VPS"
 
   config:download:
     desc: "Скачать config.prod.yaml с VPS (backup)"

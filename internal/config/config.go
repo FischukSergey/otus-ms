@@ -83,6 +83,12 @@ func (k KeycloakConfig) IsConfigured() bool {
 	return k.URL != "" && k.Realm != "" && k.ClientID != "" && k.ClientSecret != ""
 }
 
+// Issuer возвращает issuer URL для JWT токенов (realm URL).
+// Формат: {keycloak_url}/realms/{realm_name}
+func (k KeycloakConfig) Issuer() string {
+	return k.URL + "/realms/" + k.Realm
+}
+
 // JWTConfig содержит настройки для JWT валидации.
 // Используется в main-service для проверки JWT токенов от Keycloak.
 type JWTConfig struct {

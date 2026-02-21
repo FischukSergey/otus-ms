@@ -69,11 +69,44 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 		httpSwagger.URL("/swagger/doc.json"),
 	))
 
-	// API роуты для работы с пользователями
-	router.Route("/api/v1/users", func(r chi.Router) {
-		r.Post("/", userHandler.Create)
-		r.Get("/{uuid}", userHandler.Get)
-		r.Delete("/{uuid}", userHandler.Delete)
+	// API роуты
+	router.Route("/api/v1", func(r chi.Router) {
+		// Публичные роуты (без JWT) - если понадобятся
+		// r.Post("/register", someHandler.Register)
+
+		// Защищённые роуты - требуется валидный JWT
+		r.Group(func(r chi.Router) {
+			// JWT валидация для всех роутов в группе
+			// ВАЖНО: JWKSManager должен быть инициализирован в main.go
+			if deps.JWKSManager != nil {
+				r.Use(custommiddleware.ValidateJWT(
+					custommiddleware.JWTConfig{
+						Issuer:   deps.Config.Keycloak.Issuer(),
+						Audience: deps.Config.Keycloak.ClientID,
+					},
+					deps.JWKSManager,
+					deps.Logger,
+				))
+			}
+
+			// Роуты для работы с пользователями
+			r.Route("/users", func(r chi.Router) {
+				// Только для администраторов
+				r.Group(func(r chi.Router) {
+					r.Use(custommiddleware.RequireAdmin(deps.Logger))
+					r.Post("/", userHandler.Create)        // Создать пользователя
+					r.Get("/{uuid}", userHandler.Get)      // Получить любого пользователя
+					r.Delete("/{uuid}", userHandler.Delete) // Удалить пользователя
+				})
+
+				// Для пользователей с ролью user или admin (если понадобятся)
+				// r.Group(func(r chi.Router) {
+				//     r.Use(custommiddleware.RequireUser(deps.Logger))
+				//     r.Get("/me", userHandler.GetMe)     // Получить свой профиль
+				//     r.Put("/me", userHandler.UpdateMe)  // Обновить свой профиль
+				// })
+			})
+		})
 	})
 
 	server := &http.Server{
