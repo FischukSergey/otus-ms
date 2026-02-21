@@ -64,7 +64,7 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode 
 // @Failure      403  {object}  ErrorResponse  "Доступ запрещён - недостаточно прав (требуется роль admin)"
 // @Failure      500  {object}  ErrorResponse  "Внутренняя ошибка сервера"
 // @Security     BearerAuth
-// @Router       /api/v1/users [post]
+// @Router       /api/v1/users [post].
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	var req userService.CreateRequest
@@ -107,7 +107,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 // @Failure      404   {object}  ErrorResponse         "Пользователь не найден"
 // @Failure      500   {object}  ErrorResponse         "Внутренняя ошибка сервера"
 // @Security     BearerAuth
-// @Router       /api/v1/users/{uuid} [get]
+// @Router       /api/v1/users/{uuid} [get].
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
@@ -156,7 +156,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 // @Failure      404   {object}  ErrorResponse  "Пользователь не найден"
 // @Failure      500   {object}  ErrorResponse  "Внутренняя ошибка сервера"
 // @Security     BearerAuth
-// @Router       /api/v1/users/{uuid} [delete]
+// @Router       /api/v1/users/{uuid} [delete].
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
