@@ -54,6 +54,11 @@ func run() error {
 		return err
 	}
 
+	// ОТЛАДКА: Проверяем что загружено в JWT конфиг
+	log.Printf("DEBUG: JWT Config loaded: SkipVerify=%v, Issuer=%s, Audience=%s, JWKSURL=%s",
+		cfg.JWT.SkipVerify, cfg.JWT.Issuer, cfg.JWT.Audience, cfg.JWT.JWKSURL)
+	log.Printf("DEBUG: JWT.IsConfigured() = %v", cfg.JWT.IsConfigured())
+
 	// Проверяем наличие конфигурации БД (main-service требует БД)
 	if !cfg.DB.IsConfigured() {
 		return errors.New("database configuration is incomplete: please provide name, user, password, host and port")
