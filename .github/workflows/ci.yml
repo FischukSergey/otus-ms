@@ -89,9 +89,17 @@ jobs:
       - name: Start API server in background
         run: |
           echo "🚀 Запуск API сервера..."
-          ./main-service -config configs/config.ci.yaml &
+          ./main-service -config configs/config.ci.yaml > api_server.log 2>&1 &
           echo $! > api_server.pid
           sleep 5
+          echo "📋 Проверка процесса Main Service:"
+          if ps -p $(cat api_server.pid) > /dev/null 2>&1; then
+            echo "✅ Процесс Main Service запущен (PID: $(cat api_server.pid))"
+          else
+            echo "❌ Процесс Main Service завершился"
+            echo "📋 Логи Main Service:"
+            cat api_server.log || echo "Логи недоступны"
+          fi
       
       - name: Wait for API server
         run: |
@@ -105,14 +113,24 @@ jobs:
             sleep 1
           done
           echo "❌ API сервер не запустился"
+          echo "📋 Логи Main Service:"
+          cat api_server.log || echo "Логи недоступны"
           exit 1
       
       - name: Start Auth-Proxy in background
         run: |
           echo "🚀 Запуск Auth-Proxy..."
-          ./auth-proxy -config configs/config.auth-proxy.ci.yaml &
+          ./auth-proxy -config configs/config.auth-proxy.ci.yaml > auth_proxy.log 2>&1 &
           echo $! > auth_proxy.pid
           sleep 3
+          echo "📋 Проверка процесса Auth-Proxy:"
+          if ps -p $(cat auth_proxy.pid) > /dev/null 2>&1; then
+            echo "✅ Процесс Auth-Proxy запущен (PID: $(cat auth_proxy.pid))"
+          else
+            echo "❌ Процесс Auth-Proxy завершился"
+            echo "📋 Логи Auth-Proxy:"
+            cat auth_proxy.log || echo "Логи недоступны"
+          fi
         env:
           KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
       
@@ -127,8 +145,13 @@ jobs:
             echo "Попытка $i/30..."
             sleep 1
           done
-          echo "⚠️  Auth-Proxy не запустился (возможно не настроен KEYCLOAK_CLIENT_SECRET)"
-          echo "Auth-Proxy тесты будут пропущены"
+          echo "⚠️  Auth-Proxy не запустился"
+          echo "📋 Логи Auth-Proxy:"
+          cat auth_proxy.log || echo "Логи недоступны"
+          echo "📋 Статус процесса:"
+          if [ -f auth_proxy.pid ]; then
+            ps -p $(cat auth_proxy.pid) > /dev/null 2>&1 && echo "Процесс работает" || echo "Процесс завершен"
+          fi
       
       - name: Run integration tests
         run: |

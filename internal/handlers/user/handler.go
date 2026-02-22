@@ -54,7 +54,8 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode 
 //
 // @Summary      Создать пользователя (admin или service account)
 // @Description  Создаёт нового пользователя. UUID и email должны быть уникальными.
-// @Description  Доступно для роли admin или service-account (для service-to-service коммуникации между Auth-Proxy и Main Service).
+// @Description  Доступно для роли admin или service-account (для service-to-service
+// @Description  коммуникации между Auth-Proxy и Main Service).
 // @Tags         users
 // @Accept       json
 // @Produce      json

@@ -31,7 +31,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт нового пользователя. UUID и email должны быть уникальными.\nДоступно для роли admin или service-account (для service-to-service коммуникации между Auth-Proxy и Main Service).",
+                "description": "Создаёт нового пользователя. UUID и email должны быть уникальными.\nДоступно для роли admin или service-account (для service-to-service\nкоммуникации между Auth-Proxy и Main Service).",
                 "consumes": [
                     "application/json"
                 ],
@@ -60,25 +60,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный запрос или ошибка валидации",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован - отсутствует или невалидный JWT токен",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён - требуется роль admin или service-account",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
@@ -118,31 +118,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный UUID",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован - отсутствует или невалидный JWT токен",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён - недостаточно прав (требуется роль admin)",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Пользователь не найден",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
@@ -177,31 +177,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный UUID",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован - отсутствует или невалидный JWT токен",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён - недостаточно прав (требуется роль admin)",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Пользователь не найден",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
