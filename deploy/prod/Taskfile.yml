@@ -225,7 +225,7 @@ tasks:
       - echo "🚀 Запуск Swagger UI..."
       - scp deploy/prod/docker-compose.swagger.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_SWAGGER}}/
       - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_SWAGGER}} && docker compose -f docker-compose.swagger.prod.yml pull && docker compose -f docker-compose.swagger.prod.yml up -d"
-      - echo "✅ Swagger UI запущен: https://fishouk-otus-ms.ru/swagger/"
+      - echo "Swagger UI запущен - https://fishouk-otus-ms.ru/swagger/"
 
   swagger:down:
     desc: "Остановить Swagger UI на VPS"

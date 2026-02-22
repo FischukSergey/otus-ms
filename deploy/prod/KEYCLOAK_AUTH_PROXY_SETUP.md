@@ -64,7 +64,41 @@
 
 **Важно:** Client Secret - это конфиденциальная информация. Не храните его в коде или git репозитории!
 
-## Шаг 5: Настройка конфигурационных файлов
+## Шаг 5: Настройка Service Account для регистрации пользователей
+
+Чтобы Auth-Proxy мог создавать новых пользователей через Keycloak Admin API, необходимо настроить Service Account Roles.
+
+### 5.1 Проверка Service Account
+
+1. Убедитесь что в **Шаге 3.2** была включена опция **Service accounts roles** ✅
+2. Если не включена - вернитесь к настройкам client:
+   - **Clients** → `auth-proxy` → **Settings**
+   - **Service accounts roles**: `ON`
+   - Нажмите **Save**
+
+### 5.2 Назначение ролей управления пользователями
+
+1. Откройте **Clients** → `auth-proxy`
+2. Перейдите на вкладку **Service account roles**
+3. В поле **Client roles** выберите из выпадающего списка: **realm-management**
+4. В списке **Available roles** найдите и выберите следующие роли:
+   - ✅ **manage-users** - для создания, обновления и удаления пользователей
+   - ✅ **view-users** - для просмотра и проверки существования пользователей
+5. Нажмите **Add selected** (стрелка вправо →)
+6. Убедитесь что роли появились в **Assigned roles**
+
+### 5.3 Проверка настроек
+
+После назначения ролей вы должны увидеть в **Assigned roles**:
+
+| Client | Role | Description |
+|--------|------|-------------|
+| realm-management | manage-users | Создание и управление пользователями |
+| realm-management | view-users | Просмотр пользователей |
+
+**Готово!** Теперь Auth-Proxy может создавать пользователей через Admin API.
+
+## Шаг 7: Настройка конфигурационных файлов
 
 ### Для локальной разработки
 
@@ -101,14 +135,14 @@ nano /root/otus-microservice/prod/auth-proxy/configs/config.auth-proxy.prod.yaml
 
 **Важно:** Конфиги с секретами хранятся только на VPS и в вашей локальной машине, НЕ в git!
 
-## Шаг 6: Создание тестового пользователя
+## Шаг 8: Создание тестового пользователя
 
 Для тестирования Auth-Proxy создайте тестового пользователя:
 
 1. В левом меню выберите **Users**
 2. Нажмите **Add user**
 
-### 6.1 User details
+### 8.1 User details
 
 - **Username**: `test@example.com`
 - **Email**: `test@example.com`
@@ -117,7 +151,7 @@ nano /root/otus-microservice/prod/auth-proxy/configs/config.auth-proxy.prod.yaml
 - **Last name**: `User`
 - Нажмите **Create**
 
-### 6.2 Установка пароля
+### 8.2 Установка пароля
 
 1. Перейдите на вкладку **Credentials**
 2. Нажмите **Set password**
@@ -127,14 +161,14 @@ nano /root/otus-microservice/prod/auth-proxy/configs/config.auth-proxy.prod.yaml
 6. Нажмите **Save**
 7. Подтвердите в диалоге
 
-### 6.3 Назначение роли (опционально)
+### 8.3 Назначение роли (опционально)
 
 1. Перейдите на вкладку **Role mappings**
 2. Нажмите **Assign role**
 3. Выберите роль `user` (если она существует)
 4. Нажмите **Assign**
 
-## Шаг 7: Проверка настройки
+## Шаг 9: Проверка настройки
 
 ### Запуск Auth-Proxy локально
 
@@ -192,7 +226,7 @@ curl -X POST http://localhost:38081/api/v1/auth/logout \
 
 Ожидаемый ответ: `204 No Content`
 
-## Шаг 8: Настройка Token Settings (опционально)
+## Шаг 10: Настройка Token Settings (опционально)
 
 Для настройки времени жизни токенов:
 

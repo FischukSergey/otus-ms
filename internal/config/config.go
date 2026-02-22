@@ -2,12 +2,13 @@ package config
 
 // Config представляет конфигурацию приложения.
 type Config struct {
-	Global   GlobalConfig   `yaml:"global"`
-	Log      LogConfig      `yaml:"log"`
-	Servers  ServersConfig  `yaml:"servers"`
-	DB       DBConfig       `yaml:"db"`
-	Keycloak KeycloakConfig `yaml:"keycloak"`
-	JWT      JWTConfig      `yaml:"jwt"`
+	Global      GlobalConfig      `yaml:"global"`
+	Log         LogConfig         `yaml:"log"`
+	Servers     ServersConfig     `yaml:"servers"`
+	DB          DBConfig          `yaml:"db"`
+	Keycloak    KeycloakConfig    `yaml:"keycloak"`
+	JWT         JWTConfig         `yaml:"jwt"`
+	MainService MainServiceConfig `yaml:"main_service"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -116,4 +117,15 @@ func (j JWTConfig) GetCacheDuration() int {
 		return j.CacheDuration
 	}
 	return 600 // 10 минут по умолчанию
+}
+
+// MainServiceConfig представляет настройки Main Service API.
+// Используется в Auth-Proxy для создания пользователей при регистрации.
+type MainServiceConfig struct {
+	URL string `yaml:"url" env:"MAIN_SERVICE_URL" env-default:"http://localhost:38080"`
+}
+
+// IsConfigured проверяет, что конфигурация Main Service заполнена.
+func (m MainServiceConfig) IsConfigured() bool {
+	return m.URL != ""
 }

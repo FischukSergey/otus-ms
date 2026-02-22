@@ -40,3 +40,21 @@ type ErrorResponse struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
 }
+
+// RegisterRequest представляет запрос на регистрацию нового пользователя.
+type RegisterRequest struct {
+	Email      string `json:"email" validate:"required,email,max=255"`
+	Password   string `json:"password" validate:"required,min=8,max=128"`
+	FirstName  string `json:"firstName" validate:"required,max=255"`
+	LastName   string `json:"lastName" validate:"required,max=255"`
+	MiddleName string `json:"middleName,omitempty" validate:"omitempty,max=255"`
+}
+
+// User внутренняя модель для создания пользователя в Keycloak.
+type User struct {
+	Email      string
+	Password   string
+	FirstName  string
+	LastName   string
+	MiddleName string
+}

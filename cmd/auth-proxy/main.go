@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/FischukSergey/otus-ms/internal/clients/mainservice"
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/logger"
@@ -70,6 +71,16 @@ func run() error {
 
 	appLogger.Info("Keycloak client initialized successfully")
 
+	// Создаем клиент Main Service (для регистрации пользователей)
+	var mainServiceClient *mainservice.Client
+	if cfg.MainService.IsConfigured() {
+		appLogger.Info("Initializing Main Service client", "url", cfg.MainService.URL)
+		mainServiceClient = mainservice.NewClient(cfg.MainService.URL)
+		appLogger.Info("Main Service client initialized successfully")
+	} else {
+		appLogger.Warn("Main Service not configured - registration will be disabled")
+	}
+
 	// Создаем контекст для отслеживания сигналов прерывания
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
@@ -80,10 +91,11 @@ func run() error {
 
 	// Создаем API сервер
 	apiServer := NewAPIServer(&APIServerDeps{
-		Addr:           cfg.Servers.Client.Addr,
-		Config:         &cfg,
-		Logger:         appLogger,
-		KeycloakClient: keycloakClient,
+		Addr:              cfg.Servers.Client.Addr,
+		Config:            &cfg,
+		Logger:            appLogger,
+		KeycloakClient:    keycloakClient,
+		MainServiceClient: mainServiceClient,
 	})
 
 	// Запускаем API сервер в отдельной горутине

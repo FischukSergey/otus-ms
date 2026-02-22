@@ -18,3 +18,6 @@ keycloak:
   realm: "otus-ms"
   client_id: "auth-proxy"
   client_secret: "${KEYCLOAK_CLIENT_SECRET}"  # Из GitHub Secrets
+
+main_service:
+  url: "http://main-service:8080"  # Main Service в Docker Compose network
