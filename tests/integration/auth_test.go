@@ -5,6 +5,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
@@ -437,7 +438,7 @@ func TestRegisterSuccess(t *testing.T) {
 	// Используем уникальный email для избежания конфликтов
 	timestamp := time.Now().UnixNano()
 	payload := registerRequest{
-		Email:      "newuser" + string(rune(timestamp%10000)) + "@test.com",
+		Email:      fmt.Sprintf("newuser%d@test.com", timestamp),
 		Password:   "SecurePassword123",
 		FirstName:  "Иван",
 		LastName:   "Иванов",
@@ -573,7 +574,7 @@ func TestRegisterFullFlow(t *testing.T) {
 	// 1. Регистрируем нового пользователя
 	timestamp := time.Now().UnixNano()
 	regPayload := registerRequest{
-		Email:      "flowuser" + string(rune(timestamp%10000)) + "@test.com",
+		Email:      fmt.Sprintf("flowuser%d@test.com", timestamp),
 		Password:   "FlowPassword123",
 		FirstName:  "Flow",
 		LastName:   "User",

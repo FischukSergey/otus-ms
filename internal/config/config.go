@@ -103,9 +103,10 @@ type JWTConfig struct {
 
 // IsConfigured проверяет, что конфигурация JWT заполнена.
 func (j JWTConfig) IsConfigured() bool {
-	// В тестовом режиме достаточно только issuer
+	// В тестовом режиме (skip_verify) JWT всегда считается настроенным
+	// Токены принимаются без проверки подписи, issuer опционален
 	if j.SkipVerify {
-		return j.Issuer != ""
+		return true
 	}
 	// В production режиме требуется JWKS URL и issuer
 	return j.JWKSURL != "" && j.Issuer != ""

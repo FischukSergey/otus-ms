@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -71,67 +72,88 @@ func ValidateJWT(
 
 			// Парсим и валидируем токен
 			claims := &JWTClaims{}
-			//nolint:contextcheck // jwt.ParseWithClaims callback has fixed signature without context
-			token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-				// Для тестов пропускаем проверку алгоритма и используем HMAC
-				if config.SkipVerify {
-					// Проверяем, что используется HMAC для тестов
-					if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-						return nil, fmt.Errorf("unexpected signing method in test mode: %v", token.Header["alg"])
-					}
-					return []byte("test-secret"), nil
-				}
 
-				// Production: проверяем RSA алгоритм
-				if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-				}
-
-				// Получаем ключи из JWKS Manager
-				if jwksManager == nil {
-					return nil, errors.New("JWKS Manager is not configured")
-				}
-
-				keySet, err := jwksManager.GetKeySet(r.Context())
+			// Для тестов парсим без проверки подписи, но С проверкой expiration
+			//nolint:nestif // Сложность оправдана разными режимами валидации
+			if config.SkipVerify {
+				// Сначала парсим без проверки подписи
+				parser := jwt.NewParser(jwt.WithoutClaimsValidation())
+				_, _, err := parser.ParseUnverified(tokenString, claims)
 				if err != nil {
-					return nil, fmt.Errorf("failed to fetch JWKS: %w", err)
+					logger.Warn("JWT parsing error in skip_verify mode",
+						"error", err,
+						"path", r.URL.Path,
+					)
+					writeJSONError(w, "Invalid token")
+					return
 				}
 
-				// Извлекаем kid из заголовка токена
-				kid, ok := token.Header["kid"].(string)
-				if !ok {
-					return nil, errors.New("token header missing kid")
+				// Вручную проверяем expiration
+				now := time.Now()
+				if claims.ExpiresAt != nil && claims.ExpiresAt.Before(now) {
+					logger.Warn("JWT token expired in skip_verify mode",
+						"expires_at", claims.ExpiresAt.Time,
+						"now", now,
+						"path", r.URL.Path,
+					)
+					writeJSONError(w, "Invalid or expired token")
+					return
+				}
+			} else {
+				// Production: полная проверка через JWKS
+				//nolint:contextcheck // jwt.ParseWithClaims callback has fixed signature without context
+				token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+					// Production: проверяем RSA алгоритм
+					if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+						return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+					}
+
+					// Получаем ключи из JWKS Manager
+					if jwksManager == nil {
+						return nil, errors.New("JWKS Manager is not configured")
+					}
+
+					keySet, err := jwksManager.GetKeySet(r.Context())
+					if err != nil {
+						return nil, fmt.Errorf("failed to fetch JWKS: %w", err)
+					}
+
+					// Извлекаем kid из заголовка токена
+					kid, ok := token.Header["kid"].(string)
+					if !ok {
+						return nil, errors.New("token header missing kid")
+					}
+
+					// Находим нужный ключ по kid
+					key, found := keySet.LookupKeyID(kid)
+					if !found {
+						return nil, fmt.Errorf("key with kid %s not found in JWKS", kid)
+					}
+
+					// Конвертируем в RSA public key
+					var rawKey any
+					if err := key.Raw(&rawKey); err != nil {
+						return nil, fmt.Errorf("failed to get raw key: %w", err)
+					}
+
+					return rawKey, nil
+				})
+				if err != nil {
+					logger.Warn("JWT parsing error",
+						"error", err,
+						"path", r.URL.Path,
+					)
+					writeJSONError(w, "Invalid token")
+					return
 				}
 
-				// Находим нужный ключ по kid
-				key, found := keySet.LookupKeyID(kid)
-				if !found {
-					return nil, fmt.Errorf("key with kid %s not found in JWKS", kid)
+				if !token.Valid {
+					logger.Warn("invalid JWT token",
+						"path", r.URL.Path,
+					)
+					writeJSONError(w, "Invalid or expired token")
+					return
 				}
-
-				// Конвертируем в RSA public key
-				var rawKey any
-				if err := key.Raw(&rawKey); err != nil {
-					return nil, fmt.Errorf("failed to get raw key: %w", err)
-				}
-
-				return rawKey, nil
-			})
-			if err != nil {
-				logger.Warn("JWT parsing error",
-					"error", err,
-					"path", r.URL.Path,
-				)
-				writeJSONError(w, "Invalid token")
-				return
-			}
-
-			if !token.Valid {
-				logger.Warn("invalid JWT token",
-					"path", r.URL.Path,
-				)
-				writeJSONError(w, "Invalid or expired token")
-				return
 			}
 
 			// Проверяем issuer (если указан в конфиге)

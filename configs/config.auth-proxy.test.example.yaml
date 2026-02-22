@@ -19,4 +19,4 @@ keycloak:
   client_secret: "your-client-secret-here"  # Замените на реальный client secret из Keycloak
 
 main_service:
-  url: "http://main-service:8080"  # Main Service API (через Docker network)
+  url: "http://otus-microservice-be:38080"  # Main Service API (через Docker network)

@@ -107,6 +107,26 @@ func RequireUser(logger *slog.Logger) func(next http.Handler) http.Handler {
 	return RequireRole([]string{"user", "admin"}, logger)
 }
 
+// RequireServiceAccount — проверка что запрос выполняется от service account.
+//
+// Service account используется для service-to-service коммуникации.
+// Например, Auth-Proxy вызывает Main Service API с токеном service account.
+//
+// Требования:
+//   - Service account должен быть настроен в Keycloak с ролью service-account
+//   - JWT токен получается через Client Credentials Flow
+//
+// Использование:
+//
+//	r.Group(func(r chi.Router) {
+//	    r.Use(middleware.RequireServiceAccount(logger))
+//	    // Service-to-service endpoints
+//	    r.Post("/users", handler.CreateFromService)
+//	})
+func RequireServiceAccount(logger *slog.Logger) func(next http.Handler) http.Handler {
+	return RequireRole([]string{"service-account"}, logger)
+}
+
 // writeRBACError отправляет JSON ответ с ошибкой RBAC.
 func writeRBACError(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")

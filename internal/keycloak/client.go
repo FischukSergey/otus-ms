@@ -160,3 +160,15 @@ func (c *Client) DeleteUser(ctx context.Context, userID string) error {
 
 	return nil
 }
+
+// GetServiceAccountToken получает JWT токен для service account через Client Credentials Flow.
+// Используется для service-to-service аутентификации (например, Auth-Proxy -> Main Service).
+// Токен содержит роль service-account и проверяется через JWKS в Main Service.
+func (c *Client) GetServiceAccountToken(ctx context.Context) (string, error) {
+	token, err := c.gocloak.LoginClient(ctx, c.clientID, c.clientSecret, c.realm)
+	if err != nil {
+		return "", fmt.Errorf("failed to get service account token: %w", err)
+	}
+
+	return token.AccessToken, nil
+}

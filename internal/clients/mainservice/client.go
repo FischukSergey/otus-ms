@@ -9,16 +9,23 @@ import (
 	"time"
 )
 
+// KeycloakTokenProvider определяет интерфейс для получения service account токена от Keycloak.
+type KeycloakTokenProvider interface {
+	GetServiceAccountToken(ctx context.Context) (string, error)
+}
+
 // Client HTTP клиент для взаимодействия с Main Service API.
 type Client struct {
-	baseURL    string
-	httpClient *http.Client
+	baseURL        string
+	httpClient     *http.Client
+	keycloakClient KeycloakTokenProvider
 }
 
 // NewClient создаёт новый клиент для Main Service.
-func NewClient(baseURL string) *Client {
+func NewClient(baseURL string, keycloakClient KeycloakTokenProvider) *Client {
 	return &Client{
-		baseURL: baseURL,
+		baseURL:        baseURL,
+		keycloakClient: keycloakClient,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -35,8 +42,15 @@ type CreateUserRequest struct {
 }
 
 // CreateUser создаёт пользователя в Main Service.
-// Использует JWT токен для авторизации (должен иметь роль admin).
-func (c *Client) CreateUser(ctx context.Context, jwtToken string, req CreateUserRequest) error {
+// Получает JWT токен service account от Keycloak и использует его для авторизации.
+// Токен должен иметь роль service-account.
+func (c *Client) CreateUser(ctx context.Context, req CreateUserRequest) error {
+	// Получаем service account токен от Keycloak
+	jwtToken, err := c.keycloakClient.GetServiceAccountToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get service account token: %w", err)
+	}
+
 	// Сериализуем request body
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -56,9 +70,7 @@ func (c *Client) CreateUser(ctx context.Context, jwtToken string, req CreateUser
 
 	// Устанавливаем заголовки
 	httpReq.Header.Set("Content-Type", "application/json")
-	if jwtToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
-	}
+	httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
 
 	// Отправляем запрос
 	resp, err := c.httpClient.Do(httpReq)

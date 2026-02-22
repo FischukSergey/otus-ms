@@ -52,8 +52,9 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode 
 
 // Create создает нового пользователя.
 //
-// @Summary      Создать пользователя (только admin)
-// @Description  Создаёт нового пользователя. UUID и email должны быть уникальными. Требуется роль admin.
+// @Summary      Создать пользователя (admin или service account)
+// @Description  Создаёт нового пользователя. UUID и email должны быть уникальными.
+// @Description  Доступно для роли admin или service-account (для service-to-service коммуникации между Auth-Proxy и Main Service).
 // @Tags         users
 // @Accept       json
 // @Produce      json
@@ -61,7 +62,7 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode 
 // @Success      201
 // @Failure      400  {object}  ErrorResponse  "Невалидный запрос или ошибка валидации"
 // @Failure      401  {object}  ErrorResponse  "Не авторизован - отсутствует или невалидный JWT токен"
-// @Failure      403  {object}  ErrorResponse  "Доступ запрещён - недостаточно прав (требуется роль admin)"
+// @Failure      403  {object}  ErrorResponse  "Доступ запрещён - требуется роль admin или service-account"
 // @Failure      500  {object}  ErrorResponse  "Внутренняя ошибка сервера"
 // @Security     BearerAuth
 // @Router       /api/v1/users [post].

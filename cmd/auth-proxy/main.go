@@ -75,7 +75,8 @@ func run() error {
 	var mainServiceClient *mainservice.Client
 	if cfg.MainService.IsConfigured() {
 		appLogger.Info("Initializing Main Service client", "url", cfg.MainService.URL)
-		mainServiceClient = mainservice.NewClient(cfg.MainService.URL)
+		// Передаем keycloak client для получения service account токена
+		mainServiceClient = mainservice.NewClient(cfg.MainService.URL, keycloakClient)
 		appLogger.Info("Main Service client initialized successfully")
 	} else {
 		appLogger.Warn("Main Service not configured - registration will be disabled")

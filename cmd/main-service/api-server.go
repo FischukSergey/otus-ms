@@ -103,10 +103,15 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 
 				// Роуты для работы с пользователями
 				r.Route("/users", func(r chi.Router) {
+					// Создание пользователя доступно для service account (Auth-Proxy) и admin
+					r.Group(func(r chi.Router) {
+						r.Use(custommiddleware.RequireRole([]string{"service-account", "admin"}, deps.Logger))
+						r.Post("/", userHandler.Create) // Создать пользователя
+					})
+
 					// Только для администраторов
 					r.Group(func(r chi.Router) {
 						r.Use(custommiddleware.RequireAdmin(deps.Logger))
-						r.Post("/", userHandler.Create)         // Создать пользователя
 						r.Get("/{uuid}", userHandler.Get)       // Получить любого пользователя
 						r.Delete("/{uuid}", userHandler.Delete) // Удалить пользователя
 					})

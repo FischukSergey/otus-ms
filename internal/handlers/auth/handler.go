@@ -25,7 +25,7 @@ type KeycloakClient interface {
 
 // MainServiceClient определяет интерфейс для работы с Main Service API.
 type MainServiceClient interface {
-	CreateUser(ctx context.Context, jwtToken string, req mainservice.CreateUserRequest) error
+	CreateUser(ctx context.Context, req mainservice.CreateUserRequest) error
 }
 
 // Handler обрабатывает HTTP запросы для авторизации.
@@ -299,13 +299,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		"ip", clientIP,
 	)
 
-	keycloakUserID, err := h.keycloakClient.CreateUser(r.Context(), keycloak.User{
-		Email:      req.Email,
-		Password:   req.Password,
-		FirstName:  req.FirstName,
-		LastName:   req.LastName,
-		MiddleName: req.MiddleName,
-	})
+	keycloakUserID, err := h.keycloakClient.CreateUser(r.Context(), keycloak.User(req))
 	if err != nil {
 		logger.Error("Failed to create user in Keycloak",
 			"error", err,
@@ -348,9 +342,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Вызываем Main Service API
-	// Используем пустой токен - Main Service в тестовом режиме (skip_verify: true)
-	// В production это нужно будет заменить на реальный admin токен
-	err = h.mainServiceClient.CreateUser(r.Context(), "", mainServiceReq)
+	// Клиент автоматически получит service account токен от Keycloak
+	err = h.mainServiceClient.CreateUser(r.Context(), mainServiceReq)
 	if err != nil {
 		logger.Error("Failed to create user in Main Service",
 			"error", err,

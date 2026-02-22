@@ -14,6 +14,8 @@ type JWTClaims struct {
 	PreferredUsername string `json:"preferred_username"`
 	GivenName         string `json:"given_name"`  // Имя
 	FamilyName        string `json:"family_name"` // Фамилия
+	Azp               string `json:"azp"`         // Authorized party (для service account)
+	ClientID          string `json:"clientId"`    // Client ID (для service account)
 	RealmAccess       struct {
 		Roles []string `json:"roles"`
 	} `json:"realm_access"`
@@ -34,11 +36,26 @@ func (c *JWTClaims) GetFullName() string {
 }
 
 // HasRole проверяет наличие роли у пользователя.
+// Для service account токенов: роль "service-account" определяется по наличию Azp или ClientID.
 func (c *JWTClaims) HasRole(role string) bool {
+	// Специальная обработка для service account
+	if role == "service-account" {
+		return c.IsServiceAccount()
+	}
+
+	// Обычная проверка realm roles
 	for _, r := range c.RealmAccess.Roles {
 		if r == role {
 			return true
 		}
 	}
 	return false
+}
+
+// IsServiceAccount проверяет, является ли токен service account токеном.
+// Service account токены имеют claim azp или clientId, но не имеют email.
+func (c *JWTClaims) IsServiceAccount() bool {
+	// Для service account токенов Keycloak заполняет azp (authorized party)
+	// и обычно нет email
+	return c.Azp != "" || c.ClientID != ""
 }
