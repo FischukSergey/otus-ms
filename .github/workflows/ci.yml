@@ -86,6 +86,17 @@ jobs:
           task build
           go build -o auth-proxy ./cmd/auth-proxy
       
+      - name: Verify config file exists
+        run: |
+          echo "📋 Проверка наличия и содержимого конфигурационного файла..."
+          if [ ! -f configs/config.ci.yaml ]; then
+            echo "❌ Файл configs/config.ci.yaml не найден!"
+            exit 1
+          fi
+          echo "✅ Файл configs/config.ci.yaml существует"
+          echo "Содержимое секции JWT:"
+          grep -A 3 "^jwt:" configs/config.ci.yaml || echo "JWT секция не найдена"
+      
       - name: Start API server in background
         run: |
           echo "🚀 Запуск API сервера..."
