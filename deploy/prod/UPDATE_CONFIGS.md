@@ -23,13 +23,9 @@ jwt:
   issuer: "https://fishouk-otus-ms.ru/auth/realms/otus-ms"
   audience: "main-service"
   cache_duration: 600  # 10 минут
-
-keycloak:
-  url: "https://fishouk-otus-ms.ru/auth"
-  realm: "otus-ms"
-  client_id: "main-service"
-  client_secret: "YOUR_MAIN_SERVICE_CLIENT_SECRET_HERE"  # Замените на реальный secret из Keycloak (см. шаг 2)
 ```
+
+**Важно:** Main Service **не использует** Keycloak клиент напрямую. Он только валидирует JWT токены через JWKS Manager. Keycloak клиент используется только в Auth-Proxy.
 
 #### `/opt/OtusMS/configs/config.auth-proxy.prod.yaml`
 
@@ -46,27 +42,21 @@ main_service:
   url: "http://otus-microservice-be-prod:38080"  # Main Service API (через Docker network, имя контейнера)
 ```
 
-### 2. Получить client secrets из Keycloak
+### 2. Получить client secret для Auth-Proxy из Keycloak
 
-**Где взять client secrets:**
+**Где взять client secret:**
 
 1. Откройте Keycloak Admin Console: `https://fishouk-otus-ms.ru/auth/admin`
 2. Выберите realm: `otus-ms`
-3. Для Main Service:
-   - Перейдите в `Clients` → `main-service` → вкладка `Credentials` → скопируйте `Secret`
-   - Вставьте этот secret в поле `client_secret` в `/opt/OtusMS/configs/config.prod.yaml`
-4. Для Auth-Proxy:
-   - Перейдите в `Clients` → `auth-proxy` → вкладка `Credentials` → скопируйте `Secret`
-   - Вставьте этот secret в поле `client_secret` в `/opt/OtusMS/configs/config.auth-proxy.prod.yaml`
+3. Перейдите в `Clients` → `auth-proxy` → вкладка `Credentials` → скопируйте `Secret`
+4. Вставьте этот secret в поле `client_secret` в `/opt/OtusMS/configs/config.auth-proxy.prod.yaml`
 
-### 3. Настроить Keycloak клиенты
+### 3. Настроить Keycloak клиент Auth-Proxy
 
-#### Main Service Client
-
-В Keycloak создайте (или настройте существующий) клиент `main-service`:
+В Keycloak настройте клиент `auth-proxy`:
 
 1. **Settings**:
-   - Client ID: `main-service`
+   - Client ID: `auth-proxy`
    - Client Protocol: `openid-connect`
    - Access Type: `confidential`
    - Service Accounts Enabled: `ON`
@@ -76,11 +66,7 @@ main_service:
    - Добавьте роль `manage-users` из `realm-management`
    - Добавьте роль `view-users` из `realm-management`
 
-#### Auth-Proxy Client
-
-Клиент уже должен быть настроен. Проверьте:
-- Access Type: `confidential`
-- Service Accounts Enabled: `ON`
+**Важно:** Main Service **не требует** отдельного клиента в Keycloak, так как он только валидирует JWT токены через публичный JWKS endpoint. Все операции с Keycloak (создание пользователей, аутентификация) выполняет Auth-Proxy.
 
 ### 4. Перезапустить сервисы
 
@@ -159,10 +145,10 @@ curl -X POST http://localhost:38081/api/v1/auth/register \
 
 ### "Invalid client or Invalid client credentials"
 
-- Проверьте что client secrets в конфиг файлах (`config.prod.yaml` и `config.auth-proxy.prod.yaml`) правильные
-- Проверьте что клиенты в Keycloak имеют `Service Accounts Enabled: ON`
+- Проверьте что client secret в `config.auth-proxy.prod.yaml` правильный
+- Проверьте что клиент `auth-proxy` в Keycloak имеет `Service Accounts Enabled: ON`
 - Проверьте что секрет скопирован без лишних пробелов и символов
-- Перезапустите контейнер после изменения конфига
+- Перезапустите Auth-Proxy контейнер после изменения конфига
 
 ### "JWT not configured"
 
@@ -172,6 +158,7 @@ curl -X POST http://localhost:38081/api/v1/auth/register \
 
 ### "Failed to create user in Main Service"
 
-- Проверьте что Main Service client имеет роли `manage-users` и `view-users`
-- Проверьте что `KEYCLOAK_CLIENT_SECRET_MAIN_SERVICE` установлен правильно
-- Проверьте логи Main Service на наличие ошибок аутентификации
+- Проверьте что Auth-Proxy client имеет роли `manage-users` и `view-users`
+- Проверьте что Auth-Proxy может получить service account токен
+- Проверьте логи Main Service - JWT токен должен валидироваться и содержать `azp: "auth-proxy"` claim
+- Проверьте что Main Service видит роль "service-account" (проверяется через claim `azp` или `clientId`)

@@ -32,9 +32,5 @@ jwt:
   issuer: "https://yourdomain.com/auth/realms/your-realm"
   audience: "main-service"
   cache_duration: 600  # 10 минут
-
-keycloak:
-  url: "https://yourdomain.com/auth"
-  realm: "your-realm"
-  client_id: "main-service"
-  client_secret: "your-client-secret-here"  # ОБЯЗАТЕЛЬНО замените на реальный secret из Keycloak
+  # Main Service только валидирует JWT токены через JWKS
+  # Keycloak клиент не используется - только Auth-Proxy работает с Keycloak напрямую
