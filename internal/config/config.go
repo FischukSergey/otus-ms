@@ -76,7 +76,7 @@ type KeycloakConfig struct {
 	URL          string `yaml:"url" validate:"omitempty,url"`
 	Realm        string `yaml:"realm"`
 	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
+	ClientSecret string `yaml:"client_secret" env:"KEYCLOAK_CLIENT_SECRET"`
 }
 
 // IsConfigured проверяет, что конфигурация Keycloak заполнена.
