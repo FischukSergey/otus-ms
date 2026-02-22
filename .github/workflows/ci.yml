@@ -107,6 +107,29 @@ jobs:
           echo "❌ API сервер не запустился"
           exit 1
       
+      - name: Test Keycloak client credentials
+        run: |
+          echo "🔐 Тестирование client credentials с Keycloak..."
+          RESPONSE=$(curl -s -X POST https://fishouk-otus-ms.ru/auth/realms/otus-ms/protocol/openid-connect/token \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "client_id=auth-proxy" \
+            -d "client_secret=${KEYCLOAK_CLIENT_SECRET}" \
+            -d "grant_type=client_credentials")
+          
+          if echo "$RESPONSE" | grep -q "access_token"; then
+            echo "✅ Client credentials работают корректно"
+          else
+            echo "❌ Ошибка аутентификации клиента:"
+            echo "$RESPONSE"
+            echo ""
+            echo "Возможные причины:"
+            echo "1. KEYCLOAK_CLIENT_SECRET в GitHub Secrets неправильный"
+            echo "2. У клиента auth-proxy в Keycloak не включен 'Service accounts roles'"
+            echo "3. Секрет был изменен в Keycloak"
+          fi
+        env:
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      
       - name: Start Auth-Proxy in background
         run: |
           echo "🚀 Запуск Auth-Proxy..."
