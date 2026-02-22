@@ -110,20 +110,3 @@ curl -X POST https://fishouk-otus-ms.ru/auth/realms/otus-ms/protocol/openid-conn
 Если получили токен - service account работает корректно.
 
 ---
-
-## Дополнительная информация
-
-- 📚 **Полная документация**: [KEYCLOAK_AUTH_PROXY_SETUP.md](./KEYCLOAK_AUTH_PROXY_SETUP.md) → Шаг 5
-- 🔐 **RBAC настройка**: [KEYCLOAK_AUTH_PROXY_SETUP.md](./KEYCLOAK_AUTH_PROXY_SETUP.md) → Настройка ролей
-- 🧪 **Тестирование**: [../../../TESTING.md](../../../TESTING.md)
-
----
-
-## Следующие шаги
-
-1. ✅ Настройка Keycloak завершена
-2. 🔄 Реализация кода регистрации в Auth-Proxy
-3. 🔄 Создание HTTP client для Main Service
-4. 🔄 Добавление handler для /api/v1/auth/register
-5. 🔄 Написание тестов
-6. 🔄 Обновление Swagger документации
