@@ -25,7 +25,7 @@ db:
   ssl_mode: disable
 
 jwt:
-  skip_verify: true  # Тестовый режим - не проверять подпись JWT (использует HMAC)
-  issuer: "test-issuer"
-  audience: "test-client"
+  skip_verify: true  # Тестовый режим - не проверять подпись JWT
+  issuer: ""  # Не проверять issuer в тестовом режиме (принимаем токены от Keycloak)
+  audience: ""  # Не проверять audience в тестовом режиме
 

@@ -92,14 +92,6 @@ jobs:
           ./main-service -config configs/config.ci.yaml > api_server.log 2>&1 &
           echo $! > api_server.pid
           sleep 5
-          echo "📋 Проверка процесса Main Service:"
-          if ps -p $(cat api_server.pid) > /dev/null 2>&1; then
-            echo "✅ Процесс Main Service запущен (PID: $(cat api_server.pid))"
-          else
-            echo "❌ Процесс Main Service завершился"
-            echo "📋 Логи Main Service:"
-            cat api_server.log || echo "Логи недоступны"
-          fi
       
       - name: Wait for API server
         run: |
@@ -113,8 +105,6 @@ jobs:
             sleep 1
           done
           echo "❌ API сервер не запустился"
-          echo "📋 Логи Main Service:"
-          cat api_server.log || echo "Логи недоступны"
           exit 1
       
       - name: Start Auth-Proxy in background
@@ -123,14 +113,6 @@ jobs:
           ./auth-proxy -config configs/config.auth-proxy.ci.yaml > auth_proxy.log 2>&1 &
           echo $! > auth_proxy.pid
           sleep 3
-          echo "📋 Проверка процесса Auth-Proxy:"
-          if ps -p $(cat auth_proxy.pid) > /dev/null 2>&1; then
-            echo "✅ Процесс Auth-Proxy запущен (PID: $(cat auth_proxy.pid))"
-          else
-            echo "❌ Процесс Auth-Proxy завершился"
-            echo "📋 Логи Auth-Proxy:"
-            cat auth_proxy.log || echo "Логи недоступны"
-          fi
         env:
           KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
       
@@ -162,6 +144,14 @@ jobs:
           TEST_AUTH_PROXY_URL: http://localhost:38081
           TEST_KEYCLOAK_USERNAME: ${{ secrets.TEST_KEYCLOAK_USERNAME }}
           TEST_KEYCLOAK_PASSWORD: ${{ secrets.TEST_KEYCLOAK_PASSWORD }}
+      
+      - name: Show Auth-Proxy logs on failure
+        if: failure()
+        run: |
+          echo "📋 Логи Auth-Proxy:"
+          cat auth_proxy.log 2>/dev/null || echo "Логи Auth-Proxy недоступны"
+          echo "📋 Логи Main Service:"
+          cat api_server.log 2>/dev/null || echo "Логи Main Service недоступны"
       
       - name: Stop servers
         if: always()
