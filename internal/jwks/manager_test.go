@@ -60,7 +60,7 @@ func TestNewManager(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, manager)
-			defer manager.Close()
+			defer func() { _ = manager.Close() }()
 
 			assert.Equal(t, tt.jwksURL, manager.GetJWKSURL())
 
@@ -82,7 +82,7 @@ func TestManager_GetKeySet_InvalidURL(t *testing.T) {
 		createTestLogger(),
 	)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	// Act
 	ctx := context.Background()
@@ -136,7 +136,7 @@ func TestManager_ConcurrentAccess(t *testing.T) {
 		createTestLogger(),
 	)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	// Act - несколько горутин одновременно обращаются к менеджеру
 	done := make(chan bool, 10)

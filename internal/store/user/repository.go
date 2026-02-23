@@ -1,3 +1,4 @@
+// Package user реализует репозиторий для работы с пользователями в PostgreSQL.
 package user
 
 import (

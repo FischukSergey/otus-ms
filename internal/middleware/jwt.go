@@ -17,6 +17,7 @@ import (
 // ContextKey для хранения данных в context.
 type ContextKey string
 
+// Ключи для хранения данных JWT-авторизации в контексте запроса.
 const (
 	ContextKeyUserID     ContextKey = "user_id"
 	ContextKeyEmail      ContextKey = "email"

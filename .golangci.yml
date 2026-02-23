@@ -1,124 +1,12 @@
+version: "2"
+
 run:
   tests: true
-  build-tags: 
+  build-tags:
     - integration
 
 issues:
   max-same-issues: 0
-  exclude-dirs:
-    - tests/integration/*
-  exclude-rules:
-    - path: internal/clients/keycloak
-      linters: [ tagliatelle ]
-      
-linters-settings:
-  exhaustive:
-    default-signifies-exhaustive: true
-
-  gomoddirectives:
-    replace-allow-list:
-      - golang.org/x/crypto
-      - golang.org/x/sync
-      - golang.org/x/sys
-      - golang.org/x/text
-
-  depguard:
-    rules:
-      main:
-        deny:
-          - pkg: "github.com/pkg/errors"
-            desc: Should be replaced by standard lib errors package
-
-  forbidigo:
-    forbid:
-      - '^(fmt\.Print(|f|ln)|print|println)$'
-      - 'errors\.Wrap'
-      - 'errors\.Cause'
-      - '(dql|DQL)'
-
-  gci:
-    sections:
-      - Standard # Стандартные импорты.
-      - Default # Импорты по-умолчанию. Third-party библиотеки.
-      - Prefix(github.com/FischukSergey/otus-ms) # Импорты из собственного пакета.
-    newline-after-sections: true
-
-  godox:
-    keywords:
-      - FIXME
-      - TODO
-
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-      - shadow
-
-  lll:
-    max-len: 130
-
-  nolintlint:
-    allow-no-explanation: [ "lll" ]
-    require-explanation: true
-
-  revive:
-    severity: error
-    rules:
-      - name: argument-limit
-      - name: atomic
-      - name: bare-return
-      - name: blank-imports
-      - name: bool-literal-in-expr
-      - name: comment-spacings
-      - name: confusing-results
-      - name: context-as-argument
-        arguments:
-          - allowTypesBefore: "*testing.T" # https://go-review.googlesource.com/c/lint/+/145237
-      - name: context-keys-type
-      - name: datarace
-      - name: deep-exit
-      - name: defer
-      - name: dot-imports
-      - name: duplicated-imports
-      - name: early-return
-      - name: empty-lines
-      - name: empty-block
-      - name: error-naming
-      - name: error-return
-      - name: error-strings
-      - name: errorf
-      - name: exported
-      - name: identical-branches
-      - name: if-return
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: package-comments
-      - name: range
-      - name: range-val-address
-      - name: range-val-in-closure
-      - name: receiver-naming
-      - name: redefines-builtin-id
-      - name: string-of-int
-      - name: superfluous-else
-      - name: time-equal
-      - name: time-naming
-      - name: unexported-return
-      - name: unhandled-error
-        arguments: [ "fmt.Fprint", "fmt.Printf", "fmt.Println" ]
-      - name: unreachable-code
-      - name: use-any
-      - name: unused-parameter
-      - name: var-declaration
-      - name: var-naming
-      - name: waitgroup-by-value
-
-  tagliatelle:
-    case:
-      rules:
-        json: camel
-        yaml: snake
-        toml: snake
-    use-field-name: true
 
 linters:
   disable-all: true
@@ -136,22 +24,17 @@ linters:
     - exhaustive
     - copyloopvar
     - forbidigo
-    - gci
     - ginkgolinter
     - goconst
     - gocritic
     - gocyclo
     - godot
     - godox
-    - gofmt
-    - gofumpt
     - goheader
-    - goimports
     - gomoddirectives
     - gomodguard
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - importas
     - ineffassign
@@ -177,14 +60,11 @@ linters:
     - sloglint
     - sqlclosecheck
     - staticcheck
-    - stylecheck
-    - tenv
     - testableexamples
     - testifylint
     - testpackage
     - thelper
     - tparallel
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -192,3 +72,129 @@ linters:
     - wastedassign
     - whitespace
     - tagliatelle
+
+  exclusions:
+    paths:
+      - tests
+      - api
+    rules:
+      - path: internal/clients/keycloak
+        linters: [ tagliatelle ]
+
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+
+    gomoddirectives:
+      replace-allow-list:
+        - golang.org/x/crypto
+        - golang.org/x/net
+        - golang.org/x/sync
+        - golang.org/x/sys
+        - golang.org/x/text
+
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "github.com/pkg/errors"
+              desc: Should be replaced by standard lib errors package
+
+    forbidigo:
+      forbid:
+        - pattern: '^(fmt\.Print(|f|ln)|print|println)$'
+        - pattern: 'errors\.Wrap'
+        - pattern: 'errors\.Cause'
+        - pattern: '(dql|DQL)'
+
+    godox:
+      keywords:
+        - FIXME
+        - TODO
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+
+    lll:
+      line-length: 130
+
+    nolintlint:
+      allow-no-explanation: [ "lll" ]
+      require-explanation: true
+
+    revive:
+      severity: error
+      rules:
+        - name: argument-limit
+        - name: atomic
+        - name: bare-return
+        - name: blank-imports
+        - name: bool-literal-in-expr
+        - name: comment-spacings
+        - name: confusing-results
+        - name: context-as-argument
+          arguments:
+            - allowTypesBefore: "*testing.T"
+        - name: context-keys-type
+        - name: datarace
+        - name: deep-exit
+        - name: defer
+        - name: dot-imports
+        - name: duplicated-imports
+        - name: early-return
+        - name: empty-lines
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: identical-branches
+        - name: if-return
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: range-val-address
+        - name: range-val-in-closure
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: string-of-int
+        - name: superfluous-else
+        - name: time-equal
+        - name: time-naming
+        - name: unexported-return
+        - name: unhandled-error
+          arguments: [ "fmt.Fprint", "fmt.Printf", "fmt.Println" ]
+        - name: unreachable-code
+        - name: use-any
+        - name: unused-parameter
+        - name: var-declaration
+        - name: var-naming
+        - name: waitgroup-by-value
+
+    tagliatelle:
+      case:
+        rules:
+          json: camel
+          yaml: snake
+          toml: snake
+      use-field-name: true
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+
+  settings:
+    gci:
+      sections:
+        - Standard
+        - Default
+        - Prefix(github.com/FischukSergey/otus-ms)
+      newline-after-sections: true

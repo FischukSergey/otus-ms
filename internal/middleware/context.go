@@ -1,3 +1,4 @@
+// Package middleware предоставляет HTTP и gRPC middleware для валидации JWT и логирования.
 package middleware
 
 import (

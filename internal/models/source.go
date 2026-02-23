@@ -7,18 +7,18 @@ import (
 
 // Source представляет источник новостей (RSS/Atom feed).
 type Source struct {
-	ID               string         `json:"id"                db:"id"`
-	Name             string         `json:"name"              db:"name"`
-	URL              string         `json:"url"               db:"url"`
-	Language         string         `json:"language"          db:"language"`
-	Category         string         `json:"category"          db:"category"`
-	FetchInterval    int            `json:"fetch_interval"    db:"fetch_interval"`
-	IsActive         bool           `json:"is_active"         db:"is_active"`
-	LastCollectedAt  sql.NullTime   `json:"last_collected_at" db:"last_collected_at"`
-	LastError        sql.NullString `json:"last_error"        db:"last_error"`
-	ErrorCount       int            `json:"error_count"       db:"error_count"`
-	CreatedAt        time.Time      `json:"created_at"        db:"created_at"`
-	UpdatedAt        time.Time      `json:"updated_at"        db:"updated_at"`
+	ID              string         `json:"id"                db:"id"`
+	Name            string         `json:"name"              db:"name"`
+	URL             string         `json:"url"               db:"url"`
+	Language        string         `json:"language"          db:"language"`
+	Category        string         `json:"category"          db:"category"`
+	FetchInterval   int            `json:"fetchInterval"    db:"fetch_interval"`
+	IsActive        bool           `json:"isActive"         db:"is_active"`
+	LastCollectedAt sql.NullTime   `json:"lastCollectedAt"  db:"last_collected_at"`
+	LastError       sql.NullString `json:"lastError"        db:"last_error"`
+	ErrorCount      int            `json:"errorCount"       db:"error_count"`
+	CreatedAt       time.Time      `json:"createdAt"        db:"created_at"`
+	UpdatedAt       time.Time      `json:"updatedAt"        db:"updated_at"`
 }
 
 // NextFetchAt вычисляет время следующего запланированного сбора.

@@ -20,7 +20,7 @@ import (
 var (
 	// Адрес API сервера (можно переопределить через TEST_SERVER_URL)
 	// По умолчанию: docker-compose на порту 8081
-	// В CI: localhost:8080
+	// В CI: localhost:8080.
 	testServerAddr = getServerAddr()
 
 	httpClient = &http.Client{
@@ -56,8 +56,8 @@ func TestUserBasicFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// Создаем запрос с JWT токеном
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
@@ -74,7 +74,7 @@ func TestUserBasicFlow(t *testing.T) {
 	t.Run("Get User", func(t *testing.T) {
 		// Получаем созданного пользователя
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -116,7 +116,7 @@ func TestUserBasicFlow(t *testing.T) {
 	t.Run("Get Deleted User Shows Deleted Flag", func(t *testing.T) {
 		// Получаем удаленного пользователя
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -150,8 +150,8 @@ func TestUserValidation(t *testing.T) {
 		body, err := json.Marshal(createReq)
 		require.NoError(t, err)
 
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
@@ -173,8 +173,8 @@ func TestUserValidation(t *testing.T) {
 		body, err := json.Marshal(createReq)
 		require.NoError(t, err)
 
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
@@ -188,8 +188,8 @@ func TestUserValidation(t *testing.T) {
 	})
 
 	t.Run("Get User With Invalid UUID", func(t *testing.T) {
-		url := fmt.Sprintf("%s/api/v1/users/invalid-uuid", testServerAddr)
-		req, err := http.NewRequest("GET", url, nil)
+		url := testServerAddr + "/api/v1/users/invalid-uuid"
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
@@ -203,7 +203,7 @@ func TestUserValidation(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
-	url := fmt.Sprintf("%s/health", testServerAddr)
+	url := testServerAddr + "/health"
 	resp, err := httpClient.Get(url)
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -233,8 +233,8 @@ func TestRBAC(t *testing.T) {
 		}
 
 		body, _ := json.Marshal(createReq)
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+adminToken)
@@ -255,8 +255,8 @@ func TestRBAC(t *testing.T) {
 		}
 
 		body, _ := json.Marshal(createReq)
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+userToken)
@@ -275,7 +275,7 @@ func TestRBAC(t *testing.T) {
 
 	t.Run("User Cannot Get Other Users", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
@@ -288,7 +288,7 @@ func TestRBAC(t *testing.T) {
 
 	t.Run("User Cannot Delete Users", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
-		req, err := http.NewRequest("DELETE", url, nil)
+		req, err := http.NewRequest(http.MethodDelete, url, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
@@ -310,7 +310,7 @@ func TestRBAC(t *testing.T) {
 
 	t.Run("Invalid Token Returns 401", func(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer invalid.jwt.token")
 

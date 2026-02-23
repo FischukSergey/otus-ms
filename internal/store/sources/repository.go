@@ -1,3 +1,4 @@
+// Package sources реализует репозиторий для работы с источниками новостей в PostgreSQL.
 package sources
 
 import (

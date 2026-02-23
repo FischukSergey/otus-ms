@@ -1,3 +1,4 @@
+// Package mainservice содержит клиенты для взаимодействия с Main Service.
 package mainservice
 
 import (
@@ -77,7 +78,7 @@ func (c *Client) CreateUser(ctx context.Context, req CreateUserRequest) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Проверяем статус код
 	if resp.StatusCode != http.StatusCreated {

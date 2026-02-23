@@ -1,3 +1,4 @@
+// Package auth реализует HTTP-хендлеры для аутентификации пользователей.
 package auth
 
 import (

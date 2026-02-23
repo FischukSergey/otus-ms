@@ -1,3 +1,4 @@
+// Package user реализует HTTP-хендлеры для управления пользователями.
 package user
 
 import (

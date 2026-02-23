@@ -1,3 +1,4 @@
+// Package sources реализует gRPC хендлер для сервиса источников новостей.
 package sources
 
 import (
@@ -63,7 +64,7 @@ func modelToProto(s models.Source) *pb.NewsSource {
 		Url:           s.URL,
 		Language:      s.Language,
 		Category:      s.Category,
-		FetchInterval: int32(s.FetchInterval),
+		FetchInterval: int32(s.FetchInterval), //nolint:gosec // fetch interval is always a small positive value
 		IsActive:      s.IsActive,
 	}
 }

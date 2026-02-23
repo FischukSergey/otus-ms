@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
 	"github.com/FischukSergey/otus-ms/internal/handlers/sources"
@@ -13,7 +14,6 @@ import (
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
 	sourcerepo "github.com/FischukSergey/otus-ms/internal/store/sources"
 	pb "github.com/FischukSergey/otus-ms/pkg/news_sources/v1"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // GRPCServer оборачивает gRPC сервер и управляет его жизненным циклом.

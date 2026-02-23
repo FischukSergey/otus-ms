@@ -1,3 +1,4 @@
+// Package main является точкой входа сервиса сбора новостей.
 package main
 
 import (
@@ -9,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	mainserviceclient "github.com/FischukSergey/otus-ms/internal/clients/mainservice"
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/logger"
-	mainserviceclient "github.com/FischukSergey/otus-ms/internal/clients/mainservice"
 )
 
 var configPath = flag.String("config", "configs/config.news-collector.local.yaml", "Path to config file")

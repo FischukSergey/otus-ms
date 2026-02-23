@@ -7,11 +7,12 @@
 package news_sourcesv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -225,12 +226,15 @@ func file_news_sources_v1_news_sources_proto_rawDescGZIP() []byte {
 	return file_news_sources_v1_news_sources_proto_rawDescData
 }
 
-var file_news_sources_v1_news_sources_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_news_sources_v1_news_sources_proto_goTypes = []any{
-	(*GetNewsSourcesRequest)(nil),  // 0: news_sources.v1.GetNewsSourcesRequest
-	(*NewsSource)(nil),             // 1: news_sources.v1.NewsSource
-	(*GetNewsSourcesResponse)(nil), // 2: news_sources.v1.GetNewsSourcesResponse
-}
+var (
+	file_news_sources_v1_news_sources_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+	file_news_sources_v1_news_sources_proto_goTypes  = []any{
+		(*GetNewsSourcesRequest)(nil),  // 0: news_sources.v1.GetNewsSourcesRequest
+		(*NewsSource)(nil),             // 1: news_sources.v1.NewsSource
+		(*GetNewsSourcesResponse)(nil), // 2: news_sources.v1.GetNewsSourcesResponse
+	}
+)
+
 var file_news_sources_v1_news_sources_proto_depIdxs = []int32{
 	1, // 0: news_sources.v1.GetNewsSourcesResponse.sources:type_name -> news_sources.v1.NewsSource
 	0, // 1: news_sources.v1.NewsSourcesService.GetNewsSources:input_type -> news_sources.v1.GetNewsSourcesRequest

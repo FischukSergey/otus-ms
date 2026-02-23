@@ -388,7 +388,7 @@ func ExampleValidateJWT() {
 		600,
 		createTestLogger(),
 	)
-	defer jwksManager.Close()
+	defer func() { _ = jwksManager.Close() }()
 
 	// Создаём конфигурацию JWT
 	config := middleware.JWTConfig{

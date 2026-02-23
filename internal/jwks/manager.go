@@ -1,3 +1,4 @@
+// Package jwks реализует менеджер для получения и кеширования JWKS от Keycloak.
 package jwks
 
 import (

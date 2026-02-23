@@ -1,3 +1,4 @@
+// Package keycloak реализует клиент для взаимодействия с Keycloak через gocloak.
 package keycloak
 
 import (
