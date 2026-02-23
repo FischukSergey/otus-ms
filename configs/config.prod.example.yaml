@@ -16,6 +16,8 @@ servers:
       - "https://yourdomain.com"
   metrics:
     addr: 0.0.0.0:39090
+  grpc:
+    addr: 0.0.0.0:50051  # gRPC для news-collector (только внутри Docker-сети)
 
 db:
   name: otus_ms_prod # database name

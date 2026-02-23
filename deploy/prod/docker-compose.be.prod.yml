@@ -3,6 +3,7 @@ services:
     container_name: otus-microservice-be-prod
     image: cr.selcloud.ru/otus-microservice-be/backend:latest
     restart: always
+    # gRPC 50051 не пробрасывается на хост — news-collector обращается к контейнеру напрямую по имени в otus_network
     ports:
       - "0.0.0.0:38080:38080"  # API port
       - "0.0.0.0:33000:33000"  # Debug port

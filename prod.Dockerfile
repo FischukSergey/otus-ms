@@ -27,7 +27,7 @@ COPY --from=builder /app/main-service .
 RUN mkdir -p logs data/files
 
 # Expose портов
-EXPOSE 38080 33000
+EXPOSE 38080 33000 50051
 
 # Запускаем с указанием на production конфиг
 CMD ["./main-service", "-config", "/app/configs/config.prod.yaml"]

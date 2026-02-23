@@ -25,6 +25,11 @@ env:
   AUTH_PROXY_VPS_PATH: /root/otus-microservice/prod/auth-proxy
   AUTH_PROXY_COMPOSE_FILE: docker-compose.auth-proxy.prod.yml
 
+  # News-Collector
+  NC_IMAGE_NAME: news-collector
+  NC_VPS_PATH: /root/otus-microservice/prod/news-collector
+  NC_COMPOSE_FILE: docker-compose.news-collector.prod.yml
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -356,6 +361,97 @@ jobs:
 
             echo "✅ Auth-Proxy деплой завершен!"
             docker ps | grep auth-proxy
+
+            echo "🧹 Очистка..."
+            docker image prune -f || true
+
+  build-and-deploy-news-collector:
+    runs-on: ubuntu-latest
+    # Запускаем строго после main-service: news-collector обращается к нему при старте
+    needs: [lint, test-unit, test-integration, build-and-deploy]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Selectel Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}
+          password: ${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}
+
+      - name: Build and push News Collector
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./news-collector.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.NC_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/${{ env.NC_COMPOSE_FILE }}"
+          target: ${{ env.NC_VPS_PATH }}
+          strip_components: 2
+
+      - name: Deploy News Collector to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            mkdir -p ${{ env.NC_VPS_PATH }}/{configs,logs}
+            cd ${{ env.NC_VPS_PATH }}
+
+            if [ ! -f ${{ env.NC_COMPOSE_FILE }} ]; then
+              echo "❌ ${{ env.NC_COMPOSE_FILE }} не найден!"
+              exit 1
+            fi
+
+            if [ ! -f configs/config.news-collector.prod.yaml ]; then
+              echo "⚠️  configs/config.news-collector.prod.yaml не найден!"
+              echo "ℹ️  Создайте конфиг вручную в ${{ env.NC_VPS_PATH }}/configs/"
+              echo "ℹ️  Используйте configs/config.news-collector.prod.example.yaml как шаблон"
+              exit 1
+            fi
+
+            echo "📦 Логин в Selectel Registry..."
+            echo "${{ secrets.SELECTEL_REGISTRY_OTUS_TOKEN_PROD }}" | \
+              docker login ${{ env.REGISTRY }} -u "${{ secrets.SELECTEL_REGISTRY_OTUS_USERNAME_PROD }}" --password-stdin
+
+            echo "🔄 Остановка старых контейнеров..."
+            docker compose -f ${{ env.NC_COMPOSE_FILE }} down || true
+
+            echo "🗑️  Удаление старого образа..."
+            docker image rm ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.NC_IMAGE_NAME }}:${{ env.IMAGE_TAG }} || true
+
+            echo "⬇️  Скачивание нового образа..."
+            docker compose -f ${{ env.NC_COMPOSE_FILE }} pull
+
+            echo "⏳ Ожидание готовности main-service (gRPC)..."
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:38080/health > /dev/null; then
+                echo "✅ main-service доступен"
+                break
+              fi
+              echo "  попытка $i/12, ждём 5 сек..."
+              sleep 5
+            done
+
+            echo "🚀 Запуск News Collector..."
+            docker compose -f ${{ env.NC_COMPOSE_FILE }} up -d
+
+            echo "✅ News Collector деплой завершен!"
+            docker ps | grep news-collector
 
             echo "🧹 Очистка..."
             docker image prune -f || true
