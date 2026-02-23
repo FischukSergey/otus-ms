@@ -9,7 +9,7 @@ issues:
   max-same-issues: 0
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - asasalint
     - asciicheck
@@ -182,7 +182,6 @@ linters:
           json: camel
           yaml: snake
           toml: snake
-      use-field-name: true
 
 formatters:
   enable:
@@ -197,4 +196,3 @@ formatters:
         - Standard
         - Default
         - Prefix(github.com/FischukSergey/otus-ms)
-      newline-after-sections: true
