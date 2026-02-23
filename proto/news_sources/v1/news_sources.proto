@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package news_sources.v1;
+
+option go_package = "github.com/FischukSergey/otus-ms/pkg/news_sources/v1;news_sourcesv1";
+
+// NewsSourcesService предоставляет доступ к источникам новостей.
+service NewsSourcesService {
+  // GetNewsSources возвращает список всех активных источников новостей.
+  rpc GetNewsSources(GetNewsSourcesRequest) returns (GetNewsSourcesResponse);
+}
+
+message GetNewsSourcesRequest {}
+
+message NewsSource {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  string language = 4;
+  string category = 5;
+  int32  fetch_interval = 6;
+  bool   is_active = 7;
+}
+
+message GetNewsSourcesResponse {
+  repeated NewsSource sources = 1;
+}
