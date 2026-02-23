@@ -32,6 +32,18 @@ type ServersConfig struct {
 	Debug   DebugServerConfig   `yaml:"debug"`
 	Client  ClientServerConfig  `yaml:"client"`
 	Metrics MetricsServerConfig `yaml:"metrics"`
+	GRPC    GRPCServerConfig    `yaml:"grpc"`
+}
+
+// GRPCServerConfig представляет настройки gRPC сервера.
+type GRPCServerConfig struct {
+	// Адрес gRPC сервера — опциональный, включается только для сервисов с gRPC.
+	Addr string `yaml:"addr" validate:"omitempty,hostname_port"`
+}
+
+// IsConfigured проверяет, что gRPC сервер настроен.
+func (g GRPCServerConfig) IsConfigured() bool {
+	return g.Addr != ""
 }
 
 // DebugServerConfig представляет настройки отладочного сервера.
@@ -123,7 +135,8 @@ func (j JWTConfig) GetCacheDuration() int {
 // MainServiceConfig представляет настройки Main Service API.
 // Используется в Auth-Proxy для создания пользователей при регистрации.
 type MainServiceConfig struct {
-	URL string `yaml:"url" env:"MAIN_SERVICE_URL" env-default:"http://localhost:38080"`
+	URL     string `yaml:"url"      env:"MAIN_SERVICE_URL"      env-default:"http://localhost:38080"`
+	GRPCAddr string `yaml:"grpc_addr" env:"MAIN_SERVICE_GRPC_ADDR" env-default:"localhost:50051"`
 }
 
 // IsConfigured проверяет, что конфигурация Main Service заполнена.

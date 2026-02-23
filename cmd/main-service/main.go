@@ -165,6 +165,19 @@ func run() error {
 		Logger: appLogger,
 	})
 
+	// Создаем gRPC сервер (если настроен адрес)
+	var grpcServer *GRPCServer
+	if cfg.Servers.GRPC.IsConfigured() {
+		grpcServer = NewGRPCServer(&GRPCServerDeps{
+			Addr:        cfg.Servers.GRPC.Addr,
+			DB:          storage.DB(),
+			JWKSManager: jwksManager,
+			JWTIssuer:   cfg.JWT.Issuer,
+			SkipVerify:  cfg.JWT.SkipVerify,
+			Logger:      appLogger,
+		})
+	}
+
 	// Запускаем API сервер в отдельной горутине
 	go func() {
 		appLogger.Info("Starting API server", "addr", cfg.Servers.Client.Addr)
@@ -188,6 +201,15 @@ func run() error {
 			appLogger.Error("Metrics server error", "error", err)
 		}
 	}()
+
+	// Запускаем gRPC сервер в отдельной горутине (если настроен)
+	if grpcServer != nil {
+		go func() {
+			if err := grpcServer.Start(); err != nil {
+				appLogger.Error("gRPC server error", "error", err)
+			}
+		}()
+	}
 
 	// Ждем сигнал завершения
 	<-ctx.Done()
@@ -213,6 +235,11 @@ func run() error {
 	if err := metricsServer.Stop(shutdownCtx); err != nil {
 		appLogger.Error("Error during Metrics server shutdown", "error", err)
 		return err
+	}
+
+	// Останавливаем gRPC сервер
+	if grpcServer != nil {
+		grpcServer.Stop(shutdownCtx)
 	}
 
 	appLogger.Info("Server stopped successfully")
