@@ -7,6 +7,7 @@
 
 /main-service
 /auth-proxy
+/news-collector
 
 /vendor
 /.cursor
@@ -17,6 +18,8 @@ configs/alertmanager.yml
 configs/config.auth-proxy.local.yaml
 configs/config.auth-proxy.prod.yaml
 configs/config.auth-proxy.test.yaml
+configs/config.news-collector.local.yaml
+configs/config.news-collector.prod.yaml
 
 /load_testing/logs
 
