@@ -18,7 +18,7 @@
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description JWT токен в формате: Bearer {token}. Токен должен содержать роли в claim realm_access.roles
+// @description Введите значение в формате: **Bearer &lt;токен&gt;** (с префиксом Bearer и пробелом). Токен получается через POST /api/v1/auth/login. Должен содержать роли в claim realm_access.roles
 package main
 
 import (
