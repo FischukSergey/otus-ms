@@ -19,6 +19,7 @@ import (
 type Service interface {
 	CreateUser(ctx context.Context, req userService.CreateRequest) error
 	GetUser(ctx context.Context, uuid string) (*userService.Response, error)
+	GetAllUsers(ctx context.Context) ([]*userService.Response, error)
 	DeleteUser(ctx context.Context, uuid string) error
 }
 
@@ -141,6 +142,35 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(user); err != nil {
+		logger.Error("Failed to encode response", "error", err)
+	}
+}
+
+// List возвращает список всех пользователей системы.
+//
+// @Summary      Получить список всех пользователей (только admin)
+// @Description  Возвращает всех пользователей из таблицы users, включая мягко удалённых. Требуется роль admin.
+// @Tags         users
+// @Produce      json
+// @Success      200  {array}   userService.Response  "Список пользователей"
+// @Failure      401  {object}  ErrorResponse         "Не авторизован - отсутствует или невалидный JWT токен"
+// @Failure      403  {object}  ErrorResponse         "Доступ запрещён - требуется роль admin"
+// @Failure      500  {object}  ErrorResponse         "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users [get].
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.LoggerFromContext(r.Context())
+
+	users, err := h.service.GetAllUsers(r.Context())
+	if err != nil {
+		logger.Error("Failed to get all users", "error", err)
+		h.writeError(w, r, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(users); err != nil {
 		logger.Error("Failed to encode response", "error", err)
 	}
 }

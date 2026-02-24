@@ -24,7 +24,247 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Аутентифицирует пользователя и возвращает access и refresh токены.\nТокены получаются от Keycloak.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Вход в систему",
+                "parameters": [
+                    {
+                        "description": "Учетные данные пользователя",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Токены успешно получены",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидный запрос или отсутствуют обязательные поля",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверные учетные данные",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера или ошибка Keycloak",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "description": "Инвалидирует refresh токен в Keycloak, завершая сессию пользователя.\nПосле logout токены становятся недействительными.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Выход из системы",
+                "parameters": [
+                    {
+                        "description": "Refresh токен для инвалидации",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.LogoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Выход выполнен успешно"
+                    },
+                    "400": {
+                        "description": "Невалидный запрос или отсутствует refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка при выполнении logout в Keycloak",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "Обменивает refresh токен на новую пару access и refresh токенов.\nПозволяет продлить сессию пользователя без повторного ввода пароля.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Обновление токена",
+                "parameters": [
+                    {
+                        "description": "Refresh токен",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Новые токены успешно получены",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидный запрос или отсутствует refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Невалидный или истекший refresh токен",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера или ошибка Keycloak",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "description": "Создаёт пользователя в Keycloak и Main Service с ролью user.\nПосле регистрации необходимо выполнить login для получения токенов.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Регистрация нового пользователя",
+                "parameters": [
+                    {
+                        "description": "Данные для регистрации",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Пользователь успешно зарегистрирован"
+                    },
+                    "400": {
+                        "description": "Невалидные данные или ошибка валидации",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Пользователь с таким email уже существует",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/keycloak.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает всех пользователей из таблицы users, включая мягко удалённых. Требуется роль admin.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Получить список всех пользователей (только admin)",
+                "responses": {
+                    "200": {
+                        "description": "Список пользователей",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/user.Response"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован - отсутствует или невалидный JWT токен",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Доступ запрещён - требуется роль admin",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -60,25 +300,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный запрос или ошибка валидации",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован - отсутствует или невалидный JWT токен",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён - требуется роль admin или service-account",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
@@ -118,31 +358,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный UUID",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован - отсутствует или невалидный JWT токен",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён - недостаточно прав (требуется роль admin)",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Пользователь не найден",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
@@ -177,34 +417,39 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный UUID",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован - отсутствует или невалидный JWT токен",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён - недостаточно прав (требуется роль admin)",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Пользователь не найден",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_user.ErrorResponse"
                         }
                     }
                 }
+            }
+        },
+        "/news_sources.v1.NewsSourcesService/GetNewsSources": {
+            "post": {
+                "responses": {}
             }
         }
     },
@@ -221,6 +466,109 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "error_description": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.LogoutRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.RefreshRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "keycloak.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "firstName",
+                "lastName",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "firstName": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "lastName": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "middleName": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 8
+                }
+            }
+        },
+        "keycloak.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "refresh_expires_in": {
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "token_type": {
                     "type": "string"
                 }
             }
@@ -295,7 +643,7 @@ const docTemplate = `{
     }
 }`
 
-// SwaggerInfo holds exported Swagger Info so clients can modify it.
+// SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0.0",
 	Host:             "fishouk-otus-ms.ru",

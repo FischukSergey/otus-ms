@@ -92,6 +92,49 @@ func (r *Repository) GetByUUID(ctx context.Context, uuid string) (*models.User, 
 	return &user, nil
 }
 
+// GetAll возвращает всех пользователей из БД (включая мягко удалённых).
+func (r *Repository) GetAll(ctx context.Context) ([]*models.User, error) {
+	query := `
+		SELECT uuid, email, first_name, last_name, middle_name, role,
+		       created_at, last_login, updated_at, deleted, deleted_at
+		FROM users
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		var user models.User
+		if err := rows.Scan(
+			&user.UUID,
+			&user.Email,
+			&user.FirstName,
+			&user.LastName,
+			&user.MiddleName,
+			&user.Role,
+			&user.CreatedAt,
+			&user.LastLogin,
+			&user.UpdatedAt,
+			&user.Deleted,
+			&user.DeletedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
+		}
+		users = append(users, &user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate user rows: %w", err)
+	}
+
+	return users, nil
+}
+
 // SoftDelete помечает пользователя как удаленного (мягкое удаление).
 func (r *Repository) SoftDelete(ctx context.Context, uuid string) error {
 	query := `

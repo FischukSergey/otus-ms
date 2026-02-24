@@ -2,6 +2,7 @@ package user_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/go-playground/validator/v10"
@@ -283,8 +284,61 @@ func TestDeleteUserUUIDValidation(t *testing.T) {
 	}
 }
 
+func TestGetAllUsers(t *testing.T) {
+	tests := []struct {
+		name      string
+		repoUsers []*models.User
+		repoErr   error
+		wantLen   int
+		wantErr   bool
+	}{
+		{
+			name: "returns all users",
+			repoUsers: []*models.User{
+				{UUID: "123e4567-e89b-12d3-a456-426614174000", Email: "a@example.com", Role: "admin"},
+				{UUID: "223e4567-e89b-12d3-a456-426614174001", Email: "b@example.com", Role: "user1C"},
+			},
+			wantLen: 2,
+			wantErr: false,
+		},
+		{
+			name:      "empty table returns empty slice",
+			repoUsers: []*models.User{},
+			wantLen:   0,
+			wantErr:   false,
+		},
+		{
+			name:    "repository error is propagated",
+			repoErr: errors.New("db error"),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &mockRepository{
+				getAllUsers: tt.repoUsers,
+				getAllErr:   tt.repoErr,
+			}
+			service := user.NewService(mockRepo)
+
+			result, err := service.GetAllUsers(context.Background())
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Len(t, result, tt.wantLen)
+		})
+	}
+}
+
 // mockRepository - минимальная mock-реализация для тестов.
-type mockRepository struct{}
+type mockRepository struct {
+	getAllUsers []*models.User
+	getAllErr   error
+}
 
 func (m *mockRepository) Create(_ context.Context, _ *models.User) error {
 	return nil
@@ -292,6 +346,10 @@ func (m *mockRepository) Create(_ context.Context, _ *models.User) error {
 
 func (m *mockRepository) GetByUUID(_ context.Context, _ string) (*models.User, error) {
 	return &models.User{}, nil
+}
+
+func (m *mockRepository) GetAll(_ context.Context) ([]*models.User, error) {
+	return m.getAllUsers, m.getAllErr
 }
 
 func (m *mockRepository) SoftDelete(_ context.Context, _ string) error {
