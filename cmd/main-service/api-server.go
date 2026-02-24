@@ -109,13 +109,13 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 						r.Post("/", userHandler.Create) // Создать пользователя
 					})
 
-				// Только для администраторов
-				r.Group(func(r chi.Router) {
-					r.Use(custommiddleware.RequireAdmin(deps.Logger))
-					r.Get("/", userHandler.List)             // Получить список всех пользователей
-					r.Get("/{uuid}", userHandler.Get)        // Получить любого пользователя
-					r.Delete("/{uuid}", userHandler.Delete)  // Удалить пользователя
-				})
+					// Только для администраторов
+					r.Group(func(r chi.Router) {
+						r.Use(custommiddleware.RequireAdmin(deps.Logger))
+						r.Get("/", userHandler.List)            // Получить список всех пользователей
+						r.Get("/{uuid}", userHandler.Get)       // Получить любого пользователя
+						r.Delete("/{uuid}", userHandler.Delete) // Удалить пользователя
+					})
 
 					// Для пользователей с ролью user или admin (если понадобятся)
 					// r.Group(func(r chi.Router) {
