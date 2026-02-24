@@ -650,7 +650,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "OtusMS Main Service API",
-	Description:      "Введите значение в формате: **Bearer &lt;токен&gt;** (с префиксом Bearer и пробелом). Токен получается через POST /api/v1/auth/login. Должен содержать роли в claim realm_access.roles",
+	Description:      "Введите: Bearer {токен} — с префиксом и пробелом.\nТокен: POST /api/v1/auth/login. Роли в claim realm_access.roles",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 }

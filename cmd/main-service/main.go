@@ -1,7 +1,7 @@
 // @title           OtusMS Main Service API
 // @version         1.0.0
 // @description     API для управления пользователями с RBAC (Role-Based Access Control).
-// @description     Все endpoints защищены JWT аутентификацией и требуют определенных ролей.
+// @description     Все endpoints защищены JWT аутентификацией и требуют ролей.
 // @description     Токены получаются через Auth-Proxy: POST /api/v1/auth/login
 // @description     Доступные роли: admin (полный доступ), user (базовые права)
 // @termsOfService  http://swagger.io/terms/
@@ -18,7 +18,8 @@
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Введите значение в формате: **Bearer &lt;токен&gt;** (с префиксом Bearer и пробелом). Токен получается через POST /api/v1/auth/login. Должен содержать роли в claim realm_access.roles
+// @description Введите: Bearer {токен} — с префиксом и пробелом.
+// @description Токен: POST /api/v1/auth/login. Роли в claim realm_access.roles
 package main
 
 import (
