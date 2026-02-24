@@ -59,17 +59,25 @@ func ValidateJWT(
 				return
 			}
 
-			// Проверяем формат "Bearer <token>"
-			parts := strings.Split(authHeader, " ")
-			if len(parts) != 2 || parts[0] != "Bearer" {
+			// Принимаем "Bearer <token>" или просто "<token>" (удобно для Swagger UI и др. клиентов)
+			parts := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
+			var tokenString string
+			switch {
+			case len(parts) == 2 && strings.EqualFold(parts[0], "Bearer"):
+				tokenString = strings.TrimSpace(parts[1])
+			case len(parts) == 1:
+				tokenString = parts[0]
+			default:
 				logger.Warn("invalid authorization header format",
 					"header", authHeader,
 				)
 				writeJSONError(w, "Invalid authorization header format")
 				return
 			}
-
-			tokenString := parts[1]
+			if tokenString == "" {
+				writeJSONError(w, "Invalid authorization header format")
+				return
+			}
 
 			// Парсим и валидируем токен
 			claims := &JWTClaims{}

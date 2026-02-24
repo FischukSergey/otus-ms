@@ -81,6 +81,43 @@ func TestValidateJWT_ValidToken(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 
+func TestValidateJWT_ValidToken_WithoutBearerPrefix(t *testing.T) {
+	// Проверяем, что токен без префикса "Bearer " тоже принимается (удобно для Swagger UI и др.)
+	claims := &middleware.JWTClaims{
+		Sub:        "test-user-uuid",
+		Email:      "test@example.com",
+		GivenName:  "Test",
+		FamilyName: "User",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "http://localhost:8080/realms/test",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token, err := createTestJWT(claims)
+	require.NoError(t, err)
+
+	config := middleware.JWTConfig{
+		SkipVerify: true,
+		Issuer:     "http://localhost:8080/realms/test",
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	mw := middleware.ValidateJWT(config, nil, createTestLogger())
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("Authorization", token) // без "Bearer "
+
+	rr := httptest.NewRecorder()
+	mw(handler).ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
 func TestValidateJWT_MissingAuthorizationHeader(t *testing.T) {
 	// Arrange
 	config := middleware.JWTConfig{
