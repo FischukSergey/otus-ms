@@ -67,6 +67,16 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	// Swagger UI
 	router.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
+		httpSwagger.UIConfig(map[string]string{
+			// Автоматически добавляет префикс "Bearer " если его нет
+			"requestInterceptor": `(req) => {
+				const auth = req.headers['Authorization'];
+				if (auth && !auth.startsWith('Bearer ')) {
+					req.headers['Authorization'] = 'Bearer ' + auth;
+				}
+				return req;
+			}`,
+		}),
 	))
 
 	// API роуты
