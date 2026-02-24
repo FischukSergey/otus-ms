@@ -2,15 +2,15 @@
 Streamlit-клиент OtusMS: авторизация, дашборд сервисов, пользователи.
 Запуск: streamlit run app.py
 """
+import base64
+import json
 import time
 
 import streamlit as st
 
 from api import (
     auth_proxy_url,
-    create_user,
-    get_user,
-    delete_user,
+    get_all_users,
     get_logs,
     health_check,
     login,
@@ -18,6 +18,7 @@ from api import (
     loki_url,
     logout,
     main_service_url,
+    news_collector_url,
     refresh_token,
 )
 
@@ -40,6 +41,31 @@ PAGE_USERS = "Пользователи"
 PAGE_LOGS = "Логи"
 
 
+def _decode_jwt_payload(token: str) -> dict:
+    """Декодирует payload JWT без проверки подписи (для чтения claims)."""
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return {}
+        padding = 4 - len(parts[1]) % 4
+        payload_b64 = parts[1] + "=" * (padding % 4)
+        return json.loads(base64.b64decode(payload_b64).decode("utf-8"))
+    except Exception:
+        return {}
+
+
+def get_user_roles() -> list[str]:
+    """Возвращает список ролей текущего пользователя из JWT."""
+    token = st.session_state.get(ACCESS_TOKEN) or ""
+    payload = _decode_jwt_payload(token)
+    return payload.get("realm_access", {}).get("roles", [])
+
+
+def is_admin() -> bool:
+    """Проверяет, имеет ли текущий пользователь роль admin."""
+    return "admin" in get_user_roles()
+
+
 def ensure_session():
     if ACCESS_TOKEN not in st.session_state:
         st.session_state[ACCESS_TOKEN] = None
@@ -52,11 +78,17 @@ def ensure_session():
 
 
 def is_logged_in() -> bool:
-    return bool(st.session_state.get(ACCESS_TOKEN) and st.session_state.get(REFRESH_TOKEN))
+    return bool(
+        st.session_state.get(ACCESS_TOKEN)
+        and st.session_state.get(REFRESH_TOKEN)
+    )
 
 
 def maybe_refresh_token() -> bool:
-    """Обновляет access token при необходимости. Возвращает True если токен валиден."""
+    """Обновляет access token при необходимости.
+
+    Возвращает True если токен валиден.
+    """
     if not st.session_state.get(REFRESH_TOKEN):
         return False
     expires_at = st.session_state.get(EXPIRES_AT) or 0
@@ -100,7 +132,9 @@ def render_sidebar():
     pages = [PAGE_DASHBOARD, PAGE_USERS, PAGE_LOGS]
     current = st.session_state.get(PAGE, PAGE_DASHBOARD)
     idx = pages.index(current) if current in pages else 0
-    page = st.sidebar.radio("Раздел", pages, index=idx, label_visibility="collapsed")
+    page = st.sidebar.radio(
+        "Раздел", pages, index=idx, label_visibility="collapsed"
+    )
     st.session_state[PAGE] = page
     st.sidebar.divider()
     if st.sidebar.button("Выход", type="primary"):
@@ -115,7 +149,7 @@ def render_sidebar():
 
 def render_dashboard():
     st.header("Состояние сервисов")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.subheader("Auth-Proxy")
         info = health_check(auth_proxy_url(), "Auth-Proxy")
@@ -133,6 +167,14 @@ def render_dashboard():
         else:
             st.error(info.get("error", "Недоступен"))
     with col3:
+        st.subheader("News-collector")
+        info = health_check(news_collector_url(), "News-collector")
+        if info["ok"]:
+            st.success(f"Статус: {info['status']}")
+            st.caption(f"Время: {info['time']}")
+        else:
+            st.error(info.get("error", "Недоступен"))
+    with col4:
         st.subheader("Loki")
         if loki_health():
             st.success("Статус: ok")
@@ -141,8 +183,16 @@ def render_dashboard():
     st.caption(
         f"Auth-Proxy: {auth_proxy_url()} | "
         f"Main: {main_service_url()} | "
+        f"News-collector: {news_collector_url()} | "
         f"Loki: {loki_url()}"
     )
+
+
+_ROLE_LABELS = {
+    "admin": "🔑 admin",
+    "user1C": "👤 user1C",
+    "user":   "👤 user",
+}
 
 
 def render_users():
@@ -152,56 +202,33 @@ def render_users():
         st.warning("Нет токена")
         return
 
-    tab_create, tab_get, tab_delete = st.tabs(["Создать", "Получить по UUID", "Удалить"])
+    if not is_admin():
+        st.warning("Доступ только для пользователей с ролью **admin**.")
+        return
 
-    with tab_create:
-        with st.form("create_user"):
-            uuid = st.text_input("UUID")
-            email = st.text_input("Email")
-            first_name = st.text_input("Имя", key="fn")
-            last_name = st.text_input("Фамилия", key="ln")
-            middle_name = st.text_input("Отчество (необязательно)", key="mn")
-            if st.form_submit_button("Создать"):
-                if not uuid or not email:
-                    st.error("UUID и Email обязательны")
-                else:
-                    payload = {
-                        "uuid": uuid.strip(),
-                        "email": email.strip(),
-                        "firstName": first_name.strip() or "",
-                        "lastName": last_name.strip() or "",
-                    }
-                    if middle_name.strip():
-                        payload["middleName"] = middle_name.strip()
-                    ok, msg = create_user(token, payload)
-                    if ok:
-                        st.success(msg)
-                    else:
-                        st.error(msg)
-
-    with tab_get:
-        uuid_get = st.text_input("UUID пользователя", key="get_uuid")
-        if st.button("Загрузить", key="btn_get"):
-            if not uuid_get or not uuid_get.strip():
-                st.warning("Введите UUID")
-            else:
-                data, err = get_user(token, uuid_get.strip())
-                if err:
-                    st.error(err)
-                else:
-                    st.json(data)
-
-    with tab_delete:
-        uuid_del = st.text_input("UUID для удаления (мягкое)", key="del_uuid")
-        if st.button("Удалить", key="btn_del", type="secondary"):
-            if not uuid_del or not uuid_del.strip():
-                st.warning("Введите UUID")
-            else:
-                ok, msg = delete_user(token, uuid_del.strip())
-                if ok:
-                    st.success(msg)
-                else:
-                    st.error(msg)
+    st.caption("Все пользователи системы (включая мягко удалённых).")
+    if st.button("Загрузить пользователей", key="btn_load_users"):
+        users, err = get_all_users(token)
+        if err:
+            st.error(err)
+        elif not users:
+            st.info("Пользователей не найдено.")
+        else:
+            st.success(f"Найдено: {len(users)}")
+            rows = []
+            for u in users:
+                rows.append({
+                    "UUID":       u.get("uuid", ""),
+                    "Email":      u.get("email", ""),
+                    "Имя":        u.get("firstName", ""),
+                    "Фамилия":    u.get("lastName", ""),
+                    "Роль":    _ROLE_LABELS.get(
+                        u.get("role", ""), u.get("role", "")
+                    ),
+                    "Удалён":  "🗑 да" if u.get("deleted") else "нет",
+                    "Создан":  u.get("createdAt", "")[:19].replace("T", " "),
+                })
+            st.dataframe(rows, width="stretch")
 
 
 _LEVEL_COLORS = {
@@ -213,9 +240,10 @@ _LEVEL_COLORS = {
 }
 
 _SERVICES = [
-    ("Все сервисы", None),
-    ("main-service", "otus-microservice-be-prod"),
-    ("auth-proxy",   "otus-microservice-auth-proxy-prod"),
+    ("Все сервисы",    None),
+    ("main-service",   "otus-microservice-be-prod"),
+    ("auth-proxy",     "otus-microservice-auth-proxy-prod"),
+    ("news-collector", "otus-news-collector-prod"),
 ]
 
 _LEVELS = ["Все уровни", "ERROR", "WARN", "INFO", "DEBUG"]
@@ -243,7 +271,8 @@ def render_logs():
         level = None if level_label == "Все уровни" else level_label
     with col3:
         hours = st.selectbox(
-            "Период", [1, 3, 6, 12, 24], format_func=lambda h: f"Последние {h}ч",
+            "Период", [1, 3, 6, 12, 24],
+            format_func=lambda h: f"Последние {h}ч",
             key="log_hours",
         )
     with col4:

@@ -26,6 +26,10 @@ def loki_url() -> str:
     return _base_url("LOKI_URL", "http://localhost:3100")
 
 
+def news_collector_url() -> str:
+    return _base_url("NEWS_COLLECTOR_URL", "http://localhost:38082")
+
+
 @dataclass
 class TokenResponse:
     access_token: str
@@ -295,6 +299,23 @@ def loki_health() -> bool:
         return r.status_code == 200
     except requests.RequestException:
         return False
+
+
+def get_all_users(access_token: str) -> tuple[list[dict] | None, str | None]:
+    """GET /api/v1/users. Возвращает (список пользователей, ошибка или None)."""
+    url = f"{main_service_url()}/api/v1/users"
+    try:
+        r = requests.get(url, headers=_headers(access_token), timeout=10)
+    except requests.RequestException as e:
+        return None, f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        return r.json(), None
+    try:
+        body = r.json()
+        err = body.get("error", body.get("message", r.text))
+    except Exception:
+        err = r.text or str(r.status_code)
+    return None, f"{r.status_code}: {err}"
 
 
 def delete_user(access_token: str, uuid: str) -> tuple[bool, str]:
