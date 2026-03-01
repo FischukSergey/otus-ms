@@ -40,11 +40,18 @@ task tests
 ### Интеграционные тесты - что проверяется?
 
 #### Main Service (`user_test.go`)
-- ✅ Создание пользователя (POST /api/v1/users)
-- ✅ Получение пользователя (GET /api/v1/users/{uuid})
-- ✅ Мягкое удаление (DELETE /api/v1/users/{uuid})
+- ✅ Создание пользователя (POST /api/v1/users) с JWT токеном
+- ✅ Получение пользователя (GET /api/v1/users/{uuid}) с JWT токеном
+- ✅ Мягкое удаление (DELETE /api/v1/users/{uuid}) с JWT токеном
 - ✅ Валидация запросов
 - ✅ Health check
+- ✅ **RBAC проверки (6 тестов):**
+  - Админ может создавать пользователей (200)
+  - User не может создавать (403 Forbidden)
+  - User не может читать других (403 Forbidden)
+  - User не может удалять (403 Forbidden)
+  - Без токена 401 Unauthorized
+  - Невалидный токен 401 Unauthorized
 
 #### Auth-Proxy (`auth_test.go`)
 - ✅ Login - получение токенов
@@ -61,12 +68,17 @@ task tests
    - Main Service API (порт 8081)
    - Auth-Proxy (порт 38081)
 
-2. **Запускаются тесты** с тегом `integration`:
+2. **JWT токены для тестов:**
+   - Используется тестовый режим с `skip_verify: true` в конфигах
+   - Генерируются HMAC JWT токены с ролями (admin/user)
+   - Все защищённые endpoints требуют JWT токен
+
+3. **Запускаются тесты** с тегом `integration`:
    ```bash
    go test -tags=integration -v ./tests/integration/...
    ```
 
-3. **Контейнеры останавливаются** после тестов
+4. **Контейнеры останавливаются** после тестов
 
 ### Ручной запуск для отладки
 

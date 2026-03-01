@@ -13,7 +13,10 @@ servers:
     addr: 0.0.0.0:38081  # Auth-Proxy API
 
 keycloak:
-  url: "https://fishouk-otus-ms.ru/auth"  # Production Keycloak
-  realm: "otus-ms"
+  url: "https://yourdomain.com/auth"  # Production Keycloak URL
+  realm: "your-realm"  # Имя realm в Keycloak
   client_id: "auth-proxy"
-  client_secret: "your-client-secret-here"  # ЗАМЕНИТЬ на реальный secret из Keycloak
+  client_secret: "your-client-secret-here"  # ОБЯЗАТЕЛЬНО замените на реальный secret из Keycloak
+
+main_service:
+  url: "http://otus-microservice-be:38080"  # Main Service API (через Docker network)

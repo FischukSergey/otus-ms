@@ -1,3 +1,4 @@
+// Package auth реализует HTTP-хендлеры для аутентификации пользователей.
 package auth
 
 import (
@@ -9,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
+	"github.com/FischukSergey/otus-ms/internal/clients/mainservice"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/middleware"
 )
@@ -18,21 +20,34 @@ type KeycloakClient interface {
 	Login(ctx context.Context, username, password string) (*keycloak.TokenResponse, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*keycloak.TokenResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
+	CreateUser(ctx context.Context, user keycloak.User) (string, error)
+	DeleteUser(ctx context.Context, userID string) error
+}
+
+// MainServiceClient определяет интерфейс для работы с Main Service API.
+type MainServiceClient interface {
+	CreateUser(ctx context.Context, req mainservice.CreateUserRequest) error
 }
 
 // Handler обрабатывает HTTP запросы для авторизации.
 type Handler struct {
-	keycloakClient KeycloakClient
-	logger         *slog.Logger
-	validator      *validator.Validate
+	keycloakClient    KeycloakClient
+	mainServiceClient MainServiceClient
+	logger            *slog.Logger
+	validator         *validator.Validate
 }
 
 // NewHandler создаёт новый экземпляр обработчика авторизации.
-func NewHandler(keycloakClient KeycloakClient, logger *slog.Logger) *Handler {
+func NewHandler(
+	keycloakClient KeycloakClient,
+	mainServiceClient MainServiceClient,
+	logger *slog.Logger,
+) *Handler {
 	return &Handler{
-		keycloakClient: keycloakClient,
-		logger:         logger,
-		validator:      validator.New(),
+		keycloakClient:    keycloakClient,
+		mainServiceClient: mainServiceClient,
+		logger:            logger,
+		validator:         validator.New(),
 	}
 }
 
@@ -83,7 +98,20 @@ func getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-// Login обрабатывает POST /api/v1/auth/login - аутентификация пользователя.
+// Login выполняет аутентификацию пользователя через Keycloak.
+//
+// @Summary      Вход в систему
+// @Description  Аутентифицирует пользователя и возвращает access и refresh токены.
+// @Description  Токены получаются от Keycloak.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      keycloak.LoginRequest   true  "Учетные данные пользователя"
+// @Success      200          {object}  keycloak.TokenResponse  "Токены успешно получены"
+// @Failure      400          {object}  keycloak.ErrorResponse  "Невалидный запрос или отсутствуют обязательные поля"
+// @Failure      401          {object}  keycloak.ErrorResponse  "Неверные учетные данные"
+// @Failure      500          {object}  keycloak.ErrorResponse  "Внутренняя ошибка сервера или ошибка Keycloak"
+// @Router       /api/v1/auth/login [post].
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	clientIP := getClientIP(r)
@@ -126,7 +154,20 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, r, http.StatusOK, tokens)
 }
 
-// Refresh обрабатывает POST /api/v1/auth/refresh - обновление access token.
+// Refresh обновляет access токен используя refresh токен.
+//
+// @Summary      Обновление токена
+// @Description  Обменивает refresh токен на новую пару access и refresh токенов.
+// @Description  Позволяет продлить сессию пользователя без повторного ввода пароля.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token    body      keycloak.RefreshRequest  true  "Refresh токен"
+// @Success      200      {object}  keycloak.TokenResponse   "Новые токены успешно получены"
+// @Failure      400      {object}  keycloak.ErrorResponse   "Невалидный запрос или отсутствует refresh token"
+// @Failure      401      {object}  keycloak.ErrorResponse   "Невалидный или истекший refresh токен"
+// @Failure      500      {object}  keycloak.ErrorResponse   "Внутренняя ошибка сервера или ошибка Keycloak"
+// @Router       /api/v1/auth/refresh [post].
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	clientIP := getClientIP(r)
@@ -165,7 +206,19 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, r, http.StatusOK, tokens)
 }
 
-// Logout обрабатывает POST /api/v1/auth/logout - logout пользователя.
+// Logout завершает сессию пользователя и инвалидирует токены.
+//
+// @Summary      Выход из системы
+// @Description  Инвалидирует refresh токен в Keycloak, завершая сессию пользователя.
+// @Description  После logout токены становятся недействительными.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token    body  keycloak.LogoutRequest  true  "Refresh токен для инвалидации"
+// @Success      204      "Выход выполнен успешно"
+// @Failure      400      {object}  keycloak.ErrorResponse  "Невалидный запрос или отсутствует refresh token"
+// @Failure      500      {object}  keycloak.ErrorResponse  "Ошибка при выполнении logout в Keycloak"
+// @Router       /api/v1/auth/logout [post].
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	clientIP := getClientIP(r)
@@ -201,4 +254,129 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	// Возвращаем 204 No Content
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Register регистрирует нового пользователя с ролью user.
+//
+// @Summary      Регистрация нового пользователя
+// @Description  Создаёт пользователя в Keycloak и Main Service с ролью user.
+// @Description  После регистрации необходимо выполнить login для получения токенов.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        user  body  keycloak.RegisterRequest  true  "Данные для регистрации"
+// @Success      201   "Пользователь успешно зарегистрирован"
+// @Failure      400   {object}  keycloak.ErrorResponse  "Невалидные данные или ошибка валидации"
+// @Failure      409   {object}  keycloak.ErrorResponse  "Пользователь с таким email уже существует"
+// @Failure      500   {object}  keycloak.ErrorResponse  "Внутренняя ошибка сервера"
+// @Router       /api/v1/auth/register [post].
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.LoggerFromContext(r.Context())
+	clientIP := getClientIP(r)
+
+	var req keycloak.RegisterRequest
+
+	// Парсим JSON из тела запроса
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Error("Failed to decode register request", "error", err, "ip", clientIP)
+		h.writeError(w, r, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Валидируем запрос
+	if err := h.validator.Struct(req); err != nil {
+		logger.Error("Register request validation failed",
+			"error", err,
+			"email", req.Email,
+			"ip", clientIP,
+		)
+		h.writeError(w, r, http.StatusBadRequest, "Validation failed: "+err.Error())
+		return
+	}
+
+	// 1. Создаём пользователя в Keycloak
+	logger.Info("Creating user in Keycloak",
+		"email", req.Email,
+		"ip", clientIP,
+	)
+
+	keycloakUserID, err := h.keycloakClient.CreateUser(r.Context(), keycloak.User(req))
+	if err != nil {
+		logger.Error("Failed to create user in Keycloak",
+			"error", err,
+			"email", req.Email,
+			"ip", clientIP,
+		)
+
+		// Проверяем тип ошибки (409 Conflict = пользователь существует)
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "409") ||
+			strings.Contains(errMsg, "already exists") ||
+			strings.Contains(errMsg, "User exists") {
+			h.writeError(w, r, http.StatusConflict, "User with this email already exists")
+			return
+		}
+
+		h.writeError(w, r, http.StatusInternalServerError, "Failed to create user")
+		return
+	}
+
+	// 2. Создаём пользователя в Main Service
+	logger.Info("Creating user in Main Service",
+		"uuid", keycloakUserID,
+		"email", req.Email,
+		"ip", clientIP,
+	)
+
+	// Подготавливаем запрос для Main Service
+	var middleName *string
+	if req.MiddleName != "" {
+		middleName = &req.MiddleName
+	}
+
+	mainServiceReq := mainservice.CreateUserRequest{
+		UUID:       keycloakUserID,
+		Email:      req.Email,
+		FirstName:  req.FirstName,
+		LastName:   req.LastName,
+		MiddleName: middleName,
+	}
+
+	// Вызываем Main Service API
+	// Клиент автоматически получит service account токен от Keycloak
+	err = h.mainServiceClient.CreateUser(r.Context(), mainServiceReq)
+	if err != nil {
+		logger.Error("Failed to create user in Main Service",
+			"error", err,
+			"uuid", keycloakUserID,
+			"email", req.Email,
+			"ip", clientIP,
+		)
+
+		// Rollback: удаляем пользователя из Keycloak
+		logger.Warn("Rolling back: deleting user from Keycloak",
+			"uuid", keycloakUserID,
+			"email", req.Email,
+		)
+
+		if delErr := h.keycloakClient.DeleteUser(r.Context(), keycloakUserID); delErr != nil {
+			logger.Error("Failed to rollback user from Keycloak",
+				"error", delErr,
+				"uuid", keycloakUserID,
+			)
+		}
+
+		h.writeError(w, r, http.StatusInternalServerError, "Failed to complete registration")
+		return
+	}
+
+	// Успешная регистрация
+	logger.Info("User registered successfully",
+		"uuid", keycloakUserID,
+		"email", req.Email,
+		"ip", clientIP,
+	)
+
+	// Возвращаем 201 Created (БЕЗ токенов - пользователь должен выполнить login)
+	w.WriteHeader(http.StatusCreated)
 }

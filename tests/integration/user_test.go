@@ -20,7 +20,7 @@ import (
 var (
 	// Адрес API сервера (можно переопределить через TEST_SERVER_URL)
 	// По умолчанию: docker-compose на порту 8081
-	// В CI: localhost:8080
+	// В CI: localhost:8080.
 	testServerAddr = getServerAddr()
 
 	httpClient = &http.Client{
@@ -40,6 +40,9 @@ func TestUserBasicFlow(t *testing.T) {
 	testUUID := uuid.New().String()
 	testEmail := fmt.Sprintf("test-%s@example.com", uuid.New().String()[:8])
 
+	// Получаем admin токен для тестов
+	adminToken := GenerateAdminToken()
+
 	t.Run("Create User", func(t *testing.T) {
 		// Подготавливаем запрос на создание пользователя
 		createReq := map[string]interface{}{
@@ -52,9 +55,15 @@ func TestUserBasicFlow(t *testing.T) {
 		body, err := json.Marshal(createReq)
 		require.NoError(t, err)
 
+		// Создаем запрос с JWT токеном
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
 		// Отправляем запрос
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		resp, err := httpClient.Post(url, "application/json", bytes.NewBuffer(body))
+		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -65,7 +74,11 @@ func TestUserBasicFlow(t *testing.T) {
 	t.Run("Get User", func(t *testing.T) {
 		// Получаем созданного пользователя
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
-		resp, err := httpClient.Get(url)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -90,6 +103,7 @@ func TestUserBasicFlow(t *testing.T) {
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
 		req, err := http.NewRequest(http.MethodDelete, url, nil)
 		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
 
 		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
@@ -102,7 +116,11 @@ func TestUserBasicFlow(t *testing.T) {
 	t.Run("Get Deleted User Shows Deleted Flag", func(t *testing.T) {
 		// Получаем удаленного пользователя
 		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
-		resp, err := httpClient.Get(url)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -121,6 +139,8 @@ func TestUserBasicFlow(t *testing.T) {
 }
 
 func TestUserValidation(t *testing.T) {
+	adminToken := GenerateAdminToken()
+
 	t.Run("Create User With Invalid UUID", func(t *testing.T) {
 		createReq := map[string]interface{}{
 			"uuid":  "invalid-uuid",
@@ -130,8 +150,13 @@ func TestUserValidation(t *testing.T) {
 		body, err := json.Marshal(createReq)
 		require.NoError(t, err)
 
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		resp, err := httpClient.Post(url, "application/json", bytes.NewBuffer(body))
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -148,8 +173,13 @@ func TestUserValidation(t *testing.T) {
 		body, err := json.Marshal(createReq)
 		require.NoError(t, err)
 
-		url := fmt.Sprintf("%s/api/v1/users", testServerAddr)
-		resp, err := httpClient.Post(url, "application/json", bytes.NewBuffer(body))
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -158,8 +188,12 @@ func TestUserValidation(t *testing.T) {
 	})
 
 	t.Run("Get User With Invalid UUID", func(t *testing.T) {
-		url := fmt.Sprintf("%s/api/v1/users/invalid-uuid", testServerAddr)
-		resp, err := httpClient.Get(url)
+		url := testServerAddr + "/api/v1/users/invalid-uuid"
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -169,7 +203,7 @@ func TestUserValidation(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
-	url := fmt.Sprintf("%s/health", testServerAddr)
+	url := testServerAddr + "/health"
 	resp, err := httpClient.Get(url)
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -182,4 +216,108 @@ func TestHealthCheck(t *testing.T) {
 
 	assert.Equal(t, "ok", healthResp["status"])
 	assert.NotEmpty(t, healthResp["time"])
+}
+
+// TestRBAC проверяет систему контроля доступа на основе ролей.
+func TestRBAC(t *testing.T) {
+	adminToken := GenerateAdminToken()
+	userToken := GenerateUserToken()
+	testUUID := uuid.New().String()
+
+	t.Run("Admin Can Create User", func(t *testing.T) {
+		createReq := map[string]interface{}{
+			"uuid":      testUUID,
+			"email":     fmt.Sprintf("rbac-test-%s@example.com", uuid.New().String()[:8]),
+			"firstName": "RBAC",
+			"lastName":  "Test",
+		}
+
+		body, _ := json.Marshal(createReq)
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		resp, err := httpClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusCreated, resp.StatusCode, "Admin should be able to create user")
+	})
+
+	t.Run("User Cannot Create User", func(t *testing.T) {
+		createReq := map[string]interface{}{
+			"uuid":      uuid.New().String(),
+			"email":     "another@example.com",
+			"firstName": "Test",
+			"lastName":  "User",
+		}
+
+		body, _ := json.Marshal(createReq)
+		url := testServerAddr + "/api/v1/users"
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+userToken)
+
+		resp, err := httpClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		// Пользователь без роли admin должен получить 403 Forbidden
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode, "User without admin role should get 403")
+
+		var errResp map[string]string
+		json.NewDecoder(resp.Body).Decode(&errResp)
+		assert.Contains(t, errResp["error"], "Access denied", "Error should mention access denied")
+	})
+
+	t.Run("User Cannot Get Other Users", func(t *testing.T) {
+		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+userToken)
+
+		resp, err := httpClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode, "User should not be able to get other users")
+	})
+
+	t.Run("User Cannot Delete Users", func(t *testing.T) {
+		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
+		req, err := http.NewRequest(http.MethodDelete, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+userToken)
+
+		resp, err := httpClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode, "User should not be able to delete users")
+	})
+
+	t.Run("No Token Returns 401", func(t *testing.T) {
+		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
+		resp, err := httpClient.Get(url)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "Request without token should get 401")
+	})
+
+	t.Run("Invalid Token Returns 401", func(t *testing.T) {
+		url := fmt.Sprintf("%s/api/v1/users/%s", testServerAddr, testUUID)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer invalid.jwt.token")
+
+		resp, err := httpClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "Invalid token should get 401")
+	})
 }

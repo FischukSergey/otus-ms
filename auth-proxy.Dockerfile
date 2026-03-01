@@ -10,6 +10,7 @@ RUN go mod download
 COPY . .
 
 # Собираем бинарник auth-proxy
+# Swagger docs берутся из закоммиченных api/authproxy/ (генерируются локально через swag init)
 RUN CGO_ENABLED=0 go build -o auth-proxy ./cmd/auth-proxy
 
 # Финальный образ

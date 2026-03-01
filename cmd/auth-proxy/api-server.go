@@ -9,7 +9,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 
+	_ "github.com/FischukSergey/otus-ms/api/authproxy" // swagger docs
+	"github.com/FischukSergey/otus-ms/internal/clients/mainservice"
 	"github.com/FischukSergey/otus-ms/internal/config"
 	authhandler "github.com/FischukSergey/otus-ms/internal/handlers/auth"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
@@ -25,10 +28,11 @@ type APIServer struct {
 
 // APIServerDeps содержит зависимости для инициализации API сервера.
 type APIServerDeps struct {
-	Addr           string
-	Config         *config.Config
-	Logger         *slog.Logger
-	KeycloakClient *keycloak.Client
+	Addr              string
+	Config            *config.Config
+	Logger            *slog.Logger
+	KeycloakClient    *keycloak.Client
+	MainServiceClient *mainservice.Client
 }
 
 // NewAPIServer создает и настраивает API сервер с chi роутером.
@@ -48,14 +52,24 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	}
 
 	// Инициализация Auth Handler
-	authHandler := authhandler.NewHandler(deps.KeycloakClient, deps.Logger)
+	authHandler := authhandler.NewHandler(
+		deps.KeycloakClient,
+		deps.MainServiceClient,
+		deps.Logger,
+	)
 
 	// Роуты
 	router.Get("/", apiSrv.handleRoot)
 	router.Get("/health", apiSrv.handleHealth)
 
+	// Swagger UI
+	router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
+
 	// API роуты для авторизации
 	router.Route("/api/v1/auth", func(r chi.Router) {
+		r.Post("/register", authHandler.Register) // Публичный endpoint - регистрация
 		r.Post("/login", authHandler.Login)
 		r.Post("/refresh", authHandler.Refresh)
 		r.Post("/logout", authHandler.Logout)

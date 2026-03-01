@@ -72,6 +72,28 @@ services:
       timeout: 5s
       retries: 3
 
+  news-collector:
+    container_name: otusms-news-collector-local
+    build:
+      context: ../..
+      dockerfile: news-collector.Dockerfile
+    profiles:
+      - news-collector  # docker compose --profile news-collector up
+    restart: unless-stopped
+    ports:
+      - "38082:38082"  # HTTP health check
+    volumes:
+      - ../../configs/config.news-collector.local.yaml:/app/configs/config.news-collector.local.yaml:ro
+    command: ["./news-collector", "-config", "/app/configs/config.news-collector.local.yaml"]
+    networks:
+      - otusms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:38082/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   auth-proxy:
     container_name: otusms-auth-proxy-local
     build:

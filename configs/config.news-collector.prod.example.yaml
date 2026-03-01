@@ -1,0 +1,26 @@
+# News Collector Service — production конфигурация (шаблон)
+# Скопируйте как config.news-collector.prod.yaml и заполните секреты
+global:
+  env: prod
+
+log:
+  level: info
+  format: json
+  service_name: news-collector
+
+servers:
+  client:
+    addr: 0.0.0.0:38082  # HTTP health check
+
+# Keycloak service account для получения JWT при gRPC вызовах
+# client_id должен совпадать с именем клиента в Keycloak
+# KEYCLOAK_CLIENT_SECRET — устанавливать через environment variable или вручную на VPS
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"
+  realm: "otus-ms"
+  client_id: "news-collector"
+  client_secret: "CHANGE_ME"  # Секрет клиента news-collector из Keycloak
+
+# Main Service gRPC адрес — используем имя контейнера в Docker-сети otus_network
+main_service:
+  grpc_addr: "otus-microservice-be-prod:50051"

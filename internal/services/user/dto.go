@@ -1,3 +1,4 @@
+// Package user содержит бизнес-логику и DTO для работы с пользователями.
 package user
 
 import "time"

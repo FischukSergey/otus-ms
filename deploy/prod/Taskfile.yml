@@ -11,18 +11,48 @@ vars:
   VPS_PATH_BE: /root/otus-microservice/prod/be
   VPS_PATH_DB: /root/otus-microservice/prod/db
   VPS_PATH_AUTH: /root/otus-microservice/prod/auth-proxy
+  VPS_PATH_NC: /root/otus-microservice/prod/news-collector
+  VPS_PATH_SWAGGER: /root/otus-microservice/prod/swagger
+  VPS_PATH_MONITORING: /root/otus-microservice/prod/monitoring
 
 tasks:
   # ===== Конфигурация =====
-  
+
   config:upload:
-    desc: "Загрузить конфиги на VPS (main-service + auth-proxy)"
+    desc: "Загрузить конфиги на VPS (main-service + auth-proxy + news-collector)"
     cmds:
       - echo "📤 Загрузка конфигурационных файлов на VPS..."
       - scp configs/config.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/configs/
-      - echo "✅ config.prod.yaml загружен в {{.VPS_PATH_BE}}/configs/"
+      - echo "✅ config.prod.yaml → {{.VPS_PATH_BE}}/configs/"
       - scp configs/config.auth-proxy.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_AUTH}}/configs/
-      - echo "✅ config.auth-proxy.prod.yaml загружен в {{.VPS_PATH_AUTH}}/configs/"
+      - echo "✅ config.auth-proxy.prod.yaml → {{.VPS_PATH_AUTH}}/configs/"
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NC}}/configs"
+      - scp configs/config.news-collector.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_NC}}/configs/
+      - echo "✅ config.news-collector.prod.yaml → {{.VPS_PATH_NC}}/configs/"
+
+  config:upload:monitoring:
+    desc: "Загрузить конфиги мониторинга на VPS (prometheus, loki, promtail, alertmanager)"
+    cmds:
+      - echo "📤 Загрузка конфигов мониторинга на VPS..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_MONITORING}}/configs"
+      - scp configs/prometheus.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ prometheus.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/prometheus_alerts.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ prometheus_alerts.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/alertmanager.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ alertmanager.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/loki.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ loki.yml → {{.VPS_PATH_MONITORING}}/configs/"
+      - scp configs/promtail.yml {{.SSH_HOST}}:{{.VPS_PATH_MONITORING}}/configs/
+      - echo "✅ promtail.yml → {{.VPS_PATH_MONITORING}}/configs/"
+
+  config:upload:all:
+    desc: "Загрузить ВСЕ конфигурационные файлы на VPS (сервисы + мониторинг)"
+    cmds:
+      - echo "🚀 Полная загрузка конфигурационных файлов на VPS..."
+      - task: config:upload
+      - task: config:upload:monitoring
+      - echo "🎉 Все конфигурационные файлы успешно загружены на VPS"
 
   config:download:
     desc: "Скачать config.prod.yaml с VPS (backup)"
@@ -126,6 +156,62 @@ tasks:
       - task: health:auth
       - echo "✅ Auth-Proxy перезапущен"
 
+  # ===== Управление News Collector =====
+
+  nc:up:
+    desc: "Запустить News Collector (после main-service)"
+    cmds:
+      - echo "⏳ Проверяем доступность main-service..."
+      - |
+        ssh {{.SSH_HOST}} '
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost:38080/health > /dev/null; then
+              echo "✅ main-service доступен"; exit 0
+            fi
+            echo "  попытка $i/12, ждём 5 сек..."; sleep 5
+          done
+          echo "❌ main-service недоступен после 60 сек"; exit 1
+        '
+      - echo "🚀 Запуск News Collector..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NC}}/{configs,logs}"
+      - scp deploy/prod/docker-compose.news-collector.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NC}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NC}} && docker compose -f docker-compose.news-collector.prod.yml up -d"
+      - sleep 5
+      - task: nc:health
+      - echo "✅ News Collector запущен"
+
+  nc:down:
+    desc: "Остановить News Collector"
+    cmds:
+      - echo "⏸️  Остановка News Collector..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NC}} && docker compose -f docker-compose.news-collector.prod.yml down"
+      - echo "✅ News Collector остановлен"
+
+  nc:restart:
+    desc: "Перезапустить News Collector"
+    cmds:
+      - echo "🔄 Перезапуск News Collector..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NC}} && docker compose -f docker-compose.news-collector.prod.yml restart"
+      - sleep 5
+      - task: nc:health
+      - echo "✅ News Collector перезапущен"
+
+  nc:logs:
+    desc: "Показать логи News Collector"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-news-collector-prod --tail=100 -f"
+
+  nc:health:
+    desc: "Проверить healthcheck News Collector"
+    cmds:
+      - echo "🏥 Healthcheck News Collector:"
+      - ssh {{.SSH_HOST}} "curl -s http://localhost:38082/health | jq ."
+
+  nc:config:edit:
+    desc: "Открыть config.news-collector.prod.yaml на VPS в nano"
+    cmds:
+      - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_NC}}/configs/config.news-collector.prod.yaml"
+
   # ===== Управление БД =====
 
   db:up:
@@ -189,7 +275,31 @@ tasks:
       - scp deploy/prod/docker-compose.be.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/
       - scp deploy/prod/docker-compose.db.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_DB}}/
       - scp deploy/prod/docker-compose.auth-proxy.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_AUTH}}/
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NC}}"
+      - scp deploy/prod/docker-compose.news-collector.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NC}}/
       - echo "✅ Docker-compose файлы загружены"
+
+  # ===== Swagger UI =====
+
+  swagger:up:
+    desc: "Запустить Swagger UI на VPS"
+    cmds:
+      - echo "🚀 Запуск Swagger UI..."
+      - scp deploy/prod/docker-compose.swagger.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_SWAGGER}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_SWAGGER}} && docker compose -f docker-compose.swagger.prod.yml pull && docker compose -f docker-compose.swagger.prod.yml up -d"
+      - echo "Swagger UI запущен - https://fishouk-otus-ms.ru/swagger/"
+
+  swagger:down:
+    desc: "Остановить Swagger UI на VPS"
+    cmds:
+      - echo "⏹️  Остановка Swagger UI..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_SWAGGER}} && docker compose -f docker-compose.swagger.prod.yml down"
+      - echo "✅ Swagger UI остановлен"
+
+  swagger:logs:
+    desc: "Показать логи Swagger UI"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs swagger-ui-prod --tail=100 -f"
 
   # ===== Утилиты =====
 

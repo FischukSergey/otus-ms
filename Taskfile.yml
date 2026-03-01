@@ -8,7 +8,7 @@ vars:
   GO_FILES:
     sh: find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./internal/store/*" -not -path "*.gen.go" | tr "\n" " "
 
-  GOLANGCI_LINT_VERSION: v1.63.4
+  GOLANGCI_LINT_VERSION: v2.1.6
   GOLANGCI_LINT_CACHE:
     sh: echo "$HOME/Library/Caches/golangci-lint" # сделал отдельную директорию для кэша
 
@@ -16,6 +16,8 @@ vars:
     github.com/daixiang0/gci@v0.10.1
     mvdan.cc/gofumpt@v0.4.0
     github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.2
+
+  SWAG_VERSION: v1.8.1
   
   DOCKER_COMPOSE_PATHS: >- #задел на будущее
     -f ./deploy/local/docker-compose.local.yml
@@ -104,3 +106,36 @@ tasks:
     cmds:
       - echo "- Build"
       - go build ./cmd/main-service
+
+  # ===== Swagger =====
+
+  swagger:install:
+    desc: "Установить swag CLI (один раз)"
+    cmds:
+      - echo "- Installing swag CLI {{.SWAG_VERSION}}..."
+      - go install github.com/swaggo/swag/cmd/swag@{{.SWAG_VERSION}}
+      - echo "✅ swag установлен"
+
+  swagger:gen:
+    desc: "Сгенерировать swagger docs для обоих сервисов"
+    cmds:
+      - echo "- Generating swagger docs..."
+      - swag init -g cmd/main-service/main.go -o api/mainservice
+          --parseInternal --parseDependency --exclude internal/handlers/auth
+      - swag init -g cmd/auth-proxy/main.go -o api/authproxy
+          --parseInternal --parseDependency --exclude internal/handlers/user
+      - echo "✅ Swagger docs сгенерированы в api/mainservice/ и api/authproxy/"
+      - echo "💡 Не забудьте закоммитить изменения в api/"
+
+  swagger:check:
+    desc: "Проверить что swagger docs актуальны (нет незакоммиченных изменений в api/)"
+    cmds:
+      - echo "- Checking swagger docs are up to date..."
+      - task: swagger:gen
+      - |
+        if ! git diff --quiet api/; then
+          echo "❌ Swagger docs устарели! Запустите 'task swagger:gen' и закоммитьте api/"
+          git diff --stat api/
+          exit 1
+        fi
+      - echo "✅ Swagger docs актуальны"

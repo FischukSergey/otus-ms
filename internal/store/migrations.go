@@ -1,4 +1,4 @@
-// internal/store/migrations.go
+// Package store управляет подключением к БД и применением SQL-миграций.
 package store
 
 import (
@@ -15,12 +15,14 @@ import (
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
+// Migration представляет одну SQL-миграцию базы данных.
 type Migration struct {
 	Version int
 	Name    string
 	SQL     string
 }
 
+// RunMigrations применяет все непримённые миграции в порядке возрастания версии.
 func (s *Storage) RunMigrations(ctx context.Context) error {
 	// Создаем таблицу для отслеживания миграций
 	if err := s.createMigrationsTable(ctx); err != nil {

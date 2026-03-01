@@ -11,10 +11,13 @@ log:
 
 servers:
   client:
-    addr: 0.0.0.0:8080
+    addr: 0.0.0.0:38081
 
 keycloak:
   url: "https://fishouk-otus-ms.ru/auth"
   realm: "otus-ms"
   client_id: "auth-proxy"
-  client_secret: "${KEYCLOAK_CLIENT_SECRET}"  # Из GitHub Secrets
+  client_secret: ""  # Читается из переменной окружения KEYCLOAK_CLIENT_SECRET
+
+main_service:
+  url: "http://localhost:8080"  # Main Service запущен как процесс в CI/CD

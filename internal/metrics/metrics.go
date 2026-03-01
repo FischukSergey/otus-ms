@@ -1,3 +1,4 @@
+// Package metrics содержит Prometheus-метрики приложения.
 package metrics
 
 import (

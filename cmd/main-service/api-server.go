@@ -9,9 +9,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 
+	_ "github.com/FischukSergey/otus-ms/api/mainservice" // swagger docs
 	"github.com/FischukSergey/otus-ms/internal/config"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
+	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
 	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
@@ -28,10 +31,11 @@ type APIServer struct {
 
 // APIServerDeps содержит зависимости для инициализации API сервера.
 type APIServerDeps struct {
-	Addr    string
-	Config  config.Config
-	Logger  *slog.Logger
-	Storage *store.Storage
+	Addr        string
+	Config      config.Config
+	Logger      *slog.Logger
+	Storage     *store.Storage
+	JWKSManager *jwks.Manager // JWKS Manager для валидации JWT (может быть nil)
 }
 
 // NewAPIServer создает и настраивает простой API сервер с chi роутером.
@@ -60,11 +64,80 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	router.Get("/", apiSrv.handleRoot)
 	router.Get("/health", apiSrv.handleHealth)
 
-	// API роуты для работы с пользователями
-	router.Route("/api/v1/users", func(r chi.Router) {
-		r.Post("/", userHandler.Create)
-		r.Get("/{uuid}", userHandler.Get)
-		r.Delete("/{uuid}", userHandler.Delete)
+	// Swagger UI
+	router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+		httpSwagger.UIConfig(map[string]string{
+			// Автоматически добавляет префикс "Bearer " если его нет
+			"requestInterceptor": `(req) => {
+				const auth = req.headers['Authorization'];
+				if (auth && !auth.startsWith('Bearer ')) {
+					req.headers['Authorization'] = 'Bearer ' + auth;
+				}
+				return req;
+			}`,
+		}),
+	))
+
+	// API роуты
+	router.Route("/api/v1", func(r chi.Router) {
+		// Публичные роуты (без JWT) - если понадобятся
+		// r.Post("/register", someHandler.Register)
+
+		// Защищённые роуты - требуется валидный JWT
+		r.Group(func(r chi.Router) {
+			// JWT валидация для всех роутов в группе
+			// Применяется если JWT настроен (production) или в тестовом режиме
+			if deps.Config.JWT.IsConfigured() {
+				// Определяем issuer и audience
+				issuer := deps.Config.JWT.Issuer
+				audience := deps.Config.JWT.Audience
+
+				// Если не указаны явно, пытаемся взять из Keycloak конфига
+				if issuer == "" && deps.Config.Keycloak.IsConfigured() {
+					issuer = deps.Config.Keycloak.Issuer()
+				}
+				if audience == "" && deps.Config.Keycloak.IsConfigured() {
+					audience = deps.Config.Keycloak.ClientID
+				}
+
+				r.Use(custommiddleware.ValidateJWT(
+					custommiddleware.JWTConfig{
+						Issuer:     issuer,
+						Audience:   audience,
+						SkipVerify: deps.Config.JWT.SkipVerify,
+					},
+					deps.JWKSManager, // Может быть nil в тестовом режиме
+					deps.Logger,
+				))
+
+				// Роуты для работы с пользователями
+				r.Route("/users", func(r chi.Router) {
+					// Создание пользователя доступно для service account (Auth-Proxy) и admin
+					r.Group(func(r chi.Router) {
+						r.Use(custommiddleware.RequireRole([]string{"service-account", "admin"}, deps.Logger))
+						r.Post("/", userHandler.Create) // Создать пользователя
+					})
+
+					// Только для администраторов
+					r.Group(func(r chi.Router) {
+						r.Use(custommiddleware.RequireAdmin(deps.Logger))
+						r.Get("/", userHandler.List)            // Получить список всех пользователей
+						r.Get("/{uuid}", userHandler.Get)       // Получить любого пользователя
+						r.Delete("/{uuid}", userHandler.Delete) // Удалить пользователя
+					})
+
+					// Для пользователей с ролью user или admin (если понадобятся)
+					// r.Group(func(r chi.Router) {
+					//     r.Use(custommiddleware.RequireUser(deps.Logger))
+					//     r.Get("/me", userHandler.GetMe)     // Получить свой профиль
+					//     r.Put("/me", userHandler.UpdateMe)  // Обновить свой профиль
+					// })
+				})
+			} else {
+				deps.Logger.Warn("JWT not configured - API endpoints are UNPROTECTED! This should only happen in development.")
+			}
+		})
 	})
 
 	server := &http.Server{

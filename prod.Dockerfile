@@ -10,6 +10,7 @@ RUN go mod download
 COPY . .
 
 # Собираем бинарник main-service
+# Swagger docs берутся из закоммиченных api/mainservice/ (генерируются локально через swag init)
 RUN CGO_ENABLED=0 go build -o main-service ./cmd/main-service
 
 # Финальный образ
@@ -26,7 +27,7 @@ COPY --from=builder /app/main-service .
 RUN mkdir -p logs data/files
 
 # Expose портов
-EXPOSE 38080 33000
+EXPOSE 38080 33000 50051
 
 # Запускаем с указанием на production конфиг
 CMD ["./main-service", "-config", "/app/configs/config.prod.yaml"]

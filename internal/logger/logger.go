@@ -1,3 +1,4 @@
+// Package logger предоставляет инициализацию структурированного логгера slog.
 package logger
 
 import (

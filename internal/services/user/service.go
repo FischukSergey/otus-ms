@@ -26,6 +26,7 @@ var personNameRegex = regexp.MustCompile(`^[\p{L}\s\-'.]+$`)
 type Repository interface {
 	Create(ctx context.Context, user *models.User) error
 	GetByUUID(ctx context.Context, uuid string) (*models.User, error)
+	GetAll(ctx context.Context) ([]*models.User, error)
 	SoftDelete(ctx context.Context, uuid string) error
 }
 
@@ -114,6 +115,31 @@ func (s *Service) GetUser(ctx context.Context, uuidStr string) (*Response, error
 	}
 
 	return response, nil
+}
+
+// GetAllUsers возвращает список всех пользователей.
+func (s *Service) GetAllUsers(ctx context.Context) ([]*Response, error) {
+	users, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all users: %w", err)
+	}
+
+	responses := make([]*Response, 0, len(users))
+	for _, user := range users {
+		responses = append(responses, &Response{
+			UUID:       user.UUID,
+			Email:      user.Email,
+			FirstName:  user.FirstName,
+			LastName:   user.LastName,
+			MiddleName: user.MiddleName,
+			Role:       user.Role,
+			CreatedAt:  user.CreatedAt,
+			Deleted:    user.Deleted,
+			DeletedAt:  user.DeletedAt,
+		})
+	}
+
+	return responses, nil
 }
 
 // DeleteUser выполняет мягкое удаление пользователя.

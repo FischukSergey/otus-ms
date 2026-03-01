@@ -1,0 +1,222 @@
+basePath: /
+definitions:
+  keycloak.ErrorResponse:
+    properties:
+      error:
+        type: string
+      error_description:
+        type: string
+    type: object
+  keycloak.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  keycloak.LogoutRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  keycloak.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  keycloak.RegisterRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      firstName:
+        maxLength: 255
+        type: string
+      lastName:
+        maxLength: 255
+        type: string
+      middleName:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    - password
+    type: object
+  keycloak.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      scope:
+        type: string
+      token_type:
+        type: string
+    type: object
+host: fishouk-otus-ms.ru
+info:
+  contact:
+    name: OtusMS Support
+    url: https://github.com/FischukSergey/otus-ms
+  description: API для аутентификации пользователей через Keycloak в проекте OtusMS.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: OtusMS Auth-Proxy API
+  version: 1.0.0
+paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Аутентифицирует пользователя и возвращает access и refresh токены.
+        Токены получаются от Keycloak.
+      parameters:
+      - description: Учетные данные пользователя
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/keycloak.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Токены успешно получены
+          schema:
+            $ref: '#/definitions/keycloak.TokenResponse'
+        "400":
+          description: Невалидный запрос или отсутствуют обязательные поля
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+        "401":
+          description: Неверные учетные данные
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера или ошибка Keycloak
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+      summary: Вход в систему
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Инвалидирует refresh токен в Keycloak, завершая сессию пользователя.
+        После logout токены становятся недействительными.
+      parameters:
+      - description: Refresh токен для инвалидации
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/keycloak.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Выход выполнен успешно
+        "400":
+          description: Невалидный запрос или отсутствует refresh token
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+        "500":
+          description: Ошибка при выполнении logout в Keycloak
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+      summary: Выход из системы
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Обменивает refresh токен на новую пару access и refresh токенов.
+        Позволяет продлить сессию пользователя без повторного ввода пароля.
+      parameters:
+      - description: Refresh токен
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/keycloak.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Новые токены успешно получены
+          schema:
+            $ref: '#/definitions/keycloak.TokenResponse'
+        "400":
+          description: Невалидный запрос или отсутствует refresh token
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+        "401":
+          description: Невалидный или истекший refresh токен
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера или ошибка Keycloak
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+      summary: Обновление токена
+      tags:
+      - auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Создаёт пользователя в Keycloak и Main Service с ролью user.
+        После регистрации необходимо выполнить login для получения токенов.
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/keycloak.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Пользователь успешно зарегистрирован
+        "400":
+          description: Невалидные данные или ошибка валидации
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+        "409":
+          description: Пользователь с таким email уже существует
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/keycloak.ErrorResponse'
+      summary: Регистрация нового пользователя
+      tags:
+      - auth
+swagger: "2.0"

@@ -16,6 +16,8 @@ servers:
       - "https://yourdomain.com"
   metrics:
     addr: 0.0.0.0:39090
+  grpc:
+    addr: 0.0.0.0:50051  # gRPC для news-collector (только внутри Docker-сети)
 
 db:
   name: otus_ms_prod # database name
@@ -26,3 +28,11 @@ db:
   ssl_mode: disable # для Docker сети можно disable (все сервисы изолированы в otus_network)
   ssl_root_cert: # path to SSL root certificate if needed
   ssl_key: # path to SSL key if needed
+
+jwt:
+  jwks_url: "https://yourdomain.com/auth/realms/your-realm/protocol/openid-connect/certs"
+  issuer: "https://yourdomain.com/auth/realms/your-realm"
+  audience: "main-service"
+  cache_duration: 600  # 10 минут
+  # Main Service только валидирует JWT токены через JWKS
+  # Keycloak клиент не используется - только Auth-Proxy работает с Keycloak напрямую

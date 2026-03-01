@@ -89,6 +89,8 @@ OtusMS/
 - **cleanenv** - парсинг конфигурации
 - **validator/v10** - валидация данных
 - **gocloak/v13** - Keycloak клиент для авторизации
+- **golang-jwt/jwt/v5** - JWT токены и валидация
+- **lestrrat-go/jwx/v2** - JWKS (публичные ключи для JWT)
 
 ### DevOps & Infrastructure
 - **Docker** - контейнеризация приложения
@@ -394,6 +396,40 @@ curl -X POST http://localhost:38081/api/v1/auth/login \
 - Логирование всех попыток авторизации
 
 См. полную документацию: [Feat_Authorization.md](Feat_Authorization.md)
+
+### Streamlit Admin (client/)
+
+Веб-клиент на Python/Streamlit для входа, дашборда сервисов и работы с пользователями.
+
+```bash
+cd client && pip3 install -r requirements.txt && streamlit run app.py
+```
+
+Подробнее: [client/README.md](client/README.md)
+
+### 🔐 RBAC (Role-Based Access Control)
+
+Контроль доступа на основе ролей из JWT токенов Keycloak.
+
+**Доступные роли:**
+- `user` - обычный пользователь с базовыми правами
+- `admin` - администратор с полным доступом
+
+**Защищённые endpoints (Main Service):**
+```
+POST   /api/v1/users       → admin только
+GET    /api/v1/users/{id}  → admin только
+DELETE /api/v1/users/{id}  → admin только
+```
+
+**Middleware цепочка:**
+```
+Request → ValidateJWT → RequireRole → Handler
+          ↓              ↓             ↓
+          401           403           200
+```
+
+📖 [Полное руководство по RBAC](docs/RBAC_GUIDE.md) | [Настройка ролей](deploy/prod/KEYCLOAK_AUTH_PROXY_SETUP.md)
 
 ## ⚙️ Конфигурация
 

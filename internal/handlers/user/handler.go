@@ -1,3 +1,4 @@
+// Package user реализует HTTP-хендлеры для управления пользователями.
 package user
 
 import (
@@ -18,6 +19,7 @@ import (
 type Service interface {
 	CreateUser(ctx context.Context, req userService.CreateRequest) error
 	GetUser(ctx context.Context, uuid string) (*userService.Response, error)
+	GetAllUsers(ctx context.Context) ([]*userService.Response, error)
 	DeleteUser(ctx context.Context, uuid string) error
 }
 
@@ -50,7 +52,23 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode 
 	}
 }
 
-// Create обрабатывает POST /api/v1/users - создание нового пользователя.
+// Create создает нового пользователя.
+//
+// @Summary      Создать пользователя (admin или service account)
+// @Description  Создаёт нового пользователя. UUID и email должны быть уникальными.
+// @Description  Доступно для роли admin или service-account (для service-to-service
+// @Description  коммуникации между Auth-Proxy и Main Service).
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        user  body      userService.CreateRequest  true  "Данные нового пользователя"
+// @Success      201
+// @Failure      400  {object}  ErrorResponse  "Невалидный запрос или ошибка валидации"
+// @Failure      401  {object}  ErrorResponse  "Не авторизован - отсутствует или невалидный JWT токен"
+// @Failure      403  {object}  ErrorResponse  "Доступ запрещён - требуется роль admin или service-account"
+// @Failure      500  {object}  ErrorResponse  "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users [post].
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 	var req userService.CreateRequest
@@ -79,7 +97,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// Get обрабатывает GET /api/v1/users/{uuid} - получение пользователя по UUID.
+// Get возвращает пользователя по UUID.
+//
+// @Summary      Получить пользователя (только admin)
+// @Description  Возвращает данные пользователя по UUID. Мягко удалённый вернётся с deleted=true. Требуется роль admin.
+// @Tags         users
+// @Produce      json
+// @Param        uuid  path      string  true  "UUID пользователя (формат: uuid4)"
+// @Success      200   {object}  userService.Response  "Данные пользователя"
+// @Failure      400   {object}  ErrorResponse         "Невалидный UUID"
+// @Failure      401   {object}  ErrorResponse         "Не авторизован - отсутствует или невалидный JWT токен"
+// @Failure      403   {object}  ErrorResponse         "Доступ запрещён - недостаточно прав (требуется роль admin)"
+// @Failure      404   {object}  ErrorResponse         "Пользователь не найден"
+// @Failure      500   {object}  ErrorResponse         "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users/{uuid} [get].
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 
@@ -114,7 +146,50 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Delete обрабатывает DELETE /api/v1/users/{uuid} - мягкое удаление пользователя.
+// List возвращает список всех пользователей системы.
+//
+// @Summary      Получить список всех пользователей (только admin)
+// @Description  Возвращает всех пользователей из таблицы users, включая мягко удалённых. Требуется роль admin.
+// @Tags         users
+// @Produce      json
+// @Success      200  {array}   userService.Response  "Список пользователей"
+// @Failure      401  {object}  ErrorResponse         "Не авторизован - отсутствует или невалидный JWT токен"
+// @Failure      403  {object}  ErrorResponse         "Доступ запрещён - требуется роль admin"
+// @Failure      500  {object}  ErrorResponse         "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users [get].
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.LoggerFromContext(r.Context())
+
+	users, err := h.service.GetAllUsers(r.Context())
+	if err != nil {
+		logger.Error("Failed to get all users", "error", err)
+		h.writeError(w, r, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(users); err != nil {
+		logger.Error("Failed to encode response", "error", err)
+	}
+}
+
+// Delete удаляет пользователя (мягкое удаление).
+//
+// @Summary      Удалить пользователя (только admin)
+// @Description  Мягкое удаление (soft delete). Запись остаётся в БД с флагом deleted=true. Требуется роль admin.
+// @Tags         users
+// @Produce      json
+// @Param        uuid  path  string  true  "UUID пользователя (формат: uuid4)"
+// @Success      204   "Пользователь успешно удалён"
+// @Failure      400   {object}  ErrorResponse  "Невалидный UUID"
+// @Failure      401   {object}  ErrorResponse  "Не авторизован - отсутствует или невалидный JWT токен"
+// @Failure      403   {object}  ErrorResponse  "Доступ запрещён - недостаточно прав (требуется роль admin)"
+// @Failure      404   {object}  ErrorResponse  "Пользователь не найден"
+// @Failure      500   {object}  ErrorResponse  "Внутренняя ошибка сервера"
+// @Security     BearerAuth
+// @Router       /api/v1/users/{uuid} [delete].
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.LoggerFromContext(r.Context())
 

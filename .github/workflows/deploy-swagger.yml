@@ -1,0 +1,91 @@
+name: Deploy Swagger UI to Production (Manual)
+
+on:
+  # ВРЕМЕННО: запуск из ветки feat/AgregatorService без мержа в main
+  # После мержа в main — удалить push триггер!
+  push:
+    branches:
+      - feat/AgregatorService
+    paths:
+      - '.github/workflows/deploy-swagger.yml'
+      - 'deploy/prod/docker-compose.swagger.prod.yml'
+
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Действие'
+        required: true
+        default: 'up'
+        type: choice
+        options:
+          - up       # Запустить / обновить контейнер
+          - down     # Остановить контейнер
+          - restart  # Перезапустить контейнер
+          - logs     # Показать последние 200 строк логов
+
+env:
+  VPS_PATH: /root/otus-microservice/prod/swagger
+  COMPOSE_FILE: docker-compose.swagger.prod.yml
+
+jobs:
+  deploy-swagger:
+    name: Deploy Swagger UI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/${{ env.COMPOSE_FILE }}"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
+
+      - name: Execute action on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            mkdir -p ${{ env.VPS_PATH }}
+            cd ${{ env.VPS_PATH }}
+
+            if [ ! -f ${{ env.COMPOSE_FILE }} ]; then
+              echo "❌ ${{ env.COMPOSE_FILE }} не найден!"
+              exit 1
+            fi
+
+            ACTION="${{ inputs.action || 'up' }}"
+            echo "🚀 Выполняем действие: $ACTION"
+
+            case "$ACTION" in
+              up)
+                echo "⬇️  Скачиваем последний образ swagger-ui..."
+                docker compose -f ${{ env.COMPOSE_FILE }} pull
+                echo "▶️  Запускаем контейнер..."
+                docker compose -f ${{ env.COMPOSE_FILE }} up -d
+                echo "✅ Swagger UI запущен!"
+                docker ps | grep swagger-ui
+                ;;
+              down)
+                docker compose -f ${{ env.COMPOSE_FILE }} down
+                echo "⏹️  Swagger UI остановлен"
+                ;;
+              restart)
+                docker compose -f ${{ env.COMPOSE_FILE }} restart
+                echo "🔄 Swagger UI перезапущен"
+                docker ps | grep swagger-ui
+                ;;
+              logs)
+                docker compose -f ${{ env.COMPOSE_FILE }} logs --tail=200
+                ;;
+            esac
+
+            echo "🧹 Очистка неиспользуемых образов..."
+            docker image prune -f || true

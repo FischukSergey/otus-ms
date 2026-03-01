@@ -78,7 +78,46 @@ internal/
 - Автоматическое поднятие окружения: PostgreSQL + Main Service + Auth-Proxy
 - Health checks для ожидания готовности сервисов
 
-### 4. 🔄 CI/CD интеграция
+### 4. 🔐 RBAC (Role-Based Access Control)
+
+Реализована система контроля доступа на основе ролей из JWT токенов.
+
+#### Middleware компоненты
+**Файл**: `internal/middleware/rbac.go`
+
+- `RequireRole(roles, logger)` - универсальная проверка ролей
+- `RequireAdmin(logger)` - проверка роли admin
+- `RequireUser(logger)` - проверка роли user или admin
+- Audit logging всех проверок доступа
+
+#### Роли в Keycloak
+- `user` - обычный пользователь
+- `admin` - администратор (полный доступ)
+
+#### Защищённые endpoints (Main Service)
+- `POST /api/v1/users` - только admin
+- `GET /api/v1/users/{uuid}` - только admin
+- `DELETE /api/v1/users/{uuid}` - только admin
+
+#### Тестирование RBAC
+**Unit тесты** (`internal/middleware/rbac_test.go`): 25 тестов
+
+**Integration тесты** (`tests/integration/user_test.go`):
+- `TestRBAC/Admin_Can_Create_User` - админ может создавать
+- `TestRBAC/User_Cannot_Create_User` - юзер не может (403)
+- `TestRBAC/User_Cannot_Get_Other_Users` - юзер не может читать (403)
+- `TestRBAC/User_Cannot_Delete_Users` - юзер не может удалять (403)
+- `TestRBAC/No_Token_Returns_401` - без токена 401
+- `TestRBAC/Invalid_Token_Returns_401` - невалидный токен 401
+
+#### Тестовое окружение
+- Конфиг с `skip_verify: true` для тестов без Keycloak
+- Генерация тестовых JWT токенов (`tests/integration/test_helpers.go`)
+- `GenerateAdminToken()` - токен с ролью admin
+- `GenerateUserToken()` - токен с ролью user
+- Все user тесты используют JWT токены
+
+### 5. 🔄 CI/CD интеграция
 
 Обновлен GitHub Actions workflow (`.github/workflows/ci.yml`):
 
@@ -93,3 +132,29 @@ internal/
 - `KEYCLOAK_CLIENT_SECRET` - для запуска Auth-Proxy тестов
 - `TEST_KEYCLOAK_USERNAME` (опционально)
 - `TEST_KEYCLOAK_PASSWORD` (опционально)
+
+---
+
+## 📊 Статистика
+
+### Файлы
+- **Новых файлов**: 21+
+- **Измененных файлов**: 14+
+- **Строк кода**: ~2200+
+
+### Тесты
+- **Unit тесты**: 25 (RBAC middleware)
+- **Integration тесты**: 19 (8 Auth + 5 User + 6 RBAC)
+- **Всего**: 44 теста ✅
+
+### Документация
+- 9 MD файлов
+- Полное руководство по RBAC (`docs/RBAC_GUIDE.md`)
+- Инструкции по тестированию (`TESTING.md`)
+- API документация (`cmd/auth-proxy/README.md`)
+
+### Инфраструктура
+- 4 новых API endpoints (Auth-Proxy)
+- 2 middleware (JWT + RBAC)
+- Docker окружение для интеграционных тестов
+- CI/CD с автоматическими тестами

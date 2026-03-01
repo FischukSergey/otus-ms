@@ -24,3 +24,8 @@ db:
   port: "5432"
   ssl_mode: disable
 
+jwt:
+  skip_verify: true  # Тестовый режим - не проверять подпись JWT
+  issuer: ""  # Не проверять issuer в тестовом режиме (принимаем токены от Keycloak)
+  audience: ""  # Не проверять audience в тестовом режиме
+

@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Options содержит параметры подключения к базе данных.
+//
 //go:generate options-gen -out-filename=storage_options.gen.go -from-struct=Options
 type Options struct {
 	dbName        string `option:"mandatory"`
