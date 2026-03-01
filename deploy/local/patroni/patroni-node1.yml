@@ -1,0 +1,46 @@
+# Patroni node1 — primary с существующими данными (existing_data).
+# scope, name, etcd и адреса переопределяются через переменные окружения в compose.
+scope: otusms
+name: node1
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: patroni-node1:8008
+
+etcd3:
+  host: etcd:2379
+
+bootstrap:
+  method: existing_data
+  existing_data:
+    command: /bootstrap-existing-data.sh
+    no_params: true
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      pg_hba:
+        - host replication replicator 0.0.0.0/0 md5
+        - host all all 0.0.0.0/0 md5
+      parameters:
+        max_connections: 100
+        max_wal_senders: 5
+        wal_level: replica
+        hot_standby: "on"
+        max_replication_slots: 5
+        wal_keep_size: 64MB
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: patroni-node1:5432
+  data_dir: /var/lib/postgresql/data
+  authentication:
+    replication:
+      username: replicator
+      password: replicate
+    superuser:
+      username: otus_ms
+      password: otus_ms
