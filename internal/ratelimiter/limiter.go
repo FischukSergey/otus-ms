@@ -34,7 +34,7 @@ func New(ctx context.Context, redisAddr, redisPassword string, maxAttempts, wind
 	})
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		client.Close()
+		_ = client.Close()
 		return nil, fmt.Errorf("ratelimiter: failed to connect to Redis at %s: %w", redisAddr, err)
 	}
 
