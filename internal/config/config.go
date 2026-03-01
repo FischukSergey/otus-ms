@@ -10,6 +10,7 @@ type Config struct {
 	Keycloak    KeycloakConfig    `yaml:"keycloak"`
 	JWT         JWTConfig         `yaml:"jwt"`
 	MainService MainServiceConfig `yaml:"main_service"`
+	RateLimiter RateLimiterConfig `yaml:"rate_limiter"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -143,4 +144,18 @@ type MainServiceConfig struct {
 // IsConfigured проверяет, что конфигурация Main Service заполнена.
 func (m MainServiceConfig) IsConfigured() bool {
 	return m.URL != ""
+}
+
+// RateLimiterConfig содержит настройки Rate Limiter для auth-proxy.
+// Если RedisAddr не задан — лимитер не активируется.
+type RateLimiterConfig struct {
+	RedisAddr     string `yaml:"redis_addr"`
+	RedisPassword string `yaml:"redis_password"`
+	MaxAttempts   int    `yaml:"max_attempts"   env-default:"10"`
+	WindowSeconds int    `yaml:"window_seconds" env-default:"60"`
+}
+
+// IsConfigured проверяет, задан ли адрес Redis.
+func (r RateLimiterConfig) IsConfigured() bool {
+	return r.RedisAddr != ""
 }

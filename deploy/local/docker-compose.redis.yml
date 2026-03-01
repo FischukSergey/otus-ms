@@ -1,0 +1,33 @@
+# Redis для локальной разработки — хранилище счётчиков Rate Limiter и других нужд.
+# Используется сервисами auth-proxy (rate limiter), news-collector (distributed mutex) и др.
+# Запуск: docker compose -f deploy/local/docker-compose.redis.yml up -d
+# Остановка (без удаления данных): docker compose -f deploy/local/docker-compose.redis.yml stop redis
+# Полный сброс: docker compose -f deploy/local/docker-compose.redis.yml down -v
+name: otusms-redis
+
+services:
+  redis:
+    image: valkey/valkey:8-alpine
+    container_name: otusms-redis-local
+    restart: unless-stopped
+    ports:
+      - "36379:6379"  # Нестандартный порт, чтобы не конфликтовать с другими Redis на хосте
+    volumes:
+      - redis_data:/data
+    networks:
+      - otusms_network
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    command: ["valkey-server", "--save", "60", "1", "--loglevel", "warning"]
+
+networks:
+  otusms_network:
+    external: true
+    name: otusms_local_network  # Создаётся docker-compose.local.yml
+
+volumes:
+  redis_data:
+    name: otusms_redis_data_local

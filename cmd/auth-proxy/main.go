@@ -27,6 +27,7 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/logger"
+	"github.com/FischukSergey/otus-ms/internal/ratelimiter"
 )
 
 var configPath = flag.String("config", "configs/config.auth-proxy.local.yaml", "Path to config file")
@@ -90,6 +91,32 @@ func run() error {
 	)
 	defer cancel()
 
+	// Инициализируем Rate Limiter (опционально, только если Redis настроен)
+	var rateLimiter *ratelimiter.Limiter
+	if cfg.RateLimiter.IsConfigured() {
+		appLogger.Info("Initializing Rate Limiter",
+			"redis_addr", cfg.RateLimiter.RedisAddr,
+			"max_attempts", cfg.RateLimiter.MaxAttempts,
+			"window_seconds", cfg.RateLimiter.WindowSeconds,
+		)
+		rateLimiter, err = ratelimiter.New(
+			ctx,
+			cfg.RateLimiter.RedisAddr,
+			cfg.RateLimiter.RedisPassword,
+			cfg.RateLimiter.MaxAttempts,
+			cfg.RateLimiter.WindowSeconds,
+		)
+		if err != nil {
+			appLogger.Warn("Rate Limiter disabled: failed to connect to Redis", "error", err)
+			rateLimiter = nil
+		} else {
+			appLogger.Info("Rate Limiter initialized successfully")
+			defer rateLimiter.Close()
+		}
+	} else {
+		appLogger.Info("Rate Limiter not configured - login rate limiting disabled")
+	}
+
 	// Создаем API сервер
 	apiServer := NewAPIServer(&APIServerDeps{
 		Addr:              cfg.Servers.Client.Addr,
@@ -97,6 +124,7 @@ func run() error {
 		Logger:            appLogger,
 		KeycloakClient:    keycloakClient,
 		MainServiceClient: mainServiceClient,
+		RateLimiter:       rateLimiter,
 	})
 
 	// Запускаем API сервер в отдельной горутине

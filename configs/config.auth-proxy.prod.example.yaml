@@ -20,3 +20,11 @@ keycloak:
 
 main_service:
   url: "http://otus-microservice-be:38080"  # Main Service API (через Docker network)
+
+# Rate Limiter — ограничение попыток входа по IP.
+# Требует запущенного Redis (например, через docker-compose.redis.yml или отдельный инстанс).
+rate_limiter:
+  redis_addr: "redis:6379"        # имя сервиса в Docker-сети
+  redis_password: ""
+  max_attempts: 10                # максимум попыток за окно
+  window_seconds: 60              # длительность окна в секундах
