@@ -79,7 +79,7 @@ jobs:
                 echo "Redis перезапущен"
                 ;;
               logs)
-                echo "Логи Redis (последние 100 строк):"
+                echo "Логи Redis (последние примерно 100 строк):"
                 docker compose -f docker-compose.redis.prod.yml logs --tail=100
                 ;;
               ping)
