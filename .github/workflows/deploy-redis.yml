@@ -1,0 +1,96 @@
+name: Deploy Redis (Rate Limiter) to Production
+
+on:
+  # ВРЕМЕННО: запуск из ветки feat/PatroniPostgres без мержа в main
+  # После мержа в main — удалить push триггер!
+  push:
+    branches:
+      - feat/PatroniPostgres
+    paths:
+      - '.github/workflows/deploy-redis.yml'
+      - 'deploy/prod/docker-compose.redis.prod.yml'
+
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Действие с Redis'
+        required: true
+        default: 'up'
+        type: choice
+        options:
+          - up      # Запустить Redis (первый раз или после down)
+          - down    # Остановить Redis (данные сохраняются)
+          - restart # Перезапустить Redis
+          - logs    # Показать логи
+          - ping    # Проверить доступность
+
+env:
+  VPS_PATH: /root/otus-microservice/prod/redis
+  ACTION: ${{ inputs.action || 'up' }}
+
+jobs:
+  deploy-redis:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/docker-compose.redis.prod.yml"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
+
+      - name: Execute action on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            cd ${{ env.VPS_PATH }}
+
+            case "${{ env.ACTION }}" in
+              up)
+                echo "Запуск Redis..."
+                docker compose -f docker-compose.redis.prod.yml up -d
+                sleep 5
+                docker compose -f docker-compose.redis.prod.yml ps
+                echo ""
+                echo "Проверка ping:"
+                docker exec otus-redis-prod valkey-cli ping
+                echo "Redis запущен"
+                ;;
+              down)
+                echo "Остановка Redis (данные сохраняются)..."
+                docker compose -f docker-compose.redis.prod.yml down
+                echo "Redis остановлен"
+                ;;
+              restart)
+                echo "Перезапуск Redis..."
+                docker compose -f docker-compose.redis.prod.yml restart
+                sleep 3
+                docker exec otus-redis-prod valkey-cli ping
+                echo "Redis перезапущен"
+                ;;
+              logs)
+                echo "Логи Redis (последние 100 строк):"
+                docker compose -f docker-compose.redis.prod.yml logs --tail=100
+                ;;
+              ping)
+                echo "Проверка доступности Redis:"
+                docker exec otus-redis-prod valkey-cli ping
+                echo ""
+                echo "Статус контейнера:"
+                docker ps | grep otus-redis-prod || echo "Redis не запущен"
+                ;;
+            esac
+
+            echo ""
+            echo "Статус контейнеров:"
+            docker ps | grep redis || echo "Redis не запущен"

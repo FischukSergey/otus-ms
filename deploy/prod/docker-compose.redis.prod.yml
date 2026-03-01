@@ -1,0 +1,32 @@
+# Redis для Production — хранилище Rate Limiter и других shared-данных.
+# Запускается ОДИН РАЗ вручную и живёт постоянно.
+# Не перезапускается при деплое API сервисов.
+# Запуск: task -d . -t deploy/prod/Taskfile.yml redis:up
+
+services:
+  redis:
+    container_name: otus-redis-prod
+    image: valkey/valkey:8-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"  # только localhost, не торчит наружу в интернет
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - otus_network
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    command: ["valkey-server", "--save", "60", "1", "--loglevel", "warning"]
+
+networks:
+  otus_network:
+    name: otus_network
+    driver: bridge
+
+volumes:
+  redis_data_prod:
+    name: otus_redis_data_prod
