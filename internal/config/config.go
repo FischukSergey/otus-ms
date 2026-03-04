@@ -1,6 +1,8 @@
 // Package config содержит структуры конфигурации приложения и логику их парсинга.
 package config
 
+import "time"
+
 // Config представляет конфигурацию приложения.
 type Config struct {
 	Global      GlobalConfig      `yaml:"global"`
@@ -11,6 +13,8 @@ type Config struct {
 	JWT         JWTConfig         `yaml:"jwt"`
 	MainService MainServiceConfig `yaml:"main_service"`
 	RateLimiter RateLimiterConfig `yaml:"rate_limiter"`
+	Redis       RedisConfig       `yaml:"redis"`
+	Collector   CollectorConfig   `yaml:"collector"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -158,4 +162,26 @@ type RateLimiterConfig struct {
 // IsConfigured проверяет, задан ли адрес Redis.
 func (r RateLimiterConfig) IsConfigured() bool {
 	return r.RedisAddr != ""
+}
+
+// RedisConfig содержит настройки подключения к Redis.
+// Используется в news-collector для хранения операционного состояния сбора.
+type RedisConfig struct {
+	Addr     string `yaml:"addr"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
+// IsConfigured проверяет, задан ли адрес Redis.
+func (r RedisConfig) IsConfigured() bool {
+	return r.Addr != ""
+}
+
+// CollectorConfig содержит настройки сервиса сбора новостей (news-collector).
+type CollectorConfig struct {
+	MaxWorkers      int           `yaml:"max_workers"`
+	MaxRetries      int           `yaml:"max_retries"`
+	MaxErrCount     int           `yaml:"max_error_count"`
+	ParseTimeout    time.Duration `yaml:"parse_timeout"`
+	RefreshInterval time.Duration `yaml:"refresh_interval"`
 }

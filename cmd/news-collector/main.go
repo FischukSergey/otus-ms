@@ -10,10 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	mainserviceclient "github.com/FischukSergey/otus-ms/internal/clients/mainservice"
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/logger"
+	"github.com/FischukSergey/otus-ms/internal/services/collector"
+	redisstate "github.com/FischukSergey/otus-ms/internal/store/collector"
 )
 
 var configPath = flag.String("config", "configs/config.news-collector.local.yaml", "Path to config file")
@@ -68,26 +72,47 @@ func run() error {
 		}
 	}()
 
-	// Получаем seed-данные от main-service по gRPC
-	appLogger.Info("fetching news sources from main-service via gRPC...")
-	sources, err := grpcClient.GetNewsSources(ctx)
-	if err != nil {
-		// Не фатально для MVP — логируем и продолжаем запуск
-		appLogger.Error("failed to fetch news sources from main-service", "error", err)
-	} else {
-		appLogger.Info("news sources received from main-service", "count", len(sources))
-		for _, s := range sources {
-			appLogger.Debug("source",
-				"id", s.ID,
-				"name", s.Name,
-				"url", s.URL,
-				"category", s.Category,
-				"language", s.Language,
-				"fetch_interval_sec", s.FetchInterval,
-				"is_active", s.IsActive,
-			)
-		}
+	// Инициализируем Redis клиент (хранилище операционного состояния сбора)
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("connect to redis %s: %w", cfg.Redis.Addr, err)
 	}
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			appLogger.Error("redis close error", "error", err)
+		}
+	}()
+	appLogger.Info("redis connected", "addr", cfg.Redis.Addr, "db", cfg.Redis.DB)
+
+	// Собираем сервис сбора новостей
+	stateStore := redisstate.NewRedisStateStore(redisClient)
+	parser := collector.NewParser(cfg.Collector.ParseTimeout, appLogger)
+	collectorService := collector.NewService(
+		grpcClient,
+		stateStore,
+		parser,
+		appLogger,
+		collector.ServiceConfig{
+			MaxWorkers:  cfg.Collector.MaxWorkers,
+			MaxRetries:  cfg.Collector.MaxRetries,
+			MaxErrCount: cfg.Collector.MaxErrCount,
+		},
+	)
+
+	// Первичная загрузка источников при старте
+	appLogger.Info("fetching news sources from main-service via gRPC...")
+	collectorService.RefreshSources(ctx)
+
+	// Запускаем планировщик
+	scheduler := collector.NewScheduler(collectorService, appLogger)
+	if err := scheduler.Start(ctx); err != nil {
+		return fmt.Errorf("start scheduler: %w", err)
+	}
+	defer scheduler.Stop()
 
 	// Запускаем HTTP сервер (health check)
 	apiServer := NewAPIServer(&APIServerDeps{
