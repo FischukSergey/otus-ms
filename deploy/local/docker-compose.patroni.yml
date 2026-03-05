@@ -1,5 +1,12 @@
-# Лайт-кластер Patroni: 1 etcd + 2 узла (primary + replica).
+# Лайт-кластер Patroni: 1 etcd + 2 узла (primary + replica) + HAProxy.
 # Используется тот же volume, что и для обычного postgres в docker-compose.local.yml.
+#
+# Топология портов на хосте:
+#   38432 — HAProxy (единая точка входа для приложения, всегда primary)
+#   38480 — HAProxy stats (http://localhost:38480/)
+#   38008 — Patroni REST API node1 (patronictl, мониторинг)
+#   38009 — Patroni REST API node2 (patronictl, мониторинг)
+#
 # Запуск: docker compose -f deploy/local/docker-compose.patroni.yml up -d
 # Откат: см. deploy/local/patroni/README.md
 name: otusms-patroni
@@ -44,7 +51,7 @@ services:
     networks:
       - patroni_network
     ports:
-      - "38432:5432"
+      - "38008:8008"  # Patroni REST API (patronictl, мониторинг)
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U otus_ms -d otus_ms -h 127.0.0.1 || exit 1"]
@@ -69,6 +76,8 @@ services:
       - ./patroni/patroni-node2.yml:/etc/patroni/patroni.yml:ro
     networks:
       - patroni_network
+    ports:
+      - "38009:8008"  # Patroni REST API (patronictl, мониторинг)
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U otus_ms -d otus_ms -h 127.0.0.1 || exit 1"]
@@ -76,6 +85,28 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: otusms-patroni-haproxy-local
+    depends_on:
+      patroni-node1:
+        condition: service_healthy
+      patroni-node2:
+        condition: service_healthy
+    volumes:
+      - ./patroni/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - patroni_network
+    ports:
+      - "38432:5000"  # PostgreSQL primary (единая точка входа для приложения)
+      - "38480:7000"  # HAProxy stats: http://localhost:38480/
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 networks:
   patroni_network:

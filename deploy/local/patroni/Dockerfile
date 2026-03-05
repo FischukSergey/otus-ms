@@ -29,8 +29,12 @@ ENV PATRONI_CONFIG_PATH=/etc/patroni/patroni.yml
 # Чтобы patroni и patronictl были в PATH (pip ставит в /usr/local/bin или ~/.local/bin)
 ENV PATH="${PATH}:/usr/local/bin"
 
+# Entrypoint-обёртка: исправляет права на PGDATA (Docker volume создаёт 0777, PG требует 0700)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 USER postgres
 
 # Подключаем конфиг при старте (в compose передаём разный конфиг для node1/node2)
-ENTRYPOINT ["patroni"]
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/etc/patroni/patroni.yml"]
