@@ -13,16 +13,16 @@ import (
 	redisstore "github.com/FischukSergey/otus-ms/internal/store/collector"
 )
 
-func newTestDedupStore(t *testing.T, ttl time.Duration) *redisstore.RedisDedupStore {
+func newTestDedupStore(t *testing.T) *redisstore.RedisDedupStore {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
-	return redisstore.NewRedisDedupStore(client, ttl)
+	return redisstore.NewRedisDedupStore(client, time.Hour)
 }
 
 func TestRedisDedupStore_IsNewURL_FirstTimeSeen(t *testing.T) {
-	store := newTestDedupStore(t, time.Hour)
+	store := newTestDedupStore(t)
 	ctx := context.Background()
 
 	isNew, err := store.IsNewURL(ctx, "https://example.com/article/1")
@@ -32,7 +32,7 @@ func TestRedisDedupStore_IsNewURL_FirstTimeSeen(t *testing.T) {
 }
 
 func TestRedisDedupStore_IsNewURL_Duplicate(t *testing.T) {
-	store := newTestDedupStore(t, time.Hour)
+	store := newTestDedupStore(t)
 	ctx := context.Background()
 	articleURL := "https://example.com/article/1"
 
@@ -45,7 +45,7 @@ func TestRedisDedupStore_IsNewURL_Duplicate(t *testing.T) {
 }
 
 func TestRedisDedupStore_IsNewURL_DifferentURLsAreIndependent(t *testing.T) {
-	store := newTestDedupStore(t, time.Hour)
+	store := newTestDedupStore(t)
 	ctx := context.Background()
 
 	isNew1, err := store.IsNewURL(ctx, "https://example.com/article/1")
@@ -79,7 +79,7 @@ func TestRedisDedupStore_IsNewURL_SameURLAfterTTL(t *testing.T) {
 }
 
 func TestRedisDedupStore_IsNewURL_MultipleDuplicates(t *testing.T) {
-	store := newTestDedupStore(t, time.Hour)
+	store := newTestDedupStore(t)
 	ctx := context.Background()
 	articleURL := "https://example.com/article/multi"
 

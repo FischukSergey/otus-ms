@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	keyPrefix             = "nc:source:"
-	deactKeyPrefix        = "nc:deact:"
-	fieldLastAt           = "last_collected_at"
-	fieldErrorCount       = "error_count"
+	keyPrefix              = "nc:source:"
+	deactKeyPrefix         = "nc:deact:"
+	fieldLastAt            = "last_collected_at"
+	fieldErrorCount        = "error_count"
 	fieldDeactivationCount = "deactivation_count"
 )
 
