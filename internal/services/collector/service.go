@@ -26,6 +26,12 @@ type StateStore interface {
 	LocallyDeactivate(ctx context.Context, sourceID string) error
 }
 
+// DedupStore определяет интерфейс дедупликации новостей по нормализованному URL.
+// Реализуется store/collector.RedisDedupStore.
+type DedupStore interface {
+	IsNewURL(ctx context.Context, url string) (bool, error)
+}
+
 // ServiceConfig содержит настройки сервиса сбора.
 type ServiceConfig struct {
 	MaxWorkers  int
@@ -33,10 +39,11 @@ type ServiceConfig struct {
 	MaxErrCount int
 }
 
-// Service координирует сбор новостей: планирование, парсинг, обновление состояния.
+// Service координирует сбор новостей: планирование, парсинг, дедупликацию, обновление состояния.
 type Service struct {
 	client      SourcesClient
 	state       StateStore
+	dedup       DedupStore
 	parser      *Parser
 	logger      *slog.Logger
 	maxWorkers  int
@@ -51,6 +58,7 @@ type Service struct {
 func NewService(
 	client SourcesClient,
 	state StateStore,
+	dedup DedupStore,
 	parser *Parser,
 	logger *slog.Logger,
 	cfg ServiceConfig,
@@ -58,6 +66,7 @@ func NewService(
 	return &Service{
 		client:      client,
 		state:       state,
+		dedup:       dedup,
 		parser:      parser,
 		logger:      logger,
 		maxWorkers:  cfg.MaxWorkers,
@@ -140,7 +149,7 @@ func (s *Service) CollectFromDueSources(ctx context.Context) {
 	s.logger.Info("collection round complete", "processed", len(due))
 }
 
-// collectFromSource парсит RSS-фид одного источника и обновляет его состояние в Redis.
+// collectFromSource парсит RSS-фид одного источника, дедуплицирует и обновляет состояние в Redis.
 func (s *Service) collectFromSource(ctx context.Context, source models.Source) {
 	start := time.Now()
 	s.logger.Info("collecting source", "source_id", source.ID, "name", source.Name, "url", source.URL)
@@ -154,18 +163,21 @@ func (s *Service) collectFromSource(ctx context.Context, source models.Source) {
 	if err := s.state.SetCollected(ctx, source.ID, time.Now()); err != nil {
 		s.logger.Error("set collected failed", "source_id", source.ID, "error", err)
 	}
-
 	if err := s.state.ResetErrorCount(ctx, source.ID); err != nil {
 		s.logger.Error("reset error count failed", "source_id", source.ID, "error", err)
 	}
 
+	fresh := s.filterDuplicates(ctx, news)
+
 	s.logger.Info("collection success",
 		"source_id", source.ID,
-		"news_count", len(news),
+		"total", len(news),
+		"fresh", len(fresh),
+		"duplicates", len(news)-len(fresh),
 		"duration", time.Since(start),
 	)
 
-	for _, item := range news {
+	for _, item := range fresh {
 		s.logger.Debug("collected item",
 			"source_id", source.ID,
 			"title", item.Title,
@@ -174,6 +186,29 @@ func (s *Service) collectFromSource(ctx context.Context, source models.Source) {
 			"author", item.Author,
 		)
 	}
+}
+
+// filterDuplicates отсеивает новости с уже виденными URL.
+// URL нормализуется перед проверкой. При ошибке дедупа конкретная новость включается (fail open).
+func (s *Service) filterDuplicates(ctx context.Context, news []*models.RawNews) []*models.RawNews {
+	fresh := make([]*models.RawNews, 0, len(news))
+	for _, item := range news {
+		if item.URL == "" {
+			fresh = append(fresh, item)
+			continue
+		}
+		normalized := NormalizeURL(item.URL)
+		isNew, err := s.dedup.IsNewURL(ctx, normalized)
+		if err != nil {
+			s.logger.Warn("dedup check failed, treating as new", "url", item.URL, "error", err)
+			fresh = append(fresh, item)
+			continue
+		}
+		if isNew {
+			fresh = append(fresh, item)
+		}
+	}
+	return fresh
 }
 
 // handleCollectError обрабатывает ошибку сбора: инкрементирует счётчик,

@@ -90,10 +90,12 @@ func run() error {
 
 	// Собираем сервис сбора новостей
 	stateStore := redisstate.NewRedisStateStore(redisClient)
+	dedupStore := redisstate.NewRedisDedupStore(redisClient, cfg.Collector.GetDedupTTL())
 	parser := collector.NewParser(cfg.Collector.ParseTimeout, appLogger)
 	collectorService := collector.NewService(
 		grpcClient,
 		stateStore,
+		dedupStore,
 		parser,
 		appLogger,
 		collector.ServiceConfig{

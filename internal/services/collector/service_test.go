@@ -16,6 +16,29 @@ import (
 
 // --- Моки ---
 
+type mockDedupStore struct {
+	mu   sync.Mutex
+	seen map[string]bool
+	err  error
+}
+
+func newMockDedupStore() *mockDedupStore {
+	return &mockDedupStore{seen: make(map[string]bool)}
+}
+
+func (m *mockDedupStore) IsNewURL(_ context.Context, url string) (bool, error) {
+	if m.err != nil {
+		return true, m.err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.seen[url] {
+		return false, nil
+	}
+	m.seen[url] = true
+	return true, nil
+}
+
 type mockSourcesClient struct {
 	sources []models.Source
 	err     error
@@ -96,7 +119,8 @@ func (m *mockStateStore) LocallyDeactivate(_ context.Context, sourceID string) e
 func newTestService(t *testing.T, client *mockSourcesClient, state *mockStateStore, maxErr int) *collector.Service {
 	t.Helper()
 	parser := collector.NewParser(5*time.Second, newTestLogger(t))
-	return collector.NewService(client, state, parser, newTestLogger(t), collector.ServiceConfig{
+	dedup := newMockDedupStore()
+	return collector.NewService(client, state, dedup, parser, newTestLogger(t), collector.ServiceConfig{
 		MaxWorkers:  3,
 		MaxRetries:  1,
 		MaxErrCount: maxErr,

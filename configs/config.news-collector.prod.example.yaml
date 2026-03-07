@@ -31,10 +31,11 @@ redis:
   password: ""
   db: 1
 
-# Настройки планировщика и парсера
+# Настройки планировщика, парсера и дедупликации
 collector:
   max_workers: 5
   max_retries: 3
   max_error_count: 5
   parse_timeout: 30s
   refresh_interval: 5m
+  dedup_ttl: 168h  # 7 дней: URL новости считается дублём в течение недели

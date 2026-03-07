@@ -184,4 +184,13 @@ type CollectorConfig struct {
 	MaxErrCount     int           `yaml:"max_error_count"`
 	ParseTimeout    time.Duration `yaml:"parse_timeout"`
 	RefreshInterval time.Duration `yaml:"refresh_interval"`
+	DedupTTL        time.Duration `yaml:"dedup_ttl"`
+}
+
+// GetDedupTTL возвращает TTL дедупликации или 7 дней если поле не задано.
+func (c CollectorConfig) GetDedupTTL() time.Duration {
+	if c.DedupTTL > 0 {
+		return c.DedupTTL
+	}
+	return 7 * 24 * time.Hour
 }
