@@ -38,4 +38,6 @@ collector:
   max_error_count: 5
   parse_timeout: 30s
   refresh_interval: 5m
-  dedup_ttl: 168h  # 7 дней: URL новости считается дублём в течение недели
+  dedup_ttl: 168h              # 7 дней: URL новости считается дублём в течение недели
+  deactivation_base_backoff: 15m  # 1-я деактивация: 15м, 2-я: 30м, 3-я: 1ч...
+  deactivation_max_backoff: 24h   # максимум: 24 часа

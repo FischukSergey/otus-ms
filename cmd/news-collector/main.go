@@ -102,6 +102,8 @@ func run() error {
 			MaxWorkers:  cfg.Collector.MaxWorkers,
 			MaxRetries:  cfg.Collector.MaxRetries,
 			MaxErrCount: cfg.Collector.MaxErrCount,
+			BaseBackoff: cfg.Collector.GetDeactivationBaseBackoff(),
+			MaxBackoff:  cfg.Collector.GetDeactivationMaxBackoff(),
 		},
 	)
 

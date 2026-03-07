@@ -185,6 +185,11 @@ type CollectorConfig struct {
 	ParseTimeout    time.Duration `yaml:"parse_timeout"`
 	RefreshInterval time.Duration `yaml:"refresh_interval"`
 	DedupTTL        time.Duration `yaml:"dedup_ttl"`
+	// DeactivationBaseBackoff — начальный период circuit-breaker деактивации источника.
+	// Удваивается с каждой деактивацией. По умолчанию 15 минут.
+	DeactivationBaseBackoff time.Duration `yaml:"deactivation_base_backoff"`
+	// DeactivationMaxBackoff — максимальный период деактивации. По умолчанию 24 часа.
+	DeactivationMaxBackoff time.Duration `yaml:"deactivation_max_backoff"`
 }
 
 // GetDedupTTL возвращает TTL дедупликации или 7 дней если поле не задано.
@@ -193,4 +198,20 @@ func (c CollectorConfig) GetDedupTTL() time.Duration {
 		return c.DedupTTL
 	}
 	return 7 * 24 * time.Hour
+}
+
+// GetDeactivationBaseBackoff возвращает начальный backoff или 15 минут по умолчанию.
+func (c CollectorConfig) GetDeactivationBaseBackoff() time.Duration {
+	if c.DeactivationBaseBackoff > 0 {
+		return c.DeactivationBaseBackoff
+	}
+	return 15 * time.Minute
+}
+
+// GetDeactivationMaxBackoff возвращает максимальный backoff или 24 часа по умолчанию.
+func (c CollectorConfig) GetDeactivationMaxBackoff() time.Duration {
+	if c.DeactivationMaxBackoff > 0 {
+		return c.DeactivationMaxBackoff
+	}
+	return 24 * time.Hour
 }
