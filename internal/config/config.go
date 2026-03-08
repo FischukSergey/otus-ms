@@ -15,6 +15,7 @@ type Config struct {
 	RateLimiter RateLimiterConfig `yaml:"rate_limiter"`
 	Redis       RedisConfig       `yaml:"redis"`
 	Collector   CollectorConfig   `yaml:"collector"`
+	Kafka       KafkaConfig       `yaml:"kafka"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -214,4 +215,48 @@ func (c CollectorConfig) GetDeactivationMaxBackoff() time.Duration {
 		return c.DeactivationMaxBackoff
 	}
 	return 24 * time.Hour
+}
+
+// KafkaConfig содержит настройки подключения к Kafka.
+// Используется в news-collector (producer) и news-processor (consumer).
+type KafkaConfig struct {
+	// Brokers — список адресов Kafka брокеров (например ["kafka:9092"]).
+	Brokers []string `yaml:"brokers"`
+	// TopicRawNews — топик для сырых новостей от news-collector.
+	TopicRawNews string `yaml:"topic_raw_news"`
+	// BatchSize — максимальное количество сообщений в одном батче.
+	BatchSize int `yaml:"batch_size"`
+	// BatchTimeout — максимальное время ожидания накопления батча перед отправкой.
+	BatchTimeout time.Duration `yaml:"batch_timeout"`
+	// WriteTimeout — таймаут записи одного батча.
+	WriteTimeout time.Duration `yaml:"write_timeout"`
+}
+
+// IsConfigured проверяет, что конфигурация Kafka заполнена.
+func (k KafkaConfig) IsConfigured() bool {
+	return len(k.Brokers) > 0 && k.TopicRawNews != ""
+}
+
+// GetBatchSize возвращает размер батча или 100 по умолчанию.
+func (k KafkaConfig) GetBatchSize() int {
+	if k.BatchSize > 0 {
+		return k.BatchSize
+	}
+	return 100
+}
+
+// GetBatchTimeout возвращает таймаут батча или 1 секунду по умолчанию.
+func (k KafkaConfig) GetBatchTimeout() time.Duration {
+	if k.BatchTimeout > 0 {
+		return k.BatchTimeout
+	}
+	return time.Second
+}
+
+// GetWriteTimeout возвращает таймаут записи или 10 секунд по умолчанию.
+func (k KafkaConfig) GetWriteTimeout() time.Duration {
+	if k.WriteTimeout > 0 {
+		return k.WriteTimeout
+	}
+	return 10 * time.Second
 }

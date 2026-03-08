@@ -36,6 +36,12 @@ type DedupStore interface {
 	IsNewURL(ctx context.Context, url string) (bool, error)
 }
 
+// NewsPublisher определяет интерфейс публикации собранных новостей.
+// Реализуется producer.KafkaProducer (prod) или producer.NoopPublisher (без Kafka).
+type NewsPublisher interface {
+	Publish(ctx context.Context, news []*models.RawNews) error
+}
+
 // ServiceConfig содержит настройки сервиса сбора.
 type ServiceConfig struct {
 	MaxWorkers  int
@@ -53,6 +59,7 @@ type Service struct {
 	client      SourcesClient
 	state       StateStore
 	dedup       DedupStore
+	publisher   NewsPublisher
 	parser      *Parser
 	logger      *slog.Logger
 	maxWorkers  int
@@ -70,6 +77,7 @@ func NewService(
 	client SourcesClient,
 	state StateStore,
 	dedup DedupStore,
+	publisher NewsPublisher,
 	parser *Parser,
 	logger *slog.Logger,
 	cfg ServiceConfig,
@@ -86,6 +94,7 @@ func NewService(
 		client:      client,
 		state:       state,
 		dedup:       dedup,
+		publisher:   publisher,
 		parser:      parser,
 		logger:      logger,
 		maxWorkers:  cfg.MaxWorkers,
@@ -198,15 +207,24 @@ func (s *Service) collectFromSource(ctx context.Context, source models.Source) {
 		"duration", time.Since(start),
 	)
 
-	for _, item := range fresh {
-		s.logger.Debug("collected item",
-			"source_id", source.ID,
-			"title", item.Title,
-			"url", item.URL,
-			"published_at", item.PublishedAt,
-			"author", item.Author,
-		)
+	if len(fresh) == 0 {
+		return
 	}
+
+	if err := s.publisher.Publish(ctx, fresh); err != nil {
+		s.logger.Error("failed to publish news to kafka",
+			"source_id", source.ID,
+			"count", len(fresh),
+			"error", err,
+		)
+		// Не возвращаем ошибку: недоступность Kafka не должна останавливать сбор.
+		return
+	}
+
+	s.logger.Info("published to kafka",
+		"source_id", source.ID,
+		"count", len(fresh),
+	)
 }
 
 // filterDuplicates отсеивает новости с уже виденными URL.

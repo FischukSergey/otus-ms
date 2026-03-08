@@ -15,6 +15,7 @@ vars:
   VPS_PATH_SWAGGER: /root/otus-microservice/prod/swagger
   VPS_PATH_MONITORING: /root/otus-microservice/prod/monitoring
   VPS_PATH_REDIS: /root/otus-microservice/prod/redis
+  VPS_PATH_KAFKA: /root/otus-microservice/prod/kafka
 
 tasks:
   # ===== Конфигурация =====
@@ -316,6 +317,8 @@ tasks:
       - scp deploy/prod/docker-compose.news-collector.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NC}}/
       - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_REDIS}}"
       - scp deploy/prod/docker-compose.redis.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_REDIS}}/
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_KAFKA}}"
+      - scp deploy/prod/docker-compose.kafka.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_KAFKA}}/
       - echo "✅ Docker-compose файлы загружены"
 
   # ===== Swagger UI =====
@@ -339,6 +342,55 @@ tasks:
     desc: "Показать логи Swagger UI"
     cmds:
       - ssh {{.SSH_HOST}} "docker logs swagger-ui-prod --tail=100 -f"
+
+  # ===== Управление Kafka =====
+
+  kafka:up:
+    desc: "Запустить Kafka на VPS (KRaft, без Zookeeper)"
+    cmds:
+      - echo "Запуск Kafka..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_KAFKA}}"
+      - scp deploy/prod/docker-compose.kafka.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_KAFKA}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_KAFKA}} && docker compose -f docker-compose.kafka.prod.yml up -d"
+      - sleep 10
+      - task: kafka:status
+      - echo "Kafka запущена. Kafka UI доступен через SSH-туннель: ssh -L 39080:localhost:39080 {{.SSH_HOST}}"
+
+  kafka:down:
+    desc: "Остановить Kafka (данные сохраняются)"
+    cmds:
+      - echo "Остановка Kafka..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_KAFKA}} && docker compose -f docker-compose.kafka.prod.yml down"
+      - echo "Kafka остановлена"
+
+  kafka:restart:
+    desc: "Перезапустить Kafka"
+    cmds:
+      - echo "Перезапуск Kafka..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_KAFKA}} && docker compose -f docker-compose.kafka.prod.yml restart kafka kafka-ui"
+      - sleep 5
+      - task: kafka:status
+      - echo "Kafka перезапущена"
+
+  kafka:logs:
+    desc: "Показать логи Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-kafka-prod --tail=100 -f"
+
+  kafka:status:
+    desc: "Статус Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker ps | grep -E 'otus-kafka|CONTAINER'"
+
+  kafka:topics:
+    desc: "Список топиков Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker exec otus-kafka-prod kafka-topics --bootstrap-server localhost:9092 --list"
+
+  kafka:topics:describe:
+    desc: "Описание всех топиков Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker exec otus-kafka-prod kafka-topics --bootstrap-server localhost:9092 --describe"
 
   # ===== Утилиты =====
 

@@ -133,13 +133,28 @@ func (m *mockStateStore) GetDeactivationCount(_ context.Context, sourceID string
 	return m.deactivationCnt[sourceID], nil
 }
 
+// mockPublisher реализует NewsPublisher для тестов — просто считает вызовы.
+type mockPublisher struct {
+	mu       sync.Mutex
+	calls    int
+	lastNews []*models.RawNews
+}
+
+func (m *mockPublisher) Publish(_ context.Context, news []*models.RawNews) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls++
+	m.lastNews = news
+	return nil
+}
+
 // --- Вспомогательные функции ---
 
 func newTestService(t *testing.T, client *mockSourcesClient, state *mockStateStore, maxErr int) *collector.Service {
 	t.Helper()
 	parser := collector.NewParser(5*time.Second, newTestLogger(t))
 	dedup := newMockDedupStore()
-	return collector.NewService(client, state, dedup, parser, newTestLogger(t), collector.ServiceConfig{
+	return collector.NewService(client, state, dedup, &mockPublisher{}, parser, newTestLogger(t), collector.ServiceConfig{
 		MaxWorkers:  3,
 		MaxRetries:  1,
 		MaxErrCount: maxErr,

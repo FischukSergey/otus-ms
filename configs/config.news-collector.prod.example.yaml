@@ -41,3 +41,13 @@ collector:
   dedup_ttl: 168h              # 7 дней: URL новости считается дублём в течение недели
   deactivation_base_backoff: 15m  # 1-я деактивация: 15м, 2-я: 30м, 3-я: 1ч...
   deactivation_max_backoff: 24h   # максимум: 24 часа
+
+# Kafka — брокер сообщений для передачи новостей в news-processor.
+# В prod: имя контейнера в Docker-сети otus_network
+kafka:
+  brokers:
+    - "otus-kafka-prod:9092"
+  topic_raw_news: "raw_news"
+  batch_size: 100
+  batch_timeout: 1s
+  write_timeout: 10s
