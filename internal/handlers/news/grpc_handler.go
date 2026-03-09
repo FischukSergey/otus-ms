@@ -71,6 +71,13 @@ func (h *GRPCHandler) SaveProcessedNews(
 
 // protoToModel конвертирует proto-сообщение в доменную модель ProcessedNews.
 func protoToModel(item *pb.ProcessedNewsItem) models.ProcessedNews {
+	// В protobuf пустой repeated field десериализуется как nil, а не []string{}.
+	// pgx передаёт nil-слайс как SQL NULL, что нарушает NOT NULL на колонке tags.
+	tags := item.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
 	return models.ProcessedNews{
 		ID:          item.Id,
 		SourceID:    item.SourceId,
@@ -78,7 +85,7 @@ func protoToModel(item *pb.ProcessedNewsItem) models.ProcessedNews {
 		Summary:     item.Summary,
 		URL:         item.Url,
 		Category:    item.Category,
-		Tags:        item.Tags,
+		Tags:        tags,
 		PublishedAt: time.Unix(item.PublishedAt, 0).UTC(),
 		ProcessedAt: time.Unix(item.ProcessedAt, 0).UTC(),
 	}

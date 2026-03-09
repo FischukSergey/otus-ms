@@ -13,6 +13,18 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/models"
 )
 
+// startOffsetLabel возвращает строковое представление StartOffset для логов.
+func startOffsetLabel(o int64) string {
+	switch o {
+	case kafka.FirstOffset:
+		return "earliest"
+	case kafka.LastOffset:
+		return "latest"
+	default:
+		return "earliest"
+	}
+}
+
 // NewsClient определяет интерфейс для сохранения обработанных новостей через gRPC.
 // Реализуется clients/mainservice.GRPCClient.
 type NewsClient interface {
@@ -35,20 +47,26 @@ func NewService(
 	newsClient NewsClient,
 	logger *slog.Logger,
 ) *Service {
+	// FirstOffset: для нового consumer group читаем с начала топика,
+	// чтобы не пропустить сообщения, накопившиеся пока сервис не был запущен.
+	// После первого коммита Kafka запомнит позицию и перезапуск продолжит с неё.
+	startOffset := kafka.FirstOffset
+
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     kafkaCfg.Brokers,
 		Topic:       kafkaCfg.TopicRawNews,
 		GroupID:     kafkaCfg.ConsumerGroup,
-		MinBytes:    10e3,              // 10 KB
+		MinBytes:    1,                 // 1 B — не ждём накопления батча при чтении
 		MaxBytes:    10e6,              // 10 MB
 		MaxWait:     500 * time.Millisecond,
-		StartOffset: kafka.LastOffset,
+		StartOffset: startOffset,
 	})
 
 	logger.Info("processor service created",
 		"brokers", kafkaCfg.Brokers,
 		"topic", kafkaCfg.TopicRawNews,
 		"consumer_group", kafkaCfg.ConsumerGroup,
+		"start_offset", startOffsetLabel(startOffset),
 		"workers", processorCfg.GetWorkers(),
 	)
 
@@ -109,15 +127,45 @@ func (s *Service) Run(ctx context.Context) error {
 
 // readLoop читает сообщения из Kafka и отправляет десериализованные RawNews в tasks.
 func (s *Service) readLoop(ctx context.Context, tasks chan<- *models.RawNews) {
+	s.logger.Debug("kafka readLoop started, waiting for messages...")
+
+	var received int64
+	logTicker := time.NewTicker(10 * time.Second)
+	defer logTicker.Stop()
+
 	for {
+		// Показываем статус каждые 10 сек если сообщений нет.
+		select {
+		case <-logTicker.C:
+			stats := s.reader.Stats()
+			s.logger.Debug("kafka reader stats",
+				"messages_received_total", received,
+				"lag", stats.Lag,
+				"offset", stats.Offset,
+				"errors", stats.Errors,
+				"fetches", stats.Fetches,
+			)
+		default:
+		}
+
 		msg, err := s.reader.ReadMessage(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
+				s.logger.Info("kafka readLoop stopped by context", "total_received", received)
 				return
 			}
 			s.logger.Error("kafka read error", "error", err)
 			continue
 		}
+
+		received++
+		s.logger.Debug("kafka message received",
+			"partition", msg.Partition,
+			"offset", msg.Offset,
+			"key", string(msg.Key),
+			"value_bytes", len(msg.Value),
+			"total_received", received,
+		)
 
 		var raw models.RawNews
 		if err := json.Unmarshal(msg.Value, &raw); err != nil {
@@ -137,10 +185,24 @@ func (s *Service) readLoop(ctx context.Context, tasks chan<- *models.RawNews) {
 // workerLoop получает задачи из tasks, запускает конвейер обработки и отправляет результаты.
 func (s *Service) workerLoop(ctx context.Context, tasks <-chan *models.RawNews, results chan<- *models.ProcessedNews) {
 	for raw := range tasks {
+		s.logger.Debug("processing news item",
+			"id", raw.ID,
+			"source_id", raw.SourceID,
+			"url", raw.URL,
+			"has_content", raw.Content != "",
+		)
+
 		processed := Process(ctx, raw,
 			s.processorCfg.FetchContent,
 			s.processorCfg.GetFetchTimeout(),
 		)
+
+		s.logger.Debug("news item processed",
+			"id", processed.ID,
+			"category", processed.Category,
+			"summary_len", len(processed.Summary),
+		)
+
 		select {
 		case results <- processed:
 		case <-ctx.Done():

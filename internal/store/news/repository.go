@@ -38,6 +38,13 @@ func (r *Repository) UpsertBatch(ctx context.Context, news []models.ProcessedNew
 	for i := range news {
 		n := &news[i]
 
+		// Гарантируем непустой слайс: pgx передаёт nil как SQL NULL,
+		// что нарушает NOT NULL DEFAULT '[]' на колонке tags (JSONB).
+		tags := n.Tags
+		if tags == nil {
+			tags = []string{}
+		}
+
 		tag, err := r.db.Exec(ctx, query,
 			n.ID,
 			n.SourceID,
@@ -45,7 +52,7 @@ func (r *Repository) UpsertBatch(ctx context.Context, news []models.ProcessedNew
 			n.Summary,
 			n.URL,
 			n.Category,
-			n.Tags,
+			tags,
 			n.PublishedAt,
 			n.ProcessedAt,
 		)

@@ -8,6 +8,7 @@
 /main-service
 /auth-proxy
 /news-collector
+/news-processor
 
 /vendor
 /.cursor

@@ -164,10 +164,20 @@ func FetchPageContent(ctx context.Context, rawURL string, timeout time.Duration)
 	return StripHTML(string(body))
 }
 
+// truncate обрезает строку до maxRunes символов (по рунам, не байтам).
+// Если строка длиннее — добавляет «…» в конце.
+func truncate(s string, maxRunes int) string {
+	r := []rune(s)
+	if len(r) <= maxRunes {
+		return s
+	}
+	return string(r[:maxRunes-1]) + "…"
+}
+
 // Process запускает полный конвейер обработки одной сырой новости.
 // При fetchContent=true и пустом Content загружает страницу по URL.
 func Process(ctx context.Context, raw *models.RawNews, fetchContent bool, fetchTimeout time.Duration) *models.ProcessedNews {
-	title := StripHTML(raw.Title)
+	title := truncate(StripHTML(raw.Title), 500)
 	description := StripHTML(raw.Description)
 	content := StripHTML(raw.Content)
 
@@ -181,7 +191,7 @@ func Process(ctx context.Context, raw *models.RawNews, fetchContent bool, fetchT
 	}
 
 	summary := ExtractSummary(content, description, title, 3)
-	category := DetectCategory(title + " " + fullText)
+	category := truncate(DetectCategory(title+" "+fullText), 50)
 
 	return &models.ProcessedNews{
 		ID:          raw.ID,
