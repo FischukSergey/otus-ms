@@ -460,6 +460,17 @@ servers:
 ```
 
 
+## 📋 Планируемые доработки news-processor
+
+| # | Задача | Описание |
+|---|--------|----------|
+| 1 | **Теги** | Реализовать `ExtractTags` в `pipeline.go` — возвращать слова из `categoryKeywords`, совпавшие с текстом новости (до 10 штук) |
+| 2 | **Словари категорий в БД** | Перенести `categoryKeywords` из кода в `main-service` (таблица `category_keywords`), загружать через gRPC при старте `news-processor` и обновлять по расписанию. TODO уже есть в `pipeline.go` |
+| 3 | **Сброс оффсетов** | Добавить локальную задачу `kafka:consumer:reset` в `Taskfile.yml` для сброса оффсетов consumer group при разработке |
+| 4 | **Длинные URL** | Пропускать новости с `url > 1000` символов с предупреждением в лог вместо падения INSERT |
+| 5 | **Тесты** | Написать unit-тесты для `pipeline.go`: `StripHTML`, `ExtractSummary`, `DetectCategory`, `truncate` |
+| 6 | **Retention policy** | Настроить автоудаление новостей старше N дней: `pg_cron` на уровне БД или cron-задача в `main-service`. Добавить параметр `news_retention_days` в конфиг |
+
 ## 🔗 Ссылки
 
 - **Production:** https://fishouk-otus-ms.ru/
