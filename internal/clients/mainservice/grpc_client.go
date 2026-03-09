@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/FischukSergey/otus-ms/internal/models"
+	newspb "github.com/FischukSergey/otus-ms/pkg/news/v1"
 	pb "github.com/FischukSergey/otus-ms/pkg/news_sources/v1"
 )
 
@@ -20,9 +21,13 @@ type TokenProvider interface {
 }
 
 // GRPCClient — клиент для обращения к main-service по gRPC.
+// Поддерживает оба сервиса на одном соединении:
+//   - NewsSourcesService (news-collector: GetNewsSources)
+//   - NewsService        (news-processor: SaveProcessedNews)
 type GRPCClient struct {
 	conn          *grpc.ClientConn
 	sourcesClient pb.NewsSourcesServiceClient
+	newsClient    newspb.NewsServiceClient
 	tokenProvider TokenProvider
 	logger        *slog.Logger
 }
@@ -41,6 +46,7 @@ func NewGRPCClient(addr string, tokenProvider TokenProvider, logger *slog.Logger
 	return &GRPCClient{
 		conn:          conn,
 		sourcesClient: pb.NewNewsSourcesServiceClient(conn),
+		newsClient:    newspb.NewNewsServiceClient(conn),
 		tokenProvider: tokenProvider,
 		logger:        logger,
 	}, nil
@@ -87,5 +93,45 @@ func protoToModel(s *pb.NewsSource) models.Source {
 		Category:      s.Category,
 		FetchInterval: int(s.FetchInterval),
 		IsActive:      s.IsActive,
+	}
+}
+
+// SaveProcessedNews отправляет пачку обработанных новостей в main-service для сохранения в PostgreSQL.
+// Возвращает количество реально сохранённых записей (дубликаты по URL не считаются).
+func (c *GRPCClient) SaveProcessedNews(ctx context.Context, news []models.ProcessedNews) (int, error) {
+	token, err := c.tokenProvider.GetServiceAccountToken(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("get service account token: %w", err)
+	}
+
+	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+
+	items := make([]*newspb.ProcessedNewsItem, 0, len(news))
+	for i := range news {
+		items = append(items, modelToNewsProto(&news[i]))
+	}
+
+	resp, err := c.newsClient.SaveProcessedNews(ctx, &newspb.SaveProcessedNewsRequest{News: items})
+	if err != nil {
+		return 0, fmt.Errorf("grpc SaveProcessedNews: %w", err)
+	}
+
+	c.logger.Debug("grpc SaveProcessedNews: saved",
+		"requested", len(items), "saved", resp.SavedCount)
+	return int(resp.SavedCount), nil
+}
+
+// modelToNewsProto конвертирует модель ProcessedNews в proto-сообщение.
+func modelToNewsProto(n *models.ProcessedNews) *newspb.ProcessedNewsItem {
+	return &newspb.ProcessedNewsItem{
+		Id:          n.ID,
+		SourceId:    n.SourceID,
+		Title:       n.Title,
+		Summary:     n.Summary,
+		Url:         n.URL,
+		Category:    n.Category,
+		Tags:        n.Tags,
+		PublishedAt: n.PublishedAt.Unix(),
+		ProcessedAt: n.ProcessedAt.Unix(),
 	}
 }

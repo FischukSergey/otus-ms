@@ -16,6 +16,7 @@ type Config struct {
 	Redis       RedisConfig       `yaml:"redis"`
 	Collector   CollectorConfig   `yaml:"collector"`
 	Kafka       KafkaConfig       `yaml:"kafka"`
+	Processor   ProcessorConfig   `yaml:"processor"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -224,11 +225,15 @@ type KafkaConfig struct {
 	Brokers []string `yaml:"brokers"`
 	// TopicRawNews — топик для сырых новостей от news-collector.
 	TopicRawNews string `yaml:"topic_raw_news"`
-	// BatchSize — максимальное количество сообщений в одном батче.
+	// TopicProcessedNews — топик для обработанных новостей от news-processor.
+	TopicProcessedNews string `yaml:"topic_processed_news"`
+	// ConsumerGroup — consumer group для news-processor.
+	ConsumerGroup string `yaml:"consumer_group"`
+	// BatchSize — максимальное количество сообщений в одном батче (producer).
 	BatchSize int `yaml:"batch_size"`
-	// BatchTimeout — максимальное время ожидания накопления батча перед отправкой.
+	// BatchTimeout — максимальное время ожидания накопления батча перед отправкой (producer).
 	BatchTimeout time.Duration `yaml:"batch_timeout"`
-	// WriteTimeout — таймаут записи одного батча.
+	// WriteTimeout — таймаут записи одного батча (producer).
 	WriteTimeout time.Duration `yaml:"write_timeout"`
 }
 
@@ -259,4 +264,40 @@ func (k KafkaConfig) GetWriteTimeout() time.Duration {
 		return k.WriteTimeout
 	}
 	return 10 * time.Second
+}
+
+// ProcessorConfig содержит настройки сервиса обработки новостей (news-processor).
+type ProcessorConfig struct {
+	// Workers — количество параллельных воркеров обработки сообщений из Kafka.
+	Workers int `yaml:"workers"`
+	// SaveBatchSize — количество новостей в одном gRPC запросе SaveProcessedNews.
+	SaveBatchSize int `yaml:"save_batch_size"`
+	// FetchContent — загружать полный текст статьи по URL если content в RawNews пустой.
+	FetchContent bool `yaml:"fetch_content"`
+	// FetchTimeout — таймаут HTTP-запроса при загрузке контента по URL.
+	FetchTimeout time.Duration `yaml:"fetch_timeout"`
+}
+
+// GetWorkers возвращает количество воркеров или 5 по умолчанию.
+func (p ProcessorConfig) GetWorkers() int {
+	if p.Workers > 0 {
+		return p.Workers
+	}
+	return 5
+}
+
+// GetSaveBatchSize возвращает размер батча gRPC или 50 по умолчанию.
+func (p ProcessorConfig) GetSaveBatchSize() int {
+	if p.SaveBatchSize > 0 {
+		return p.SaveBatchSize
+	}
+	return 50
+}
+
+// GetFetchTimeout возвращает таймаут загрузки контента или 15 секунд по умолчанию.
+func (p ProcessorConfig) GetFetchTimeout() time.Duration {
+	if p.FetchTimeout > 0 {
+		return p.FetchTimeout
+	}
+	return 15 * time.Second
 }

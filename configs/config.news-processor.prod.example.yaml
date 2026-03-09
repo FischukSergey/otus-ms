@@ -1,0 +1,43 @@
+# News Processor Service — production конфигурация (шаблон)
+# Скопируйте как config.news-processor.prod.yaml и заполните секреты
+global:
+  env: prod
+
+log:
+  level: info
+  format: json
+  service_name: news-processor
+
+servers:
+  client:
+    addr: 0.0.0.0:38083  # HTTP health check
+
+# Keycloak service account — client_id: news-processor
+# Создать клиент в Keycloak с Client Credentials Flow
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"
+  realm: "otus-ms"
+  client_id: "news-processor"
+  client_secret: "CHANGE_ME"
+
+# Main Service gRPC — имя контейнера в Docker-сети otus_network
+main_service:
+  grpc_addr: "otus-microservice-be-prod:50051"
+
+# Kafka — имена контейнеров в Docker-сети otus_network
+kafka:
+  brokers:
+    - "otus-kafka-prod:9092"
+  topic_raw_news: "raw_news"
+  topic_processed_news: "processed_news"
+  consumer_group: "news-processor-group"
+  batch_size: 100
+  batch_timeout: 1s
+  write_timeout: 10s
+
+# Настройки конвейера обработки
+processor:
+  workers: 5
+  save_batch_size: 50
+  fetch_content: true   # загружать полный текст если content пустой в RSS
+  fetch_timeout: 15s
