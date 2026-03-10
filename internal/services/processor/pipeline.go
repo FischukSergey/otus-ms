@@ -57,7 +57,7 @@ func splitSentences(text string) []string {
 
 	runes := []rune(text)
 	for i, r := range runes {
-		cur.WriteRune(r)
+		_, _ = cur.WriteRune(r)
 		if r == '.' || r == '!' || r == '?' {
 			next := i + 1
 			// Конец строки или за знаком следует пробел / перенос.
@@ -80,7 +80,7 @@ func splitSentences(text string) []string {
 
 // categoryKeywords — наборы ключевых слов для каждой категории (RU + EN).
 //
-// TODO: перенести словари в main-service как настройку системы (таблица category_keywords).
+// Далее: перенести словари в main-service как настройку системы (таблица category_keywords).
 // news-processor должен загружать их через gRPC при старте и обновлять по расписанию.
 // Это позволит менять категории и ключевые слова без перекомпиляции сервиса.
 var categoryKeywords = map[string][]string{

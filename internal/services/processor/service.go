@@ -56,8 +56,8 @@ func NewService(
 		Brokers:     kafkaCfg.Brokers,
 		Topic:       kafkaCfg.TopicRawNews,
 		GroupID:     kafkaCfg.ConsumerGroup,
-		MinBytes:    1,                 // 1 B — не ждём накопления батча при чтении
-		MaxBytes:    10e6,              // 10 MB
+		MinBytes:    1,    // 1 B — не ждём накопления батча при чтении
+		MaxBytes:    10e6, // 10 MB
 		MaxWait:     500 * time.Millisecond,
 		StartOffset: startOffset,
 	})

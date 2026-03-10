@@ -14,20 +14,20 @@ import (
 	pb "github.com/FischukSergey/otus-ms/pkg/news/v1"
 )
 
-// NewsRepository определяет интерфейс доступа к таблице news.
-type NewsRepository interface {
+// Repository определяет интерфейс доступа к таблице news.
+type Repository interface {
 	UpsertBatch(ctx context.Context, news []models.ProcessedNews) (int, error)
 }
 
 // GRPCHandler реализует NewsServiceServer.
 type GRPCHandler struct {
 	pb.UnimplementedNewsServiceServer
-	repo   NewsRepository
+	repo   Repository
 	logger *slog.Logger
 }
 
 // NewGRPCHandler создаёт новый gRPC хендлер новостей.
-func NewGRPCHandler(repo NewsRepository, logger *slog.Logger) *GRPCHandler {
+func NewGRPCHandler(repo Repository, logger *slog.Logger) *GRPCHandler {
 	return &GRPCHandler{
 		repo:   repo,
 		logger: logger,

@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -41,7 +42,7 @@ func run() error {
 	)
 
 	if !cfg.Kafka.IsConfigured() {
-		return fmt.Errorf("kafka is not configured: brokers and topic_raw_news are required")
+		return errors.New("kafka is not configured: brokers and topic_raw_news are required")
 	}
 
 	ctx, cancel := signal.NotifyContext(

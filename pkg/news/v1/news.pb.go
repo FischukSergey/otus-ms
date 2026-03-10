@@ -7,11 +7,12 @@
 package newsv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -255,12 +256,15 @@ func file_news_v1_news_proto_rawDescGZIP() []byte {
 	return file_news_v1_news_proto_rawDescData
 }
 
-var file_news_v1_news_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_news_v1_news_proto_goTypes = []any{
-	(*ProcessedNewsItem)(nil),         // 0: news.v1.ProcessedNewsItem
-	(*SaveProcessedNewsRequest)(nil),  // 1: news.v1.SaveProcessedNewsRequest
-	(*SaveProcessedNewsResponse)(nil), // 2: news.v1.SaveProcessedNewsResponse
-}
+var (
+	file_news_v1_news_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+	file_news_v1_news_proto_goTypes  = []any{
+		(*ProcessedNewsItem)(nil),         // 0: news.v1.ProcessedNewsItem
+		(*SaveProcessedNewsRequest)(nil),  // 1: news.v1.SaveProcessedNewsRequest
+		(*SaveProcessedNewsResponse)(nil), // 2: news.v1.SaveProcessedNewsResponse
+	}
+)
+
 var file_news_v1_news_proto_depIdxs = []int32{
 	0, // 0: news.v1.SaveProcessedNewsRequest.news:type_name -> news.v1.ProcessedNewsItem
 	1, // 1: news.v1.NewsService.SaveProcessedNews:input_type -> news.v1.SaveProcessedNewsRequest
