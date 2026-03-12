@@ -1,0 +1,107 @@
+name: Deploy Kafka to Production
+
+on:
+  # ВРЕМЕННО: запуск из ветки feat/NewsProcessor без мержа в main
+  # После мержа в main — удалить push триггер!
+  push:
+    branches:
+      - feat/NewsProcessor
+    paths:
+      - '.github/workflows/deploy-kafka.yml'
+      - 'deploy/prod/docker-compose.kafka.prod.yml'
+
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Действие с Kafka'
+        required: true
+        default: 'up'
+        type: choice
+        options:
+          - up       # Запустить Kafka (первый раз или после down)
+          - down     # Остановить Kafka (данные сохраняются)
+          - restart  # Перезапустить Kafka и Kafka UI
+          - logs     # Показать логи брокера
+          - topics   # Список топиков
+          - status   # Статус контейнеров
+
+env:
+  VPS_PATH: /root/otus-microservice/prod/kafka
+  ACTION: ${{ inputs.action || 'up' }}
+
+jobs:
+  deploy-kafka:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          source: "deploy/prod/docker-compose.kafka.prod.yml"
+          target: ${{ env.VPS_PATH }}
+          strip_components: 2
+
+      - name: Execute action on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_OTUS_HOST }}
+          username: ${{ secrets.VPS_OTUS_USER }}
+          key: ${{ secrets.VPS_OTUS_SSH_KEY }}
+          script: |
+            cd ${{ env.VPS_PATH }}
+
+            case "${{ env.ACTION }}" in
+              up)
+                echo "Запуск Kafka (KRaft, без Zookeeper)..."
+                docker compose -f docker-compose.kafka.prod.yml up -d
+                echo "Ждём готовности брокера (до 60 сек)..."
+                sleep 60
+                echo ""
+                echo "Топики:"
+                docker exec otus-kafka-prod kafka-topics \
+                  --bootstrap-server localhost:9092 --list
+                echo ""
+                echo "Статус контейнеров:"
+                docker compose -f docker-compose.kafka.prod.yml ps
+                echo "Kafka запущена"
+                ;;
+              down)
+                echo "Остановка Kafka (данные сохраняются)..."
+                docker compose -f docker-compose.kafka.prod.yml down
+                echo "Kafka остановлена"
+                ;;
+              restart)
+                echo "Перезапуск Kafka и Kafka UI..."
+                docker compose -f docker-compose.kafka.prod.yml restart kafka kafka-ui
+                sleep 15
+                docker compose -f docker-compose.kafka.prod.yml ps
+                echo "Kafka перезапущена"
+                ;;
+              logs)
+                echo "Логи Kafka (последние 100 строк):"
+                docker compose -f docker-compose.kafka.prod.yml logs --tail=100 kafka
+                ;;
+              topics)
+                echo "Топики Kafka:"
+                docker exec otus-kafka-prod kafka-topics \
+                  --bootstrap-server localhost:9092 --list
+                echo ""
+                echo "Детали топиков:"
+                docker exec otus-kafka-prod kafka-topics \
+                  --bootstrap-server localhost:9092 --describe
+                ;;
+              status)
+                echo "Статус контейнеров Kafka:"
+                docker compose -f docker-compose.kafka.prod.yml ps
+                ;;
+            esac
+
+            echo ""
+            echo "Статус контейнеров:"
+            docker ps | grep -E 'otus-kafka|CONTAINER' || echo "Kafka не запущена"
