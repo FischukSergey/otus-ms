@@ -17,6 +17,7 @@ import (
 	authhandler "github.com/FischukSergey/otus-ms/internal/handlers/auth"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
+	"github.com/FischukSergey/otus-ms/internal/ratelimiter"
 )
 
 // APIServer представляет HTTP API сервер для Auth-Proxy.
@@ -33,6 +34,7 @@ type APIServerDeps struct {
 	Logger            *slog.Logger
 	KeycloakClient    *keycloak.Client
 	MainServiceClient *mainservice.Client
+	RateLimiter       *ratelimiter.Limiter // nil если Redis не настроен
 }
 
 // NewAPIServer создает и настраивает API сервер с chi роутером.
@@ -70,7 +72,12 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	// API роуты для авторизации
 	router.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register) // Публичный endpoint - регистрация
-		r.Post("/login", authHandler.Login)
+		// /login защищён Rate Limiter (если Redis настроен)
+		if deps.RateLimiter != nil {
+			r.With(custommiddleware.RateLimitMiddleware(deps.RateLimiter, deps.Logger)).Post("/login", authHandler.Login)
+		} else {
+			r.Post("/login", authHandler.Login)
+		}
 		r.Post("/refresh", authHandler.Refresh)
 		r.Post("/logout", authHandler.Logout)
 	})

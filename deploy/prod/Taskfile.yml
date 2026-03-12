@@ -14,6 +14,7 @@ vars:
   VPS_PATH_NC: /root/otus-microservice/prod/news-collector
   VPS_PATH_SWAGGER: /root/otus-microservice/prod/swagger
   VPS_PATH_MONITORING: /root/otus-microservice/prod/monitoring
+  VPS_PATH_REDIS: /root/otus-microservice/prod/redis
 
 tasks:
   # ===== Конфигурация =====
@@ -212,6 +213,42 @@ tasks:
     cmds:
       - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_NC}}/configs/config.news-collector.prod.yaml"
 
+  # ===== Управление Redis =====
+
+  redis:up:
+    desc: "Запустить Redis (Rate Limiter) на VPS"
+    cmds:
+      - echo "Запуск Redis..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_REDIS}}"
+      - scp deploy/prod/docker-compose.redis.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_REDIS}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_REDIS}} && docker compose -f docker-compose.redis.prod.yml up -d"
+      - sleep 3
+      - ssh {{.SSH_HOST}} "docker ps | grep otus-redis-prod"
+      - echo "Redis запущен"
+
+  redis:down:
+    desc: "Остановить Redis (данные сохраняются)"
+    cmds:
+      - echo "Остановка Redis..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_REDIS}} && docker compose -f docker-compose.redis.prod.yml down"
+      - echo "Redis остановлен"
+
+  redis:restart:
+    desc: "Перезапустить Redis"
+    cmds:
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_REDIS}} && docker compose -f docker-compose.redis.prod.yml restart"
+      - echo "Redis перезапущен"
+
+  redis:logs:
+    desc: "Показать логи Redis"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-redis-prod --tail=100 -f"
+
+  redis:ping:
+    desc: "Проверить доступность Redis"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker exec otus-redis-prod valkey-cli ping"
+
   # ===== Управление БД =====
 
   db:up:
@@ -277,6 +314,8 @@ tasks:
       - scp deploy/prod/docker-compose.auth-proxy.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_AUTH}}/
       - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NC}}"
       - scp deploy/prod/docker-compose.news-collector.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NC}}/
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_REDIS}}"
+      - scp deploy/prod/docker-compose.redis.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_REDIS}}/
       - echo "✅ Docker-compose файлы загружены"
 
   # ===== Swagger UI =====

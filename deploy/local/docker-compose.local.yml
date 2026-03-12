@@ -54,7 +54,7 @@ services:
     container_name: otusms-alertmanager-local
     image: prom/alertmanager:latest
     profiles:
-      - monitoring
+      - monitoring  # docker compose --profile alertmanager up
     restart: unless-stopped
     ports:
       - "39093:9093"  # Alertmanager UI

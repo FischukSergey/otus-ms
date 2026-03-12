@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"os/signal"
 	"syscall"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/logger"
+	"github.com/FischukSergey/otus-ms/internal/ratelimiter"
 )
 
 var configPath = flag.String("config", "configs/config.auth-proxy.local.yaml", "Path to config file")
@@ -90,6 +92,16 @@ func run() error {
 	)
 	defer cancel()
 
+	// Инициализируем Rate Limiter (опционально, только если Redis настроен)
+	rateLimiter := initRateLimiter(ctx, cfg.RateLimiter, appLogger)
+	if rateLimiter != nil {
+		defer func() {
+			if err := rateLimiter.Close(); err != nil {
+				appLogger.Warn("Rate Limiter close error", "error", err)
+			}
+		}()
+	}
+
 	// Создаем API сервер
 	apiServer := NewAPIServer(&APIServerDeps{
 		Addr:              cfg.Servers.Client.Addr,
@@ -97,6 +109,7 @@ func run() error {
 		Logger:            appLogger,
 		KeycloakClient:    keycloakClient,
 		MainServiceClient: mainServiceClient,
+		RateLimiter:       rateLimiter,
 	})
 
 	// Запускаем API сервер в отдельной горутине
@@ -123,4 +136,23 @@ func run() error {
 
 	appLogger.Info("Auth-Proxy service stopped successfully")
 	return nil
+}
+
+func initRateLimiter(ctx context.Context, cfg config.RateLimiterConfig, log *slog.Logger) *ratelimiter.Limiter {
+	if !cfg.IsConfigured() {
+		log.Info("Rate Limiter not configured - login rate limiting disabled")
+		return nil
+	}
+	log.Info("Initializing Rate Limiter",
+		"redis_addr", cfg.RedisAddr,
+		"max_attempts", cfg.MaxAttempts,
+		"window_seconds", cfg.WindowSeconds,
+	)
+	rl, err := ratelimiter.New(ctx, cfg.RedisAddr, cfg.RedisPassword, cfg.MaxAttempts, cfg.WindowSeconds)
+	if err != nil {
+		log.Warn("Rate Limiter disabled: failed to connect to Redis", "error", err)
+		return nil
+	}
+	log.Info("Rate Limiter initialized successfully")
+	return rl
 }

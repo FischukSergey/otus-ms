@@ -24,3 +24,17 @@ keycloak:
 # Main Service gRPC адрес — используем имя контейнера в Docker-сети otus_network
 main_service:
   grpc_addr: "otus-microservice-be-prod:50051"
+
+# Redis — имя контейнера в Docker-сети otus_network. DB=1 (DB=0 занят rate limiter).
+redis:
+  addr: "otus-redis-prod:6379"
+  password: ""
+  db: 1
+
+# Настройки планировщика и парсера
+collector:
+  max_workers: 5
+  max_retries: 3
+  max_error_count: 5
+  parse_timeout: 30s
+  refresh_interval: 5m

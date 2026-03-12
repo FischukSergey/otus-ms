@@ -1,0 +1,22 @@
+# Patroni node2 — replica (создаётся через pg_basebackup с primary).
+scope: otusms
+name: node2
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: patroni-node2:8008
+
+etcd3:
+  host: etcd:2379
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: patroni-node2:5432
+  data_dir: /var/lib/postgresql/data
+  authentication:
+    replication:
+      username: replicator
+      password: replicate
+    superuser:
+      username: otus_ms
+      password: otus_ms
