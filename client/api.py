@@ -325,6 +325,30 @@ def get_all_users(access_token: str) -> tuple[list[dict] | None, str | None]:
     return None, f"{r.status_code}: {err}"
 
 
+def get_news(
+    access_token: str, limit: int = 50
+) -> tuple[list[dict] | None, str | None]:
+    """GET /api/v1/news. Возвращает (список новостей, ошибка или None)."""
+    url = f"{main_service_url()}/api/v1/news"
+    try:
+        r = requests.get(
+            url,
+            params={"limit": limit},
+            headers=_headers(access_token),
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return None, f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        return r.json(), None
+    try:
+        body = r.json()
+        err = body.get("error", body.get("message", r.text))
+    except Exception:
+        err = r.text or str(r.status_code)
+    return None, f"{r.status_code}: {err}"
+
+
 def delete_user(access_token: str, uuid: str) -> tuple[bool, str]:
     """DELETE /api/v1/users/{uuid}. Возвращает (success, message)."""
     url = f"{main_service_url()}/api/v1/users/{uuid}"

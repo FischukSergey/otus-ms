@@ -11,6 +11,7 @@ import streamlit as st
 from api import (
     auth_proxy_url,
     get_all_users,
+    get_news,
     get_logs,
     health_check,
     login,
@@ -39,6 +40,7 @@ PAGE = "page"
 # Страницы
 PAGE_DASHBOARD = "Дашборд"
 PAGE_USERS = "Пользователи"
+PAGE_NEWS = "Новости"
 PAGE_LOGS = "Логи"
 
 
@@ -130,7 +132,7 @@ def render_login():
 
 def render_sidebar():
     st.sidebar.title("OtusMS Admin")
-    pages = [PAGE_DASHBOARD, PAGE_USERS, PAGE_LOGS]
+    pages = [PAGE_DASHBOARD, PAGE_USERS, PAGE_NEWS, PAGE_LOGS]
     current = st.session_state.get(PAGE, PAGE_DASHBOARD)
     idx = pages.index(current) if current in pages else 0
     page = st.sidebar.radio(
@@ -239,6 +241,52 @@ def render_users():
                     "Создан":  u.get("createdAt", "")[:19].replace("T", " "),
                 })
             st.dataframe(rows, width="stretch")
+
+
+def render_news():
+    st.header("Новости")
+    token = st.session_state.get(ACCESS_TOKEN)
+    if not token:
+        st.warning("Нет токена")
+        return
+
+    if not is_admin():
+        st.warning("Доступ только для пользователей с ролью **admin**.")
+        return
+
+    limit = st.number_input(
+        "Сколько записей показать",
+        min_value=10,
+        max_value=500,
+        value=50,
+        step=10,
+        key="news_limit",
+    )
+
+    if st.button("Загрузить новости", key="btn_load_news"):
+        rows, err = get_news(token, limit=int(limit))
+        if err:
+            st.error(err)
+            return
+        if not rows:
+            st.info("Новости не найдены.")
+            return
+
+        st.success(f"Найдено: {len(rows)}")
+        for idx, row in enumerate(rows, start=1):
+            topic = row.get("topic", "").strip() or "(без заголовка)"
+            source = row.get("source", "").strip() or "(неизвестный источник)"
+            url = row.get("url", "").strip()
+            created_at = row.get("createdAt", "")[:19].replace("T", " ")
+            st.markdown(f"**{idx}. {topic}**")
+            st.caption(f"Источник: {source} | Создана: {created_at or '—'}")
+            if url:
+                st.markdown(f"[Открыть новость]({url})")
+            else:
+                st.caption("Ссылка отсутствует")
+            st.divider()
+    else:
+        st.caption("Нажмите «Загрузить новости» для получения данных.")
 
 
 _LEVEL_COLORS = {
@@ -358,6 +406,8 @@ def main():
     page = st.session_state.get(PAGE, PAGE_DASHBOARD)
     if page == PAGE_USERS:
         render_users()
+    elif page == PAGE_NEWS:
+        render_news()
     elif page == PAGE_LOGS:
         render_logs()
     else:

@@ -20,6 +20,47 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
+// ListLatest возвращает последние новости для UI.
+func (r *Repository) ListLatest(ctx context.Context, limit int) ([]models.NewsBrief, error) {
+	const query = `
+		SELECT
+			n.title AS topic,
+			COALESCE(ns.name, n.source_id) AS source,
+			n.url,
+			n.created_at
+		FROM news n
+		LEFT JOIN news_sources ns ON ns.id = n.source_id
+		ORDER BY n.processed_at DESC, n.created_at DESC
+		LIMIT $1
+	`
+
+	rows, err := r.db.Query(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query latest news: %w", err)
+	}
+	defer rows.Close()
+
+	result := make([]models.NewsBrief, 0, limit)
+	for rows.Next() {
+		var item models.NewsBrief
+		if err := rows.Scan(
+			&item.Topic,
+			&item.Source,
+			&item.URL,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan latest news row: %w", err)
+		}
+		result = append(result, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate latest news rows: %w", err)
+	}
+
+	return result, nil
+}
+
 // UpsertBatch сохраняет пачку обработанных новостей.
 // Дублирующиеся URL игнорируются (ON CONFLICT DO NOTHING).
 // Возвращает количество реально вставленных записей.

@@ -13,12 +13,15 @@ import (
 
 	_ "github.com/FischukSergey/otus-ms/api/mainservice" // swagger docs
 	"github.com/FischukSergey/otus-ms/internal/config"
+	newshttphandler "github.com/FischukSergey/otus-ms/internal/handlers/newshttp"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
 	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
+	newsservice "github.com/FischukSergey/otus-ms/internal/services/news"
 	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
 	"github.com/FischukSergey/otus-ms/internal/store"
+	newsrepo "github.com/FischukSergey/otus-ms/internal/store/news"
 	userrepo "github.com/FischukSergey/otus-ms/internal/store/user"
 )
 
@@ -59,6 +62,9 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	userRepository := userrepo.NewRepository(deps.Storage.DB())
 	userService := userservice.NewService(userRepository)
 	userHandler := userhandler.NewHandler(userService, deps.Logger)
+	newsRepository := newsrepo.NewRepository(deps.Storage.DB())
+	newsService := newsservice.NewService(newsRepository)
+	newsHandler := newshttphandler.NewHandler(newsService, deps.Logger)
 
 	// Роуты
 	router.Get("/", apiSrv.handleRoot)
@@ -110,6 +116,12 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 					deps.JWKSManager, // Может быть nil в тестовом режиме
 					deps.Logger,
 				))
+
+				// Чтение новостей доступно только администраторам.
+				r.Group(func(r chi.Router) {
+					r.Use(custommiddleware.RequireAdmin(deps.Logger))
+					r.Get("/news", newsHandler.List)
+				})
 
 				// Роуты для работы с пользователями
 				r.Route("/users", func(r chi.Router) {
