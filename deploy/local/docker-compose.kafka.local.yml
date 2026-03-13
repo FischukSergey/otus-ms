@@ -63,37 +63,14 @@ services:
       - otusms_network
     # Создаём топики при первом запуске и завершаем работу
     entrypoint: ["/bin/sh", "-c"]
-    command: |
-      "
-      echo 'Создание топиков Kafka...'
-
-      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
-        --topic raw_news \
-        --partitions 3 \
-        --replication-factor 1 \
-        --config retention.ms=604800000
-
-      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
-        --topic processed_news \
-        --partitions 3 \
-        --replication-factor 1 \
-        --config retention.ms=604800000
-
-      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
-        --topic user_actions \
-        --partitions 3 \
-        --replication-factor 1 \
-        --config retention.ms=604800000
-
-      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
-        --topic raw_news.DLT \
-        --partitions 1 \
-        --replication-factor 1 \
-        --config retention.ms=2592000000
-
-      echo 'Топики созданы:'
+    command: >-
+      echo 'Создание топиков Kafka...' &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic raw_news --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic processed_news --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic user_actions --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic raw_news.DLT --partitions 1 --replication-factor 1 --config retention.ms=2592000000 &&
+      echo 'Топики созданы:' &&
       kafka-topics --bootstrap-server kafka:9092 --list
-      "
     restart: on-failure
 
   kafka-ui:

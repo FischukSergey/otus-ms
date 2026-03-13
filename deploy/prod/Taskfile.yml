@@ -416,7 +416,7 @@ tasks:
       - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_KAFKA}} && docker compose -f docker-compose.kafka.prod.yml up -d"
       - sleep 10
       - task: kafka:status
-      - echo "Kafka запущена. Kafka UI доступен через SSH-туннель: ssh -L 39080:localhost:39080 {{.SSH_HOST}}"
+      - 'echo "Kafka запущена. Kafka UI доступен через SSH-туннель: ssh -L 39080:localhost:39080 {{.SSH_HOST}}"'
 
   kafka:down:
     desc: "Остановить Kafka (данные сохраняются)"

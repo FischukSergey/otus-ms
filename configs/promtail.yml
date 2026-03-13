@@ -23,9 +23,9 @@ scrape_configs:
         regex: /(.*)
         target_label: container
 
-      # Только наши сервисы (otus-microservice-*)
+      # Только наши сервисы (otus-microservice-* и otus-news-*)
       - source_labels: [container]
-        regex: "otus-microservice-.*"
+        regex: "otus-(microservice|news)-.*"
         action: keep
 
     pipeline_stages:

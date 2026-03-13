@@ -19,6 +19,7 @@ from api import (
     logout,
     main_service_url,
     news_collector_url,
+    news_processor_url,
     refresh_token,
 )
 
@@ -149,7 +150,7 @@ def render_sidebar():
 
 def render_dashboard():
     st.header("Состояние сервисов")
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.subheader("Auth-Proxy")
         info = health_check(auth_proxy_url(), "Auth-Proxy")
@@ -175,6 +176,14 @@ def render_dashboard():
         else:
             st.error(info.get("error", "Недоступен"))
     with col4:
+        st.subheader("News-processor")
+        info = health_check(news_processor_url(), "News-processor")
+        if info["ok"]:
+            st.success(f"Статус: {info['status']}")
+            st.caption(f"Время: {info['time']}")
+        else:
+            st.error(info.get("error", "Недоступен"))
+    with col5:
         st.subheader("Loki")
         if loki_health():
             st.success("Статус: ok")
@@ -184,6 +193,7 @@ def render_dashboard():
         f"Auth-Proxy: {auth_proxy_url()} | "
         f"Main: {main_service_url()} | "
         f"News-collector: {news_collector_url()} | "
+        f"News-processor: {news_processor_url()} | "
         f"Loki: {loki_url()}"
     )
 
@@ -244,6 +254,7 @@ _SERVICES = [
     ("main-service",   "otus-microservice-be-prod"),
     ("auth-proxy",     "otus-microservice-auth-proxy-prod"),
     ("news-collector", "otus-news-collector-prod"),
+    ("news-processor", "otus-news-processor-prod"),
 ]
 
 _LEVELS = ["Все уровни", "ERROR", "WARN", "INFO", "DEBUG"]

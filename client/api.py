@@ -30,6 +30,10 @@ def news_collector_url() -> str:
     return _base_url("NEWS_COLLECTOR_URL", "http://localhost:38082")
 
 
+def news_processor_url() -> str:
+    return _base_url("NEWS_PROCESSOR_URL", "http://localhost:38083")
+
+
 @dataclass
 class TokenResponse:
     access_token: str
@@ -207,7 +211,7 @@ def get_logs(
     """
     import time as _time
 
-    label_sel = '{container=~"otus-microservice-.*"}'
+    label_sel = '{container=~"otus-(microservice|news)-.*"}'
     filters = []
     if service:
         label_sel = f'{{container="{service}"}}'
@@ -302,7 +306,10 @@ def loki_health() -> bool:
 
 
 def get_all_users(access_token: str) -> tuple[list[dict] | None, str | None]:
-    """GET /api/v1/users. Возвращает (список пользователей, ошибка или None)."""
+    """
+    GET /api/v1/users.
+    Возвращает (список пользователей, ошибка или None).
+    """
     url = f"{main_service_url()}/api/v1/users"
     try:
         r = requests.get(url, headers=_headers(access_token), timeout=10)
