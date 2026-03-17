@@ -15,6 +15,7 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/logger"
+	"github.com/FischukSergey/otus-ms/internal/objectstore"
 	"github.com/FischukSergey/otus-ms/internal/services/processor"
 )
 
@@ -43,6 +44,9 @@ func run() error {
 
 	if !cfg.Kafka.IsConfigured() {
 		return errors.New("kafka is not configured: brokers and topic_raw_news are required")
+	}
+	if !cfg.ObjectStore.IsConfigured() {
+		return errors.New("object storage is not configured: endpoint, bucket, access_key, secret_key and region are required")
 	}
 
 	ctx, cancel := signal.NotifyContext(
@@ -76,10 +80,17 @@ func run() error {
 	}()
 
 	// Инициализируем сервис обработки новостей
+	s3Store, err := objectstore.NewS3Store(cfg.ObjectStore)
+	if err != nil {
+		return fmt.Errorf("init object store: %w", err)
+	}
+
 	processorService := processor.NewService(
 		cfg.Kafka,
+		cfg.ObjectStore,
 		cfg.Processor,
 		grpcClient,
+		s3Store,
 		appLogger,
 	)
 

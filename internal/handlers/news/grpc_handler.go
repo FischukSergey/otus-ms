@@ -84,6 +84,7 @@ func protoToModel(item *pb.ProcessedNewsItem) models.ProcessedNews {
 		Title:       item.Title,
 		Summary:     item.Summary,
 		URL:         item.Url,
+		S3Key:       item.S3Key,
 		Category:    item.Category,
 		Tags:        tags,
 		PublishedAt: time.Unix(item.PublishedAt, 0).UTC(),

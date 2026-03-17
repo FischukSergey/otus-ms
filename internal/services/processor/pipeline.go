@@ -199,6 +199,7 @@ func Process(ctx context.Context, raw *models.RawNews, fetchContent bool, fetchT
 		Title:       title,
 		Summary:     summary,
 		URL:         raw.URL,
+		Content:     content,
 		Category:    category,
 		Tags:        []string{},
 		PublishedAt: raw.PublishedAt,

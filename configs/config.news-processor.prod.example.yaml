@@ -41,3 +41,13 @@ processor:
   save_batch_size: 50
   fetch_content: true   # загружать полный текст если content пустой в RSS
   fetch_timeout: 15s
+
+# S3-совместимое объектное хранилище (Selectel S3 / MinIO / AWS S3).
+object_storage:
+  endpoint: "https://s3.ru-1.storage.selcloud.ru"
+  bucket: "otus-news-artifacts"
+  access_key: "CHANGE_ME"
+  secret_key: "CHANGE_ME"
+  region: "ru-1"
+  use_ssl: true
+  prefix: "news-processor"

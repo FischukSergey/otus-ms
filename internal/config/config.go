@@ -5,18 +5,19 @@ import "time"
 
 // Config представляет конфигурацию приложения.
 type Config struct {
-	Global      GlobalConfig      `yaml:"global"`
-	Log         LogConfig         `yaml:"log"`
-	Servers     ServersConfig     `yaml:"servers"`
-	DB          DBConfig          `yaml:"db"`
-	Keycloak    KeycloakConfig    `yaml:"keycloak"`
-	JWT         JWTConfig         `yaml:"jwt"`
-	MainService MainServiceConfig `yaml:"main_service"`
-	RateLimiter RateLimiterConfig `yaml:"rate_limiter"`
-	Redis       RedisConfig       `yaml:"redis"`
-	Collector   CollectorConfig   `yaml:"collector"`
-	Kafka       KafkaConfig       `yaml:"kafka"`
-	Processor   ProcessorConfig   `yaml:"processor"`
+	Global      GlobalConfig        `yaml:"global"`
+	Log         LogConfig           `yaml:"log"`
+	Servers     ServersConfig       `yaml:"servers"`
+	DB          DBConfig            `yaml:"db"`
+	Keycloak    KeycloakConfig      `yaml:"keycloak"`
+	JWT         JWTConfig           `yaml:"jwt"`
+	MainService MainServiceConfig   `yaml:"main_service"`
+	RateLimiter RateLimiterConfig   `yaml:"rate_limiter"`
+	Redis       RedisConfig         `yaml:"redis"`
+	ObjectStore ObjectStorageConfig `yaml:"object_storage"`
+	Collector   CollectorConfig     `yaml:"collector"`
+	Kafka       KafkaConfig         `yaml:"kafka"`
+	Processor   ProcessorConfig     `yaml:"processor"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -177,6 +178,27 @@ type RedisConfig struct {
 // IsConfigured проверяет, задан ли адрес Redis.
 func (r RedisConfig) IsConfigured() bool {
 	return r.Addr != ""
+}
+
+// ObjectStorageConfig содержит настройки подключения к S3-совместимому хранилищу.
+// Используется news-processor для загрузки артефактов обработанных новостей.
+type ObjectStorageConfig struct {
+	Endpoint  string `yaml:"endpoint" env:"OBJECT_STORAGE_ENDPOINT"`
+	Bucket    string `yaml:"bucket" env:"OBJECT_STORAGE_BUCKET"`
+	AccessKey string `yaml:"access_key" env:"OBJECT_STORAGE_ACCESS_KEY"`
+	SecretKey string `yaml:"secret_key" env:"OBJECT_STORAGE_SECRET_KEY"`
+	Region    string `yaml:"region" env:"OBJECT_STORAGE_REGION"`
+	UseSSL    bool   `yaml:"use_ssl" env:"OBJECT_STORAGE_USE_SSL" env-default:"true"`
+	Prefix    string `yaml:"prefix" env:"OBJECT_STORAGE_PREFIX" env-default:"news"`
+}
+
+// IsConfigured проверяет, что конфигурация Object Storage заполнена.
+func (o ObjectStorageConfig) IsConfigured() bool {
+	return o.Endpoint != "" &&
+		o.Bucket != "" &&
+		o.AccessKey != "" &&
+		o.SecretKey != "" &&
+		o.Region != ""
 }
 
 // CollectorConfig содержит настройки сервиса сбора новостей (news-collector).

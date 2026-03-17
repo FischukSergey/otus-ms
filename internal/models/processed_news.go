@@ -11,6 +11,8 @@ type ProcessedNews struct {
 	Title       string    `json:"title"`       // Заголовок (очищенный)
 	Summary     string    `json:"summary"`     // Краткое резюме (2-3 предложения)
 	URL         string    `json:"url"`         // Ссылка на оригинал
+	Content     string    `json:"-"`           // Очищенный текст статьи для загрузки артефакта
+	S3Key       string    `json:"s3Key"`       // Ключ артефакта в S3-совместимом хранилище
 	Category    string    `json:"category"`    // Категория: tech, politics, economy, sports, science, other
 	Tags        []string  `json:"tags"`        // Ключевые теги
 	PublishedAt time.Time `json:"publishedAt"` // Дата публикации (из RawNews)

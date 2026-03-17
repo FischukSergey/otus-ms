@@ -70,8 +70,11 @@ func (r *Repository) UpsertBatch(ctx context.Context, news []models.ProcessedNew
 	}
 
 	const query = `
-		INSERT INTO news (id, source_id, title, summary, url, category, tags, published_at, processed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO news (
+			id, source_id, title, summary, url, s3_key,
+			category, tags, published_at, processed_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (url) DO NOTHING
 	`
 
@@ -92,6 +95,7 @@ func (r *Repository) UpsertBatch(ctx context.Context, news []models.ProcessedNew
 			n.Title,
 			n.Summary,
 			n.URL,
+			n.S3Key,
 			n.Category,
 			tags,
 			n.PublishedAt,

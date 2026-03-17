@@ -11,6 +11,7 @@ import (
 
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/models"
+	"github.com/FischukSergey/otus-ms/internal/objectstore"
 )
 
 // startOffsetLabel возвращает строковое представление StartOffset для логов.
@@ -31,20 +32,29 @@ type NewsClient interface {
 	SaveProcessedNews(ctx context.Context, news []models.ProcessedNews) (int, error)
 }
 
+// ArtifactStore определяет интерфейс сохранения текстового артефакта новости.
+type ArtifactStore interface {
+	PutText(ctx context.Context, key string, content string) (string, error)
+}
+
 // Service читает сырые новости из Kafka, обрабатывает через конвейер
 // и батчами сохраняет через gRPC в main-service.
 type Service struct {
-	reader       *kafka.Reader
-	newsClient   NewsClient
-	processorCfg config.ProcessorConfig
-	logger       *slog.Logger
+	reader         *kafka.Reader
+	newsClient     NewsClient
+	artifactStore  ArtifactStore
+	objectStoreCfg config.ObjectStorageConfig
+	processorCfg   config.ProcessorConfig
+	logger         *slog.Logger
 }
 
 // NewService создаёт сервис обработки новостей.
 func NewService(
 	kafkaCfg config.KafkaConfig,
+	objectStoreCfg config.ObjectStorageConfig,
 	processorCfg config.ProcessorConfig,
 	newsClient NewsClient,
+	artifactStore ArtifactStore,
 	logger *slog.Logger,
 ) *Service {
 	// FirstOffset: для нового consumer group читаем с начала топика,
@@ -68,13 +78,18 @@ func NewService(
 		"consumer_group", kafkaCfg.ConsumerGroup,
 		"start_offset", startOffsetLabel(startOffset),
 		"workers", processorCfg.GetWorkers(),
+		"artifact_bucket", objectStoreCfg.Bucket,
+		"artifact_endpoint", objectStoreCfg.Endpoint,
+		"artifact_prefix", objectStoreCfg.Prefix,
 	)
 
 	return &Service{
-		reader:       reader,
-		newsClient:   newsClient,
-		processorCfg: processorCfg,
-		logger:       logger,
+		reader:         reader,
+		newsClient:     newsClient,
+		artifactStore:  artifactStore,
+		objectStoreCfg: objectStoreCfg,
+		processorCfg:   processorCfg,
+		logger:         logger,
 	}
 }
 
@@ -197,10 +212,34 @@ func (s *Service) workerLoop(ctx context.Context, tasks <-chan *models.RawNews, 
 			s.processorCfg.GetFetchTimeout(),
 		)
 
+		if processed.Content != "" {
+			key := objectstore.BuildNewsTextKey(
+				s.objectStoreCfg.Prefix,
+				processed.ID,
+				processed.ProcessedAt,
+			)
+			s3Key, err := s.artifactStore.PutText(ctx, key, processed.Content)
+			if err != nil {
+				s.logger.Error("failed to upload news artifact to object storage",
+					"news_id", processed.ID,
+					"bucket", s.objectStoreCfg.Bucket,
+					"endpoint", s.objectStoreCfg.Endpoint,
+					"error", err,
+				)
+				continue
+			}
+			processed.S3Key = s3Key
+		} else {
+			s.logger.Debug("skip artifact upload: processed content is empty",
+				"news_id", processed.ID,
+			)
+		}
+
 		s.logger.Debug("news item processed",
 			"id", processed.ID,
 			"category", processed.Category,
 			"summary_len", len(processed.Summary),
+			"s3_key", processed.S3Key,
 		)
 
 		select {

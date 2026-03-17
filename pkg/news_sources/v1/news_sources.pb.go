@@ -234,7 +234,6 @@ var (
 		(*GetNewsSourcesResponse)(nil), // 2: news_sources.v1.GetNewsSourcesResponse
 	}
 )
-
 var file_news_sources_v1_news_sources_proto_depIdxs = []int32{
 	1, // 0: news_sources.v1.GetNewsSourcesResponse.sources:type_name -> news_sources.v1.NewsSource
 	0, // 1: news_sources.v1.NewsSourcesService.GetNewsSources:input_type -> news_sources.v1.GetNewsSourcesRequest

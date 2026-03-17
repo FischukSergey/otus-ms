@@ -129,6 +129,7 @@ func modelToNewsProto(n *models.ProcessedNews) *newspb.ProcessedNewsItem {
 		Title:       n.Title,
 		Summary:     n.Summary,
 		Url:         n.URL,
+		S3Key:       n.S3Key,
 		Category:    n.Category,
 		Tags:        n.Tags,
 		PublishedAt: n.PublishedAt.Unix(),

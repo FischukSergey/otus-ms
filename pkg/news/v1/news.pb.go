@@ -34,6 +34,7 @@ type ProcessedNewsItem struct {
 	Tags          []string               `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
 	PublishedAt   int64                  `protobuf:"varint,8,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"` // Unix timestamp (секунды)
 	ProcessedAt   int64                  `protobuf:"varint,9,opt,name=processed_at,json=processedAt,proto3" json:"processed_at,omitempty"` // Unix timestamp (секунды)
+	S3Key         string                 `protobuf:"bytes,10,opt,name=s3_key,json=s3Key,proto3" json:"s3_key,omitempty"`                   // Ключ объекта с артефактом в S3-совместимом хранилище
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -131,6 +132,13 @@ func (x *ProcessedNewsItem) GetProcessedAt() int64 {
 	return 0
 }
 
+func (x *ProcessedNewsItem) GetS3Key() string {
+	if x != nil {
+		return x.S3Key
+	}
+	return ""
+}
+
 // SaveProcessedNewsRequest содержит пачку новостей для сохранения.
 type SaveProcessedNewsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -225,7 +233,7 @@ var File_news_v1_news_proto protoreflect.FileDescriptor
 
 const file_news_v1_news_proto_rawDesc = "" +
 	"\n" +
-	"\x12news/v1/news.proto\x12\anews.v1\"\xf8\x01\n" +
+	"\x12news/v1/news.proto\x12\anews.v1\"\x8f\x02\n" +
 	"\x11ProcessedNewsItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x12\x14\n" +
@@ -235,7 +243,9 @@ const file_news_v1_news_proto_rawDesc = "" +
 	"\bcategory\x18\x06 \x01(\tR\bcategory\x12\x12\n" +
 	"\x04tags\x18\a \x03(\tR\x04tags\x12!\n" +
 	"\fpublished_at\x18\b \x01(\x03R\vpublishedAt\x12!\n" +
-	"\fprocessed_at\x18\t \x01(\x03R\vprocessedAt\"J\n" +
+	"\fprocessed_at\x18\t \x01(\x03R\vprocessedAt\x12\x15\n" +
+	"\x06s3_key\x18\n" +
+	" \x01(\tR\x05s3Key\"J\n" +
 	"\x18SaveProcessedNewsRequest\x12.\n" +
 	"\x04news\x18\x01 \x03(\v2\x1a.news.v1.ProcessedNewsItemR\x04news\"<\n" +
 	"\x19SaveProcessedNewsResponse\x12\x1f\n" +
@@ -264,7 +274,6 @@ var (
 		(*SaveProcessedNewsResponse)(nil), // 2: news.v1.SaveProcessedNewsResponse
 	}
 )
-
 var file_news_v1_news_proto_depIdxs = []int32{
 	0, // 0: news.v1.SaveProcessedNewsRequest.news:type_name -> news.v1.ProcessedNewsItem
 	1, // 1: news.v1.NewsService.SaveProcessedNews:input_type -> news.v1.SaveProcessedNewsRequest

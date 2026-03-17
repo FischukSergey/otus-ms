@@ -25,6 +25,7 @@ message ProcessedNewsItem {
   repeated string tags = 7;
   int64  published_at  = 8; // Unix timestamp (секунды)
   int64  processed_at  = 9; // Unix timestamp (секунды)
+  string s3_key       = 10; // Ключ объекта с артефактом в S3-совместимом хранилище
 }
 
 // SaveProcessedNewsRequest содержит пачку новостей для сохранения.
