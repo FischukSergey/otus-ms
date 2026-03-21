@@ -300,6 +300,12 @@ const docTemplate = `{
                 "summary": "Отправить пользовательское событие",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
+                    {
                         "description": "Событие пользователя",
                         "name": "payload",
                         "in": "body",
@@ -356,6 +362,12 @@ const docTemplate = `{
                 ],
                 "summary": "Получить персонализированную ленту",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "Лимит (1..100), по умолчанию 50",
@@ -433,6 +445,14 @@ const docTemplate = `{
                     "personalization"
                 ],
                 "summary": "Получить предпочтения пользователя",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Предпочтения пользователя",
@@ -478,6 +498,12 @@ const docTemplate = `{
                 ],
                 "summary": "Обновить предпочтения пользователя",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
                     {
                         "description": "Настройки personalization",
                         "name": "payload",

@@ -310,12 +310,16 @@ paths:
       description: Принимает события view/click/like/dislike/hide для текущего пользователя
         (роль user/admin).
       parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       - description: Событие пользователя
         in: body
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.CreateEventRequestSchema'
+          $ref: '#/definitions/internal_handlers_personalization.CreateEventRequestSchema'
       produces:
       - application/json
       responses:
@@ -324,19 +328,19 @@ paths:
         "400":
           description: Невалидный payload
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "403":
           description: Недостаточно прав
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Отправить пользовательское событие
@@ -347,6 +351,10 @@ paths:
       description: Возвращает новости с фильтрацией и ранжированием score для текущего
         пользователя (роль user/admin).
       parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       - description: Лимит (1..100), по умолчанию 50
         in: query
         name: limit
@@ -370,24 +378,24 @@ paths:
           description: Персонализированная лента
           schema:
             items:
-              $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.FeedItemResponseSchema'
+              $ref: '#/definitions/internal_handlers_personalization.FeedItemResponseSchema'
             type: array
         "400":
           description: Невалидные query-параметры
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "403":
           description: Недостаточно прав
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить персонализированную ленту
@@ -548,25 +556,30 @@ paths:
     get:
       description: Возвращает настройки personalization для текущего пользователя
         (роль user/admin).
+      parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: Предпочтения пользователя
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.PreferencesResponseSchema'
+            $ref: '#/definitions/internal_handlers_personalization.PreferencesResponseSchema'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "403":
           description: Недостаточно прав
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить предпочтения пользователя
@@ -578,12 +591,16 @@ paths:
       description: Создает или обновляет настройки personalization текущего пользователя
         (роль user/admin).
       parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       - description: Настройки personalization
         in: body
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.UpdatePreferencesRequestSchema'
+          $ref: '#/definitions/internal_handlers_personalization.UpdatePreferencesRequestSchema'
       produces:
       - application/json
       responses:
@@ -592,19 +609,19 @@ paths:
         "400":
           description: Невалидный payload
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "403":
           description: Недостаточно прав
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_personalization.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Обновить предпочтения пользователя

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/FischukSergey/otus-ms/internal/middleware"
 	personalizationservice "github.com/FischukSergey/otus-ms/internal/services/personalization"
@@ -21,7 +22,11 @@ const (
 type Service interface {
 	GetPreferences(ctx context.Context, userUUID string) (*personalizationservice.PreferencesResponse, error)
 	UpdatePreferences(ctx context.Context, userUUID string, req personalizationservice.UpdatePreferencesRequest) error
-	GetFeed(ctx context.Context, userUUID string, req personalizationservice.FeedRequest) ([]personalizationservice.FeedItemResponse, error)
+	GetFeed(
+		ctx context.Context,
+		userUUID string,
+		req personalizationservice.FeedRequest,
+	) ([]personalizationservice.FeedItemResponse, error)
 	CreateEvent(ctx context.Context, userUUID string, req personalizationservice.CreateEventRequest) error
 }
 
@@ -103,12 +108,32 @@ func (h *Handler) userIDFromContext(r *http.Request) (string, error) {
 	return userID, nil
 }
 
+func (h *Handler) resolveTargetUserID(r *http.Request) (string, int, string) {
+	currentUserID, err := h.userIDFromContext(r)
+	if err != nil {
+		return "", http.StatusUnauthorized, "Authentication required"
+	}
+
+	targetUserID := strings.TrimSpace(r.URL.Query().Get("userUuid"))
+	if targetUserID == "" || targetUserID == currentUserID {
+		return currentUserID, 0, ""
+	}
+
+	claims, ok := middleware.GetClaimsFromContext(r.Context())
+	if !ok || !claims.HasRole("admin") {
+		return "", http.StatusForbidden, "Access denied - admin role required for userUuid override"
+	}
+
+	return targetUserID, 0, ""
+}
+
 // GetPreferences возвращает предпочтения авторизованного пользователя.
 //
 // @Summary      Получить предпочтения пользователя
 // @Description  Возвращает настройки personalization для текущего пользователя (роль user/admin).
 // @Tags         personalization
 // @Produce      json
+// @Param        userUuid  query     string  false  "UUID целевого пользователя (только для admin)"
 // @Success      200  {object}  PreferencesResponseSchema                   "Предпочтения пользователя"
 // @Failure      401  {object}  ErrorResponse                               "Не авторизован"
 // @Failure      403  {object}  ErrorResponse                               "Недостаточно прав"
@@ -116,9 +141,9 @@ func (h *Handler) userIDFromContext(r *http.Request) (string, error) {
 // @Security     BearerAuth
 // @Router       /api/v1/users/me/preferences [get].
 func (h *Handler) GetPreferences(w http.ResponseWriter, r *http.Request) {
-	userID, err := h.userIDFromContext(r)
-	if err != nil {
-		h.writeError(w, r, http.StatusUnauthorized, "Authentication required")
+	userID, code, message := h.resolveTargetUserID(r)
+	if code != 0 {
+		h.writeError(w, r, code, message)
 		return
 	}
 
@@ -130,7 +155,10 @@ func (h *Handler) GetPreferences(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(prefs)
+	if err := json.NewEncoder(w).Encode(prefs); err != nil {
+		logger := middleware.LoggerFromContext(r.Context())
+		logger.Error("Failed to encode preferences response", "error", err)
+	}
 }
 
 // UpdatePreferences обновляет предпочтения авторизованного пользователя.
@@ -140,6 +168,7 @@ func (h *Handler) GetPreferences(w http.ResponseWriter, r *http.Request) {
 // @Tags         personalization
 // @Accept       json
 // @Produce      json
+// @Param        userUuid  query     string                          false  "UUID целевого пользователя (только для admin)"
 // @Param        payload  body      UpdatePreferencesRequestSchema                 true  "Настройки personalization"
 // @Success      204
 // @Failure      400  {object}  ErrorResponse  "Невалидный payload"
@@ -149,9 +178,9 @@ func (h *Handler) GetPreferences(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /api/v1/users/me/preferences [put].
 func (h *Handler) UpdatePreferences(w http.ResponseWriter, r *http.Request) {
-	userID, err := h.userIDFromContext(r)
-	if err != nil {
-		h.writeError(w, r, http.StatusUnauthorized, "Authentication required")
+	userID, code, message := h.resolveTargetUserID(r)
+	if code != 0 {
+		h.writeError(w, r, code, message)
 		return
 	}
 
@@ -175,6 +204,7 @@ func (h *Handler) UpdatePreferences(w http.ResponseWriter, r *http.Request) {
 // @Description  Возвращает новости с фильтрацией и ранжированием score для текущего пользователя (роль user/admin).
 // @Tags         personalization
 // @Produce      json
+// @Param        userUuid   query     string  false  "UUID целевого пользователя (только для admin)"
 // @Param        limit      query     int     false  "Лимит (1..100), по умолчанию 50"
 // @Param        offset     query     int     false  "Смещение, по умолчанию 0"
 // @Param        fromHours  query     int     false  "Окно выдачи в часах"
@@ -187,9 +217,9 @@ func (h *Handler) UpdatePreferences(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /api/v1/news/feed [get].
 func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
-	userID, err := h.userIDFromContext(r)
-	if err != nil {
-		h.writeError(w, r, http.StatusUnauthorized, "Authentication required")
+	userID, code, message := h.resolveTargetUserID(r)
+	if code != 0 {
+		h.writeError(w, r, code, message)
 		return
 	}
 
@@ -236,7 +266,10 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(items)
+	if err := json.NewEncoder(w).Encode(items); err != nil {
+		logger := middleware.LoggerFromContext(r.Context())
+		logger.Error("Failed to encode feed response", "error", err)
+	}
 }
 
 // CreateEvent сохраняет пользовательское событие по новости.
@@ -246,6 +279,7 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 // @Tags         personalization
 // @Accept       json
 // @Produce      json
+// @Param        userUuid  query     string                    false  "UUID целевого пользователя (только для admin)"
 // @Param        payload  body      CreateEventRequestSchema                   true  "Событие пользователя"
 // @Success      202
 // @Failure      400  {object}  ErrorResponse  "Невалидный payload"
@@ -255,9 +289,9 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /api/v1/news/events [post].
 func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
-	userID, err := h.userIDFromContext(r)
-	if err != nil {
-		h.writeError(w, r, http.StatusUnauthorized, "Authentication required")
+	userID, code, message := h.resolveTargetUserID(r)
+	if code != 0 {
+		h.writeError(w, r, code, message)
 		return
 	}
 

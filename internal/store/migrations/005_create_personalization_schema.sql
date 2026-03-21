@@ -2,9 +2,9 @@
 
 CREATE TABLE IF NOT EXISTS user_news_preferences (
     user_uuid             UUID PRIMARY KEY REFERENCES users(uuid) ON DELETE CASCADE,
-    preferred_categories  TEXT            NOT NULL DEFAULT '{}'::TEXT[],
-    preferred_sources     TEXT            NOT NULL DEFAULT '{}'::TEXT[],
-    preferred_keywords    TEXT            NOT NULL DEFAULT '{}'::TEXT[],
+    preferred_categories  TEXT[]          NOT NULL DEFAULT '{}'::TEXT[],
+    preferred_sources     TEXT[]          NOT NULL DEFAULT '{}'::TEXT[],
+    preferred_keywords    TEXT[]          NOT NULL DEFAULT '{}'::TEXT[],
     preferred_language    VARCHAR(10),
     from_hours            INTEGER         NOT NULL DEFAULT 168 CHECK (from_hours > 0 AND from_hours <= 720),
     created_at            TIMESTAMPTZ     NOT NULL DEFAULT NOW(),

@@ -7,6 +7,7 @@
 - **Вход** — логин через Auth-Proxy (Keycloak), хранение и автообновление токенов
 - **Дашборд** — health check Auth-Proxy, Main-service, News-collector, News-processor и Loki
 - **Пользователи** — создание, получение по UUID, мягкое удаление
+- **Personalization** — редактирование preferences и просмотр персонализированной ленты (`score`)
 - **Логи** — просмотр логов из Loki с фильтрами по сервису и уровню
 
 ## Требования

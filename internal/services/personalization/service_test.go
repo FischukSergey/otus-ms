@@ -33,10 +33,14 @@ func TestUpdatePreferences_ValidatesLanguage(t *testing.T) {
 	repo := &mockRepository{}
 	svc := personalization.NewService(repo)
 
-	err := svc.UpdatePreferences(context.Background(), "11111111-1111-1111-1111-111111111111", personalization.UpdatePreferencesRequest{
-		PreferredLanguage: "de",
-		FromHours:         24,
-	})
+	err := svc.UpdatePreferences(
+		context.Background(),
+		"11111111-1111-1111-1111-111111111111",
+		personalization.UpdatePreferencesRequest{
+			PreferredLanguage: "de",
+			FromHours:         24,
+		},
+	)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "preferredLanguage")
@@ -46,13 +50,17 @@ func TestUpdatePreferences_NormalizesValuesAndDefaults(t *testing.T) {
 	repo := &mockRepository{}
 	svc := personalization.NewService(repo)
 
-	err := svc.UpdatePreferences(context.Background(), "11111111-1111-1111-1111-111111111111", personalization.UpdatePreferencesRequest{
-		PreferredCategories: []string{" Tech ", "tech", "  ", "SCIENCE"},
-		PreferredSources:    []string{" source_2 ", "SOURCE_2", "source_3"},
-		PreferredKeywords:   []string{"AI", " ai", "GoLang"},
-		PreferredLanguage:   "RU",
-		FromHours:           0,
-	})
+	err := svc.UpdatePreferences(
+		context.Background(),
+		"11111111-1111-1111-1111-111111111111",
+		personalization.UpdatePreferencesRequest{
+			PreferredCategories: []string{" Tech ", "tech", "  ", "SCIENCE"},
+			PreferredSources:    []string{" source_2 ", "SOURCE_2", "source_3"},
+			PreferredKeywords:   []string{"AI", " ai", "GoLang"},
+			PreferredLanguage:   "RU",
+			FromHours:           0,
+		},
+	)
 	require.NoError(t, err)
 	require.NotNil(t, repo.upsertedPreferences)
 
@@ -128,13 +136,13 @@ func TestGetFeed_UsesPreferencesAndRequestOverrides(t *testing.T) {
 }
 
 type mockRepository struct {
-	preferences        *models.UserNewsPreferences
-	getPreferencesErr  error
+	preferences         *models.UserNewsPreferences
+	getPreferencesErr   error
 	upsertedPreferences *models.UserNewsPreferences
-	insertedEvent      *models.UserNewsEvent
-	feedItems          []models.PersonalizedNewsItem
-	feedErr            error
-	lastFeedFilters    *models.PersonalizedFeedFilters
+	insertedEvent       *models.UserNewsEvent
+	feedItems           []models.PersonalizedNewsItem
+	feedErr             error
+	lastFeedFilters     *models.PersonalizedFeedFilters
 }
 
 func (m *mockRepository) GetPreferences(_ context.Context, _ string) (*models.UserNewsPreferences, error) {

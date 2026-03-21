@@ -274,6 +274,7 @@ var (
 		(*SaveProcessedNewsResponse)(nil), // 2: news.v1.SaveProcessedNewsResponse
 	}
 )
+
 var file_news_v1_news_proto_depIdxs = []int32{
 	0, // 0: news.v1.SaveProcessedNewsRequest.news:type_name -> news.v1.ProcessedNewsItem
 	1, // 1: news.v1.NewsService.SaveProcessedNews:input_type -> news.v1.SaveProcessedNewsRequest

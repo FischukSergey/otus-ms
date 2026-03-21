@@ -104,12 +104,18 @@ const docTemplate = `{
                 "summary": "Отправить пользовательское событие",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
+                    {
                         "description": "Событие пользователя",
                         "name": "payload",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.CreateEventRequestSchema"
+                            "$ref": "#/definitions/internal_handlers_personalization.CreateEventRequestSchema"
                         }
                     }
                 ],
@@ -120,25 +126,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный payload",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Недостаточно прав",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     }
                 }
@@ -160,6 +166,12 @@ const docTemplate = `{
                 ],
                 "summary": "Получить персонализированную ленту",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "Лимит (1..100), по умолчанию 50",
@@ -191,32 +203,32 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.FeedItemResponseSchema"
+                                "$ref": "#/definitions/internal_handlers_personalization.FeedItemResponseSchema"
                             }
                         }
                     },
                     "400": {
                         "description": "Невалидные query-параметры",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Недостаточно прав",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     }
                 }
@@ -341,29 +353,37 @@ const docTemplate = `{
                     "personalization"
                 ],
                 "summary": "Получить предпочтения пользователя",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Предпочтения пользователя",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.PreferencesResponseSchema"
+                            "$ref": "#/definitions/internal_handlers_personalization.PreferencesResponseSchema"
                         }
                     },
                     "401": {
                         "description": "Не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Недостаточно прав",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     }
                 }
@@ -387,12 +407,18 @@ const docTemplate = `{
                 "summary": "Обновить предпочтения пользователя",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
+                    {
                         "description": "Настройки personalization",
                         "name": "payload",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.UpdatePreferencesRequestSchema"
+                            "$ref": "#/definitions/internal_handlers_personalization.UpdatePreferencesRequestSchema"
                         }
                     }
                 ],
@@ -403,25 +429,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный payload",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Недостаточно прав",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers_personalization.ErrorResponse"
                         }
                     }
                 }

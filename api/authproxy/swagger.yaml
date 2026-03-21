@@ -364,6 +364,10 @@ paths:
       description: Принимает события view/click/like/dislike/hide для текущего пользователя
         (роль user/admin).
       parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       - description: Событие пользователя
         in: body
         name: payload
@@ -401,6 +405,10 @@ paths:
       description: Возвращает новости с фильтрацией и ранжированием score для текущего
         пользователя (роль user/admin).
       parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       - description: Лимит (1..100), по умолчанию 50
         in: query
         name: limit
@@ -451,6 +459,11 @@ paths:
     get:
       description: Возвращает настройки personalization для текущего пользователя
         (роль user/admin).
+      parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       produces:
       - application/json
       responses:
@@ -481,6 +494,10 @@ paths:
       description: Создает или обновляет настройки personalization текущего пользователя
         (роль user/admin).
       parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
       - description: Настройки personalization
         in: body
         name: payload

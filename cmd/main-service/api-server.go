@@ -13,8 +13,8 @@ import (
 
 	_ "github.com/FischukSergey/otus-ms/api/mainservice" // swagger docs
 	"github.com/FischukSergey/otus-ms/internal/config"
-	personalizationhandler "github.com/FischukSergey/otus-ms/internal/handlers/personalization"
 	newshttphandler "github.com/FischukSergey/otus-ms/internal/handlers/newshttp"
+	personalizationhandler "github.com/FischukSergey/otus-ms/internal/handlers/personalization"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
 	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
