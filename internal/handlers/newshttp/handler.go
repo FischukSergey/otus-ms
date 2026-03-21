@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/FischukSergey/otus-ms/internal/middleware"
 	newsService "github.com/FischukSergey/otus-ms/internal/services/news"
@@ -28,6 +29,14 @@ type Handler struct {
 // ErrorResponse представляет структуру ответа с ошибкой.
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+// NewsResponse представляет запись новости для Swagger-схемы.
+type NewsResponse struct {
+	Topic     string    `json:"topic"`
+	Source    string    `json:"source"`
+	URL       string    `json:"url"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // NewHandler создаёт HTTP-хендлер новостей.
@@ -54,7 +63,7 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, statusCode 
 // @Tags         news
 // @Produce      json
 // @Param        limit  query     int   false  "Лимит записей (1..500), по умолчанию 50"
-// @Success      200    {array}   newsService.Response  "Список новостей"
+// @Success      200    {array}   NewsResponse          "Список новостей"
 // @Failure      400    {object}  ErrorResponse         "Некорректный query-параметр limit"
 // @Failure      401    {object}  ErrorResponse         "Не авторизован - отсутствует или невалидный JWT токен"
 // @Failure      403    {object}  ErrorResponse         "Доступ запрещён - требуется роль admin"

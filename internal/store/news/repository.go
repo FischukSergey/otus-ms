@@ -4,6 +4,7 @@ package news
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -77,6 +78,22 @@ func (r *Repository) UpsertBatch(ctx context.Context, news []models.ProcessedNew
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (url) DO NOTHING
 	`
+	const upsertSearchIndexQuery = `
+		INSERT INTO news_search_index (
+			news_id, body_text, tags_text, search_vector, updated_at
+		)
+		VALUES (
+			$1, NULL, $2,
+			setweight(to_tsvector('russian', COALESCE($3, '')), 'A')
+			|| setweight(to_tsvector('russian', COALESCE($4, '')), 'B')
+			|| setweight(to_tsvector('russian', COALESCE($2, '')), 'C'),
+			NOW()
+		)
+		ON CONFLICT (news_id) DO UPDATE SET
+			tags_text = EXCLUDED.tags_text,
+			search_vector = EXCLUDED.search_vector,
+			updated_at = NOW()
+	`
 
 	var saved int
 	for i := range news {
@@ -104,7 +121,23 @@ func (r *Repository) UpsertBatch(ctx context.Context, news []models.ProcessedNew
 		if err != nil {
 			return saved, fmt.Errorf("insert news id=%s url=%s: %w", n.ID, n.URL, err)
 		}
-		saved += int(tag.RowsAffected())
+		if tag.RowsAffected() == 0 {
+			continue
+		}
+
+		_, err = r.db.Exec(
+			ctx,
+			upsertSearchIndexQuery,
+			n.ID,
+			strings.Join(tags, " "),
+			n.Title,
+			n.Summary,
+		)
+		if err != nil {
+			return saved, fmt.Errorf("upsert search index for news id=%s url=%s: %w", n.ID, n.URL, err)
+		}
+
+		saved++
 	}
 
 	return saved, nil

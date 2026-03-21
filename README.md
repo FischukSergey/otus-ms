@@ -357,8 +357,13 @@ task tests
 - `GET /` - Приветственное сообщение
 - `GET /health` - Health check
 - `POST /api/v1/users` - Создание пользователя
+- `GET /api/v1/users` - Список пользователей (admin)
 - `GET /api/v1/users/{uuid}` - Получение пользователя
 - `DELETE /api/v1/users/{uuid}` - Удаление пользователя
+- `GET /api/v1/users/me/preferences` - Получение персональных предпочтений
+- `PUT /api/v1/users/me/preferences` - Обновление персональных предпочтений
+- `GET /api/v1/news/feed` - Персонализированная лента новостей
+- `POST /api/v1/news/events` - Отправка user events (view/click/like/dislike/hide)
 
 **Example:**
 ```bash
@@ -417,9 +422,15 @@ cd client && pip3 install -r requirements.txt && streamlit run app.py
 
 **Защищённые endpoints (Main Service):**
 ```
-POST   /api/v1/users       → admin только
-GET    /api/v1/users/{id}  → admin только
-DELETE /api/v1/users/{id}  → admin только
+POST   /api/v1/users                  → service-account, admin
+GET    /api/v1/users                  → admin
+GET    /api/v1/users/{id}             → admin
+DELETE /api/v1/users/{id}             → admin
+GET    /api/v1/news                   → admin
+GET    /api/v1/users/me/preferences   → user, admin
+PUT    /api/v1/users/me/preferences   → user, admin
+GET    /api/v1/news/feed              → user, admin
+POST   /api/v1/news/events            → user, admin
 ```
 
 **Middleware цепочка:**

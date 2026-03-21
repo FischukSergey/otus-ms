@@ -1,83 +1,211 @@
 basePath: /
 definitions:
+  github.com_FischukSergey_otus-ms_internal_handlers_newshttp.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  github.com_FischukSergey_otus-ms_internal_handlers_newshttp.NewsResponse:
+    properties:
+      createdAt:
+        type: string
+      source:
+        type: string
+      topic:
+        type: string
+      url:
+        type: string
+    type: object
+  github.com_FischukSergey_otus-ms_internal_handlers_personalization.CreateEventRequestSchema:
+    properties:
+      eventType:
+        type: string
+      metadata:
+        additionalProperties:
+          type: any
+        type: object
+      newsId:
+        type: string
+    type: object
+  github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  github.com_FischukSergey_otus-ms_internal_handlers_personalization.FeedItemResponseSchema:
+    properties:
+      category:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      processedAt:
+        type: string
+      publishedAt:
+        type: string
+      score:
+        type: number
+      source:
+        type: string
+      sourceId:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      topic:
+        type: string
+      url:
+        type: string
+    type: object
+  github.com_FischukSergey_otus-ms_internal_handlers_personalization.PreferencesResponseSchema:
+    properties:
+      fromHours:
+        type: integer
+      preferredCategories:
+        items:
+          type: string
+        type: array
+      preferredKeywords:
+        items:
+          type: string
+        type: array
+      preferredLanguage:
+        type: string
+      preferredSources:
+        items:
+          type: string
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  github.com_FischukSergey_otus-ms_internal_handlers_personalization.UpdatePreferencesRequestSchema:
+    properties:
+      fromHours:
+        type: integer
+      preferredCategories:
+        items:
+          type: string
+        type: array
+      preferredKeywords:
+        items:
+          type: string
+        type: array
+      preferredLanguage:
+        type: string
+      preferredSources:
+        items:
+          type: string
+        type: array
+    type: object
   github.com_FischukSergey_otus-ms_internal_handlers_user.ErrorResponse:
     properties:
       error:
         type: string
     type: object
+  internal_handlers_newshttp.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_handlers_newshttp.NewsResponse:
+    properties:
+      createdAt:
+        type: string
+      source:
+        type: string
+      topic:
+        type: string
+      url:
+        type: string
+    type: object
+  internal_handlers_personalization.CreateEventRequestSchema:
+    properties:
+      eventType:
+        type: string
+      metadata:
+        additionalProperties:
+          type: any
+        type: object
+      newsId:
+        type: string
+    type: object
+  internal_handlers_personalization.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_handlers_personalization.FeedItemResponseSchema:
+    properties:
+      category:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      processedAt:
+        type: string
+      publishedAt:
+        type: string
+      score:
+        type: number
+      source:
+        type: string
+      sourceId:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      topic:
+        type: string
+      url:
+        type: string
+    type: object
+  internal_handlers_personalization.PreferencesResponseSchema:
+    properties:
+      fromHours:
+        type: integer
+      preferredCategories:
+        items:
+          type: string
+        type: array
+      preferredKeywords:
+        items:
+          type: string
+        type: array
+      preferredLanguage:
+        type: string
+      preferredSources:
+        items:
+          type: string
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  internal_handlers_personalization.UpdatePreferencesRequestSchema:
+    properties:
+      fromHours:
+        type: integer
+      preferredCategories:
+        items:
+          type: string
+        type: array
+      preferredKeywords:
+        items:
+          type: string
+        type: array
+      preferredLanguage:
+        type: string
+      preferredSources:
+        items:
+          type: string
+        type: array
+    type: object
   internal_handlers_user.ErrorResponse:
     properties:
       error:
-        type: string
-    type: object
-  keycloak.ErrorResponse:
-    properties:
-      error:
-        type: string
-      error_description:
-        type: string
-    type: object
-  keycloak.LoginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  keycloak.LogoutRequest:
-    properties:
-      refresh_token:
-        type: string
-    required:
-    - refresh_token
-    type: object
-  keycloak.RefreshRequest:
-    properties:
-      refresh_token:
-        type: string
-    required:
-    - refresh_token
-    type: object
-  keycloak.RegisterRequest:
-    properties:
-      email:
-        maxLength: 255
-        type: string
-      firstName:
-        maxLength: 255
-        type: string
-      lastName:
-        maxLength: 255
-        type: string
-      middleName:
-        maxLength: 255
-        type: string
-      password:
-        maxLength: 128
-        minLength: 8
-        type: string
-    required:
-    - email
-    - firstName
-    - lastName
-    - password
-    type: object
-  keycloak.TokenResponse:
-    properties:
-      access_token:
-        type: string
-      expires_in:
-        type: integer
-      refresh_expires_in:
-        type: integer
-      refresh_token:
-        type: string
-      scope:
-        type: string
-      token_type:
         type: string
     type: object
   user.CreateRequest:
@@ -136,142 +264,135 @@ info:
   title: OtusMS Main Service API
   version: 1.0.0
 paths:
-  /api/v1/auth/login:
-    post:
-      consumes:
-      - application/json
-      description: |-
-        Аутентифицирует пользователя и возвращает access и refresh токены.
-        Токены получаются от Keycloak.
+  /api/v1/news:
+    get:
+      description: Возвращает последние новости с полями topic, source и url. Требуется
+        роль admin.
       parameters:
-      - description: Учетные данные пользователя
-        in: body
-        name: credentials
-        required: true
-        schema:
-          $ref: '#/definitions/keycloak.LoginRequest'
+      - description: Лимит записей (1..500), по умолчанию 50
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Токены успешно получены
+          description: Список новостей
           schema:
-            $ref: '#/definitions/keycloak.TokenResponse'
+            items:
+              $ref: '#/definitions/internal_handlers_newshttp.NewsResponse'
+            type: array
         "400":
-          description: Невалидный запрос или отсутствуют обязательные поля
+          description: Некорректный query-параметр limit
           schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_newshttp.ErrorResponse'
         "401":
-          description: Неверные учетные данные
+          description: Не авторизован - отсутствует или невалидный JWT токен
           schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-        "500":
-          description: Внутренняя ошибка сервера или ошибка Keycloak
+            $ref: '#/definitions/internal_handlers_newshttp.ErrorResponse'
+        "403":
+          description: Доступ запрещён - требуется роль admin
           schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-      summary: Вход в систему
-      tags:
-      - auth
-  /api/v1/auth/logout:
-    post:
-      consumes:
-      - application/json
-      description: |-
-        Инвалидирует refresh токен в Keycloak, завершая сессию пользователя.
-        После logout токены становятся недействительными.
-      parameters:
-      - description: Refresh токен для инвалидации
-        in: body
-        name: token
-        required: true
-        schema:
-          $ref: '#/definitions/keycloak.LogoutRequest'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: Выход выполнен успешно
-        "400":
-          description: Невалидный запрос или отсутствует refresh token
-          schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-        "500":
-          description: Ошибка при выполнении logout в Keycloak
-          schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-      summary: Выход из системы
-      tags:
-      - auth
-  /api/v1/auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: |-
-        Обменивает refresh токен на новую пару access и refresh токенов.
-        Позволяет продлить сессию пользователя без повторного ввода пароля.
-      parameters:
-      - description: Refresh токен
-        in: body
-        name: token
-        required: true
-        schema:
-          $ref: '#/definitions/keycloak.RefreshRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Новые токены успешно получены
-          schema:
-            $ref: '#/definitions/keycloak.TokenResponse'
-        "400":
-          description: Невалидный запрос или отсутствует refresh token
-          schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-        "401":
-          description: Невалидный или истекший refresh токен
-          schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-        "500":
-          description: Внутренняя ошибка сервера или ошибка Keycloak
-          schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-      summary: Обновление токена
-      tags:
-      - auth
-  /api/v1/auth/register:
-    post:
-      consumes:
-      - application/json
-      description: |-
-        Создаёт пользователя в Keycloak и Main Service с ролью user.
-        После регистрации необходимо выполнить login для получения токенов.
-      parameters:
-      - description: Данные для регистрации
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/keycloak.RegisterRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Пользователь успешно зарегистрирован
-        "400":
-          description: Невалидные данные или ошибка валидации
-          schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-        "409":
-          description: Пользователь с таким email уже существует
-          schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
+            $ref: '#/definitions/internal_handlers_newshttp.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/keycloak.ErrorResponse'
-      summary: Регистрация нового пользователя
+            $ref: '#/definitions/internal_handlers_newshttp.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список новостей (только admin)
       tags:
-      - auth
+      - news
+  /api/v1/news/events:
+    post:
+      consumes:
+      - application/json
+      description: Принимает события view/click/like/dislike/hide для текущего пользователя
+        (роль user/admin).
+      parameters:
+      - description: Событие пользователя
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.CreateEventRequestSchema'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: ""
+        "400":
+          description: Невалидный payload
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Отправить пользовательское событие
+      tags:
+      - personalization
+  /api/v1/news/feed:
+    get:
+      description: Возвращает новости с фильтрацией и ранжированием score для текущего
+        пользователя (роль user/admin).
+      parameters:
+      - description: Лимит (1..100), по умолчанию 50
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение, по умолчанию 0
+        in: query
+        name: offset
+        type: integer
+      - description: Окно выдачи в часах
+        in: query
+        name: fromHours
+        type: integer
+      - description: FTS запрос (websearch syntax)
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Персонализированная лента
+          schema:
+            items:
+              $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.FeedItemResponseSchema'
+            type: array
+        "400":
+          description: Невалидные query-параметры
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить персонализированную ленту
+      tags:
+      - personalization
   /api/v1/users:
     get:
       description: Возвращает всех пользователей из таблицы users, включая мягко удалённых.
@@ -423,6 +544,75 @@ paths:
       summary: Получить пользователя (только admin)
       tags:
       - users
+  /api/v1/users/me/preferences:
+    get:
+      description: Возвращает настройки personalization для текущего пользователя
+        (роль user/admin).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Предпочтения пользователя
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.PreferencesResponseSchema'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить предпочтения пользователя
+      tags:
+      - personalization
+    put:
+      consumes:
+      - application/json
+      description: Создает или обновляет настройки personalization текущего пользователя
+        (роль user/admin).
+      parameters:
+      - description: Настройки personalization
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.UpdatePreferencesRequestSchema'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Невалидный payload
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/github.com_FischukSergey_otus-ms_internal_handlers_personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить предпочтения пользователя
+      tags:
+      - personalization
+  /news.v1.NewsService/SaveProcessedNews:
+    post:
+      responses: {}
   /news_sources.v1.NewsSourcesService/GetNewsSources:
     post:
       responses: {}

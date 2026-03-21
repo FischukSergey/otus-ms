@@ -13,15 +13,18 @@ import (
 
 	_ "github.com/FischukSergey/otus-ms/api/mainservice" // swagger docs
 	"github.com/FischukSergey/otus-ms/internal/config"
+	personalizationhandler "github.com/FischukSergey/otus-ms/internal/handlers/personalization"
 	newshttphandler "github.com/FischukSergey/otus-ms/internal/handlers/newshttp"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
 	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
 	newsservice "github.com/FischukSergey/otus-ms/internal/services/news"
+	personalizationservice "github.com/FischukSergey/otus-ms/internal/services/personalization"
 	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
 	"github.com/FischukSergey/otus-ms/internal/store"
 	newsrepo "github.com/FischukSergey/otus-ms/internal/store/news"
+	personalizationrepo "github.com/FischukSergey/otus-ms/internal/store/personalization"
 	userrepo "github.com/FischukSergey/otus-ms/internal/store/user"
 )
 
@@ -65,6 +68,9 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	newsRepository := newsrepo.NewRepository(deps.Storage.DB())
 	newsService := newsservice.NewService(newsRepository)
 	newsHandler := newshttphandler.NewHandler(newsService, deps.Logger)
+	personalizationRepository := personalizationrepo.NewRepository(deps.Storage.DB())
+	personalizationService := personalizationservice.NewService(personalizationRepository)
+	personalizationHandler := personalizationhandler.NewHandler(personalizationService, deps.Logger)
 
 	// Роуты
 	router.Get("/", apiSrv.handleRoot)
@@ -123,6 +129,13 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 					r.Get("/news", newsHandler.List)
 				})
 
+				// Персонализация доступна для user и admin.
+				r.Group(func(r chi.Router) {
+					r.Use(custommiddleware.RequireUser(deps.Logger))
+					r.Get("/news/feed", personalizationHandler.GetFeed)
+					r.Post("/news/events", personalizationHandler.CreateEvent)
+				})
+
 				// Роуты для работы с пользователями
 				r.Route("/users", func(r chi.Router) {
 					// Создание пользователя доступно для service account (Auth-Proxy) и admin
@@ -140,11 +153,11 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 					})
 
 					// Для пользователей с ролью user или admin (если понадобятся)
-					// r.Group(func(r chi.Router) {
-					//     r.Use(custommiddleware.RequireUser(deps.Logger))
-					//     r.Get("/me", userHandler.GetMe)     // Получить свой профиль
-					//     r.Put("/me", userHandler.UpdateMe)  // Обновить свой профиль
-					// })
+					r.Group(func(r chi.Router) {
+						r.Use(custommiddleware.RequireUser(deps.Logger))
+						r.Get("/me/preferences", personalizationHandler.GetPreferences)
+						r.Put("/me/preferences", personalizationHandler.UpdatePreferences)
+					})
 				})
 			} else {
 				deps.Logger.Warn("JWT not configured - API endpoints are UNPROTECTED! This should only happen in development.")
