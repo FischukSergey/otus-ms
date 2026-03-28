@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -141,4 +142,18 @@ func (r *Repository) UpsertBatch(ctx context.Context, news []models.ProcessedNew
 	}
 
 	return saved, nil
+}
+
+// DeleteOlderThan удаляет новости, созданные раньше threshold.
+// Каскадно удаляет связанные записи в news_search_index и user_news_events (ON DELETE CASCADE).
+// Возвращает количество удалённых строк из таблицы news.
+func (r *Repository) DeleteOlderThan(ctx context.Context, threshold time.Time) (int64, error) {
+	const query = `DELETE FROM news WHERE created_at < $1`
+
+	tag, err := r.db.Exec(ctx, query, threshold)
+	if err != nil {
+		return 0, fmt.Errorf("delete news older than %s: %w", threshold.Format(time.RFC3339), err)
+	}
+
+	return tag.RowsAffected(), nil
 }

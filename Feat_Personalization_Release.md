@@ -178,4 +178,54 @@ Query-параметры:
 
 ---
 
+## 12. Retention Policy (TTL новостей)
+
+В рамках этой же ветки реализована политика хранения новостей с автоматической очисткой устаревших данных.
+
+### 12.1 Что реализовано
+
+- Автоматическое удаление из PostgreSQL новостей старше N дней (дефолт: 7).
+- Автоматическое удаление из S3-бакета объектов старше N дней по дате в пути ключа.
+- Каскадное удаление связанных данных: `news_search_index` и `user_news_events` очищаются автоматически через `ON DELETE CASCADE`.
+- TTL и интервал запуска задаются в конфиге без перекомпиляции.
+
+### 12.2 Новые файлы
+
+| Файл | Назначение |
+|---|---|
+| `internal/store/migrations/007_news_retention_index.sql` | Индекс `idx_news_created_at` для эффективного DELETE |
+| `internal/services/retention/db_cleaner.go` | Фоновая горутина очистки PostgreSQL |
+| `internal/services/retention/s3_cleaner.go` | Фоновая горутина очистки S3 |
+
+### 12.3 Изменённые файлы
+
+| Файл | Изменение |
+|---|---|
+| `internal/config/config.go` | Добавлена `RetentionConfig` (поля `news_retention_days`, `cleanup_interval`) |
+| `internal/store/news/repository.go` | Добавлен метод `DeleteOlderThan(ctx, threshold)` |
+| `internal/objectstore/s3.go` | Добавлены `ListAndDeleteOld`, `deleteObjects`, `parseDateFromKey` |
+| `cmd/main-service/main.go` | Запуск `DBCleaner` горутины после миграций |
+| `cmd/news-processor/main.go` | Запуск `S3Cleaner` горутины после инициализации S3 |
+| `configs/config.prod.example.yaml` | Добавлена секция `retention:` |
+| `configs/config.news-processor.prod.example.yaml` | Добавлена секция `retention:` |
+
+### 12.4 Конфигурация
+
+```yaml
+retention:
+  news_retention_days: 7    # удалять новости старше N дней (default: 7)
+  cleanup_interval: 24h     # интервал между запусками очистки (default: 24h)
+```
+
+Секция добавляется в конфиг обоих сервисов: `main-service` (очистка БД) и `news-processor` (очистка S3).
+
+### 12.5 Поведение
+
+- Первый запуск очистки — **сразу при старте** сервиса, затем по тикеру.
+- При `deleted > 0` пишется `Info` лог, при `0` — `Debug`, при ошибке — `Error`.
+- Горутины завершаются корректно через отмену `ctx` (SIGTERM/SIGINT).
+- S3-удаление батчами по 1000 объектов (лимит S3 API `DeleteObjects`).
+
+---
+
 Если следующая итерация: логичный шаг — заполнение `body_text` из processor-пайплайна и настройка веса сигналов на основе продуктовых метрик.

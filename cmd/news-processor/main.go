@@ -17,6 +17,7 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/logger"
 	"github.com/FischukSergey/otus-ms/internal/objectstore"
 	"github.com/FischukSergey/otus-ms/internal/services/processor"
+	"github.com/FischukSergey/otus-ms/internal/services/retention"
 )
 
 var configPath = flag.String("config", "configs/config.news-processor.local.yaml", "Path to config file")
@@ -84,6 +85,10 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init object store: %w", err)
 	}
+
+	// Запускаем фоновую очистку устаревших объектов из S3
+	s3Cleaner := retention.NewS3Cleaner(s3Store, cfg.ObjectStore.Prefix, cfg.Retention, appLogger)
+	go s3Cleaner.Run(ctx)
 
 	processorService := processor.NewService(
 		cfg.Kafka,

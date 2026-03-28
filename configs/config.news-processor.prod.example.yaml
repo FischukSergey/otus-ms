@@ -51,3 +51,8 @@ object_storage:
   region: "ru-1"
   use_ssl: true
   prefix: "news-processor"
+
+# Политика хранения новостей — очистка устаревших объектов из S3
+retention:
+  news_retention_days: 7    # удалять объекты старше N дней (default: 7)
+  cleanup_interval: 24h     # интервал между запусками очистки (default: 24h)

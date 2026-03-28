@@ -18,6 +18,7 @@ type Config struct {
 	Collector   CollectorConfig     `yaml:"collector"`
 	Kafka       KafkaConfig         `yaml:"kafka"`
 	Processor   ProcessorConfig     `yaml:"processor"`
+	Retention   RetentionConfig     `yaml:"retention"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -322,4 +323,29 @@ func (p ProcessorConfig) GetFetchTimeout() time.Duration {
 		return p.FetchTimeout
 	}
 	return 15 * time.Second
+}
+
+// RetentionConfig содержит политику хранения данных.
+// Используется в main-service (очистка БД) и news-processor (очистка S3).
+type RetentionConfig struct {
+	// NewsRetentionDays — количество дней хранения новостей. По умолчанию 7.
+	NewsRetentionDays int `yaml:"news_retention_days"`
+	// CleanupInterval — интервал между запусками задачи очистки. По умолчанию 24h.
+	CleanupInterval time.Duration `yaml:"cleanup_interval"`
+}
+
+// GetNewsRetentionDays возвращает срок хранения новостей или 7 дней по умолчанию.
+func (r RetentionConfig) GetNewsRetentionDays() int {
+	if r.NewsRetentionDays > 0 {
+		return r.NewsRetentionDays
+	}
+	return 7
+}
+
+// GetCleanupInterval возвращает интервал очистки или 24 часа по умолчанию.
+func (r RetentionConfig) GetCleanupInterval() time.Duration {
+	if r.CleanupInterval > 0 {
+		return r.CleanupInterval
+	}
+	return 24 * time.Hour
 }
