@@ -13,16 +13,19 @@ import (
 
 	_ "github.com/FischukSergey/otus-ms/api/mainservice" // swagger docs
 	"github.com/FischukSergey/otus-ms/internal/config"
+	alertinghandler "github.com/FischukSergey/otus-ms/internal/handlers/alerting"
 	newshttphandler "github.com/FischukSergey/otus-ms/internal/handlers/newshttp"
 	personalizationhandler "github.com/FischukSergey/otus-ms/internal/handlers/personalization"
 	userhandler "github.com/FischukSergey/otus-ms/internal/handlers/user"
 	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
+	alertingservice "github.com/FischukSergey/otus-ms/internal/services/alerting"
 	newsservice "github.com/FischukSergey/otus-ms/internal/services/news"
 	personalizationservice "github.com/FischukSergey/otus-ms/internal/services/personalization"
 	userservice "github.com/FischukSergey/otus-ms/internal/services/user"
 	"github.com/FischukSergey/otus-ms/internal/store"
+	alertingrepo "github.com/FischukSergey/otus-ms/internal/store/alerting"
 	newsrepo "github.com/FischukSergey/otus-ms/internal/store/news"
 	personalizationrepo "github.com/FischukSergey/otus-ms/internal/store/personalization"
 	userrepo "github.com/FischukSergey/otus-ms/internal/store/user"
@@ -71,6 +74,9 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	personalizationRepository := personalizationrepo.NewRepository(deps.Storage.DB())
 	personalizationService := personalizationservice.NewService(personalizationRepository)
 	personalizationHandler := personalizationhandler.NewHandler(personalizationService, deps.Logger)
+	alertingRepository := alertingrepo.NewRepository(deps.Storage.DB())
+	alertingService := alertingservice.NewService(alertingRepository)
+	alertingHandler := alertinghandler.NewHandler(alertingService, deps.Logger)
 
 	// Роуты
 	router.Get("/", apiSrv.handleRoot)
@@ -134,6 +140,11 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 					r.Use(custommiddleware.RequireUser(deps.Logger))
 					r.Get("/news/feed", personalizationHandler.GetFeed)
 					r.Post("/news/events", personalizationHandler.CreateEvent)
+					r.Get("/alerts/rules", alertingHandler.ListRules)
+					r.Post("/alerts/rules", alertingHandler.CreateRule)
+					r.Put("/alerts/rules/{id}", alertingHandler.UpdateRule)
+					r.Delete("/alerts/rules/{id}", alertingHandler.DeleteRule)
+					r.Get("/alerts/events", alertingHandler.ListEvents)
 				})
 
 				// Роуты для работы с пользователями

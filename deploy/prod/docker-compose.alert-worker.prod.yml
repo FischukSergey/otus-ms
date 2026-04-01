@@ -1,0 +1,24 @@
+services:
+  alert-worker:
+    container_name: otus-alert-worker-prod
+    image: cr.selcloud.ru/otus-microservice-be/alert-worker:latest
+    restart: always
+    ports:
+      - "127.0.0.1:38084:38084"  # HTTP health check — только localhost
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./logs:/app/logs
+    command: ["./alert-worker", "-config", "/app/configs/config.alert-worker.prod.yaml"]
+    networks:
+      - otus_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:38084/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Запускать после main-service и kafka: task -d . -t deploy/prod/Taskfile.yml aw:up
+
+networks:
+  otus_network:
+    external: true  # Сеть создаётся docker-compose.be.prod.yml

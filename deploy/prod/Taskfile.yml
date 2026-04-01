@@ -17,12 +17,13 @@ vars:
   VPS_PATH_REDIS: /root/otus-microservice/prod/redis
   VPS_PATH_KAFKA: /root/otus-microservice/prod/kafka
   VPS_PATH_NP: /root/otus-microservice/prod/news-processor
+  VPS_PATH_AW: /root/otus-microservice/prod/alert-worker
 
 tasks:
   # ===== Конфигурация =====
 
   config:upload:
-    desc: "Загрузить конфиги на VPS (main-service + auth-proxy + news-collector)"
+    desc: "Загрузить конфиги на VPS (main-service + auth-proxy + news-collector + news-processor + alert-worker)"
     cmds:
       - echo "📤 Загрузка конфигурационных файлов на VPS..."
       - scp configs/config.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_BE}}/configs/
@@ -35,6 +36,9 @@ tasks:
       - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NP}}/configs"
       - scp configs/config.news-processor.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_NP}}/configs/
       - echo "✅ config.news-processor.prod.yaml → {{.VPS_PATH_NP}}/configs/"
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_AW}}/configs"
+      - scp configs/config.alert-worker.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_AW}}/configs/
+      - echo "✅ config.alert-worker.prod.yaml → {{.VPS_PATH_AW}}/configs/"
 
   config:upload:monitoring:
     desc: "Загрузить конфиги мониторинга на VPS (prometheus, loki, promtail, alertmanager)"
@@ -274,6 +278,62 @@ tasks:
     cmds:
       - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_NP}}/configs/config.news-processor.prod.yaml"
 
+  # ===== Управление Alert Worker =====
+
+  aw:up:
+    desc: "Запустить Alert Worker (после main-service и kafka)"
+    cmds:
+      - echo "⏳ Проверяем доступность main-service..."
+      - |
+        ssh {{.SSH_HOST}} '
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost:38080/health > /dev/null; then
+              echo "✅ main-service доступен"; exit 0
+            fi
+            echo "  попытка $i/12, ждём 5 сек..."; sleep 5
+          done
+          echo "❌ main-service недоступен после 60 сек"; exit 1
+        '
+      - echo "🚀 Запуск Alert Worker..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_AW}}/{configs,logs}"
+      - scp deploy/prod/docker-compose.alert-worker.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_AW}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AW}} && docker compose -f docker-compose.alert-worker.prod.yml up -d"
+      - sleep 5
+      - task: aw:health
+      - echo "✅ Alert Worker запущен"
+
+  aw:down:
+    desc: "Остановить Alert Worker"
+    cmds:
+      - echo "⏸️  Остановка Alert Worker..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AW}} && docker compose -f docker-compose.alert-worker.prod.yml down"
+      - echo "✅ Alert Worker остановлен"
+
+  aw:restart:
+    desc: "Перезапустить Alert Worker"
+    cmds:
+      - echo "🔄 Перезапуск Alert Worker..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AW}} && docker compose -f docker-compose.alert-worker.prod.yml restart"
+      - sleep 5
+      - task: aw:health
+      - echo "✅ Alert Worker перезапущен"
+
+  aw:logs:
+    desc: "Показать логи Alert Worker"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-alert-worker-prod --tail=100 -f"
+
+  aw:health:
+    desc: "Проверить healthcheck Alert Worker"
+    cmds:
+      - echo "🏥 Healthcheck Alert Worker:"
+      - ssh {{.SSH_HOST}} "curl -s http://localhost:38084/health | jq ."
+
+  aw:config:edit:
+    desc: "Открыть config.alert-worker.prod.yaml на VPS в nano"
+    cmds:
+      - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_AW}}/configs/config.alert-worker.prod.yaml"
+
   # ===== Управление Redis =====
 
   redis:up:
@@ -381,6 +441,8 @@ tasks:
       - scp deploy/prod/docker-compose.kafka.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_KAFKA}}/
       - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NP}}"
       - scp deploy/prod/docker-compose.news-processor.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NP}}/
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_AW}}"
+      - scp deploy/prod/docker-compose.alert-worker.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_AW}}/
       - echo "✅ Docker-compose файлы загружены"
 
   # ===== Swagger UI =====

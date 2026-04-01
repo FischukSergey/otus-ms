@@ -30,6 +30,7 @@ kafka:
     - "otus-kafka-prod:9092"
   topic_raw_news: "raw_news"
   topic_processed_news: "processed_news"
+  topic_news_alerts: "news_alerts"
   consumer_group: "news-processor-group"
   batch_size: 100
   batch_timeout: 1s

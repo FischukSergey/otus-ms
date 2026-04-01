@@ -30,6 +30,7 @@ func startOffsetLabel(o int64) string {
 // Реализуется clients/mainservice.GRPCClient.
 type NewsClient interface {
 	SaveProcessedNews(ctx context.Context, news []models.ProcessedNews) (int, error)
+	GetActiveAlertRules(ctx context.Context) ([]models.AlertRule, error)
 }
 
 // ArtifactStore определяет интерфейс сохранения текстового артефакта новости.
@@ -41,10 +42,13 @@ type ArtifactStore interface {
 // и батчами сохраняет через gRPC в main-service.
 type Service struct {
 	reader         *kafka.Reader
+	alertWriter    *kafka.Writer
+	alertTopic     string
 	newsClient     NewsClient
 	artifactStore  ArtifactStore
 	objectStoreCfg config.ObjectStorageConfig
 	processorCfg   config.ProcessorConfig
+	rulesCache     *cachedAlertRules
 	logger         *slog.Logger
 }
 
@@ -72,12 +76,27 @@ func NewService(
 		StartOffset: startOffset,
 	})
 
+	var alertWriter *kafka.Writer
+	if kafkaCfg.TopicNewsAlerts != "" {
+		alertWriter = &kafka.Writer{
+			Addr:                   kafka.TCP(kafkaCfg.Brokers...),
+			Topic:                  kafkaCfg.TopicNewsAlerts,
+			Balancer:               &kafka.Hash{},
+			BatchSize:              kafkaCfg.GetBatchSize(),
+			BatchTimeout:           kafkaCfg.GetBatchTimeout(),
+			WriteTimeout:           kafkaCfg.GetWriteTimeout(),
+			RequiredAcks:           kafka.RequireOne,
+			AllowAutoTopicCreation: false,
+		}
+	}
+
 	logger.Info("processor service created",
 		"brokers", kafkaCfg.Brokers,
 		"topic", kafkaCfg.TopicRawNews,
 		"consumer_group", kafkaCfg.ConsumerGroup,
 		"start_offset", startOffsetLabel(startOffset),
 		"workers", processorCfg.GetWorkers(),
+		"alerts_topic", kafkaCfg.TopicNewsAlerts,
 		"artifact_bucket", objectStoreCfg.Bucket,
 		"artifact_endpoint", objectStoreCfg.Endpoint,
 		"artifact_prefix", objectStoreCfg.Prefix,
@@ -85,10 +104,13 @@ func NewService(
 
 	return &Service{
 		reader:         reader,
+		alertWriter:    alertWriter,
+		alertTopic:     kafkaCfg.TopicNewsAlerts,
 		newsClient:     newsClient,
 		artifactStore:  artifactStore,
 		objectStoreCfg: objectStoreCfg,
 		processorCfg:   processorCfg,
+		rulesCache:     &cachedAlertRules{},
 		logger:         logger,
 	}
 }
@@ -103,7 +125,12 @@ func (s *Service) Run(ctx context.Context) error {
 		"workers", workers,
 		"save_batch_size", saveBatchSize,
 		"fetch_content", s.processorCfg.FetchContent,
+		"alerts_enabled", s.alertWriter != nil,
 	)
+
+	if s.alertWriter != nil {
+		go s.alertRulesRefresher(ctx, 45*time.Second)
+	}
 
 	// Буферизованные каналы: задачи и результаты.
 	tasks := make(chan *models.RawNews, workers*2)
@@ -136,6 +163,12 @@ func (s *Service) Run(ctx context.Context) error {
 	if err := s.reader.Close(); err != nil {
 		s.logger.Error("kafka reader close error", "error", err)
 		return err
+	}
+	if s.alertWriter != nil {
+		if err := s.alertWriter.Close(); err != nil {
+			s.logger.Error("kafka alert writer close error", "error", err)
+			return err
+		}
 	}
 	return nil
 }
@@ -242,12 +275,81 @@ func (s *Service) workerLoop(ctx context.Context, tasks <-chan *models.RawNews, 
 			"s3_key", processed.S3Key,
 		)
 
+		if s.alertWriter != nil {
+			events := matchAlertEvents(processed, s.rulesCache.get())
+			if len(events) > 0 {
+				if err := s.publishAlertEvents(ctx, events); err != nil {
+					s.logger.Error("failed to publish alert events",
+						"news_id", processed.ID,
+						"events_count", len(events),
+						"error", err,
+					)
+				} else {
+					s.logger.Debug("alert events published",
+						"news_id", processed.ID,
+						"events_count", len(events),
+						"topic", s.alertTopic,
+					)
+				}
+			}
+		}
+
 		select {
 		case results <- processed:
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func (s *Service) alertRulesRefresher(ctx context.Context, interval time.Duration) {
+	refresh := func() {
+		rules, err := s.newsClient.GetActiveAlertRules(ctx)
+		if err != nil {
+			s.logger.Warn("failed to refresh alert rules", "error", err)
+			return
+		}
+		s.rulesCache.set(rules)
+		s.logger.Debug("alert rules cache refreshed", "rules_count", len(rules))
+	}
+
+	refresh()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			refresh()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *Service) publishAlertEvents(ctx context.Context, events []models.NewsAlertEvent) error {
+	messages := make([]kafka.Message, 0, len(events))
+	for i := range events {
+		value, err := json.Marshal(events[i])
+		if err != nil {
+			s.logger.Warn("failed to marshal alert event",
+				"event_id", events[i].EventID,
+				"rule_id", events[i].RuleID,
+				"error", err,
+			)
+			continue
+		}
+		messages = append(messages, kafka.Message{
+			Key:   []byte(events[i].RuleID),
+			Value: value,
+		})
+	}
+
+	if len(messages) == 0 {
+		return nil
+	}
+
+	return s.alertWriter.WriteMessages(ctx, messages...)
 }
 
 // saveBatcher собирает ProcessedNews в батчи и отправляет через gRPC.

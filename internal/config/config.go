@@ -17,6 +17,7 @@ type Config struct {
 	ObjectStore ObjectStorageConfig `yaml:"object_storage"`
 	Collector   CollectorConfig     `yaml:"collector"`
 	Kafka       KafkaConfig         `yaml:"kafka"`
+	Telegram    TelegramConfig      `yaml:"telegram"`
 	Processor   ProcessorConfig     `yaml:"processor"`
 	Retention   RetentionConfig     `yaml:"retention"`
 }
@@ -250,6 +251,10 @@ type KafkaConfig struct {
 	TopicRawNews string `yaml:"topic_raw_news"`
 	// TopicProcessedNews — топик для обработанных новостей от news-processor.
 	TopicProcessedNews string `yaml:"topic_processed_news"`
+	// TopicNewsAlerts — топик для событий алертинга (news-processor -> alert-worker).
+	TopicNewsAlerts string `yaml:"topic_news_alerts"`
+	// TopicNewsAlertsDLT — топик для недоставленных alert-событий.
+	TopicNewsAlertsDLT string `yaml:"topic_news_alerts_dlt"`
 	// ConsumerGroup — consumer group для news-processor.
 	ConsumerGroup string `yaml:"consumer_group"`
 	// BatchSize — максимальное количество сообщений в одном батче (producer).
@@ -258,6 +263,17 @@ type KafkaConfig struct {
 	BatchTimeout time.Duration `yaml:"batch_timeout"`
 	// WriteTimeout — таймаут записи одного батча (producer).
 	WriteTimeout time.Duration `yaml:"write_timeout"`
+}
+
+// TelegramConfig содержит настройки Telegram Bot API для alert-worker.
+type TelegramConfig struct {
+	BotToken      string `yaml:"bot_token"`
+	ProjectChatID string `yaml:"project_chat_id"`
+}
+
+// IsConfigured проверяет, что настройки Telegram заданы.
+func (t TelegramConfig) IsConfigured() bool {
+	return t.BotToken != "" && t.ProjectChatID != ""
 }
 
 // IsConfigured проверяет, что конфигурация Kafka заполнена.
