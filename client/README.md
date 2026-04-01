@@ -5,9 +5,10 @@
 ## Возможности
 
 - **Вход** — логин через Auth-Proxy (Keycloak), хранение и автообновление токенов
-- **Дашборд** — health check Auth-Proxy и Main-service
+- **Дашборд** — health check Auth-Proxy, Main-service, News-collector, News-processor и Loki
 - **Пользователи** — создание, получение по UUID, мягкое удаление
-- **Логи** — заглушка (API логов на бэкенде нет)
+- **Personalization** — редактирование preferences и просмотр персонализированной ленты (`score`)
+- **Логи** — просмотр логов из Loki с фильтрами по сервису и уровню
 
 ## Требования
 
@@ -35,8 +36,10 @@ streamlit run app.py
 |------------|--------------|----------|
 | `AUTH_PROXY_URL` | `http://localhost:38081` | URL Auth-Proxy (логин, refresh, logout) |
 | `MAIN_SERVICE_URL` | `http://localhost:38080` | URL Main-service (пользователи, health) |
+| `NEWS_COLLECTOR_URL` | `http://localhost:38082` | URL News-collector (health) |
+| `NEWS_PROCESSOR_URL` | `http://localhost:38083` | URL News-processor (health) |
+| `LOKI_URL` | `http://localhost:3100` | URL Loki (логи) |
 
 ## Замечания
 
-- Список пользователей (GET /api/v1/users) в текущем API отсутствует — доступны только создание и получение/удаление по UUID.
-- Логи сервисов можно смотреть через `docker compose logs` или Prometheus (порт 39000 при профиле monitoring).
+- Если Loki недоступен, раздел логов покажет ошибку подключения.

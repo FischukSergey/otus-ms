@@ -15,6 +15,8 @@ vars:
   VPS_PATH_SWAGGER: /root/otus-microservice/prod/swagger
   VPS_PATH_MONITORING: /root/otus-microservice/prod/monitoring
   VPS_PATH_REDIS: /root/otus-microservice/prod/redis
+  VPS_PATH_KAFKA: /root/otus-microservice/prod/kafka
+  VPS_PATH_NP: /root/otus-microservice/prod/news-processor
 
 tasks:
   # ===== Конфигурация =====
@@ -30,6 +32,9 @@ tasks:
       - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NC}}/configs"
       - scp configs/config.news-collector.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_NC}}/configs/
       - echo "✅ config.news-collector.prod.yaml → {{.VPS_PATH_NC}}/configs/"
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NP}}/configs"
+      - scp configs/config.news-processor.prod.yaml {{.SSH_HOST}}:{{.VPS_PATH_NP}}/configs/
+      - echo "✅ config.news-processor.prod.yaml → {{.VPS_PATH_NP}}/configs/"
 
   config:upload:monitoring:
     desc: "Загрузить конфиги мониторинга на VPS (prometheus, loki, promtail, alertmanager)"
@@ -213,6 +218,62 @@ tasks:
     cmds:
       - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_NC}}/configs/config.news-collector.prod.yaml"
 
+  # ===== Управление News Processor =====
+
+  np:up:
+    desc: "Запустить News Processor (после main-service и kafka)"
+    cmds:
+      - echo "⏳ Проверяем доступность main-service..."
+      - |
+        ssh {{.SSH_HOST}} '
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost:38080/health > /dev/null; then
+              echo "✅ main-service доступен"; exit 0
+            fi
+            echo "  попытка $i/12, ждём 5 сек..."; sleep 5
+          done
+          echo "❌ main-service недоступен после 60 сек"; exit 1
+        '
+      - echo "🚀 Запуск News Processor..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NP}}/{configs,logs}"
+      - scp deploy/prod/docker-compose.news-processor.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NP}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NP}} && docker compose -f docker-compose.news-processor.prod.yml up -d"
+      - sleep 5
+      - task: np:health
+      - echo "✅ News Processor запущен"
+
+  np:down:
+    desc: "Остановить News Processor"
+    cmds:
+      - echo "⏸️  Остановка News Processor..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NP}} && docker compose -f docker-compose.news-processor.prod.yml down"
+      - echo "✅ News Processor остановлен"
+
+  np:restart:
+    desc: "Перезапустить News Processor"
+    cmds:
+      - echo "🔄 Перезапуск News Processor..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NP}} && docker compose -f docker-compose.news-processor.prod.yml restart"
+      - sleep 5
+      - task: np:health
+      - echo "✅ News Processor перезапущен"
+
+  np:logs:
+    desc: "Показать логи News Processor"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-news-processor-prod --tail=100 -f"
+
+  np:health:
+    desc: "Проверить healthcheck News Processor"
+    cmds:
+      - echo "🏥 Healthcheck News Processor:"
+      - ssh {{.SSH_HOST}} "curl -s http://localhost:38083/health | jq ."
+
+  np:config:edit:
+    desc: "Открыть config.news-processor.prod.yaml на VPS в nano"
+    cmds:
+      - ssh {{.SSH_HOST}} "nano {{.VPS_PATH_NP}}/configs/config.news-processor.prod.yaml"
+
   # ===== Управление Redis =====
 
   redis:up:
@@ -316,6 +377,10 @@ tasks:
       - scp deploy/prod/docker-compose.news-collector.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NC}}/
       - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_REDIS}}"
       - scp deploy/prod/docker-compose.redis.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_REDIS}}/
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_KAFKA}}"
+      - scp deploy/prod/docker-compose.kafka.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_KAFKA}}/
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_NP}}"
+      - scp deploy/prod/docker-compose.news-processor.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_NP}}/
       - echo "✅ Docker-compose файлы загружены"
 
   # ===== Swagger UI =====
@@ -339,6 +404,55 @@ tasks:
     desc: "Показать логи Swagger UI"
     cmds:
       - ssh {{.SSH_HOST}} "docker logs swagger-ui-prod --tail=100 -f"
+
+  # ===== Управление Kafka =====
+
+  kafka:up:
+    desc: "Запустить Kafka на VPS (KRaft, без Zookeeper)"
+    cmds:
+      - echo "Запуск Kafka..."
+      - ssh {{.SSH_HOST}} "mkdir -p {{.VPS_PATH_KAFKA}}"
+      - scp deploy/prod/docker-compose.kafka.prod.yml {{.SSH_HOST}}:{{.VPS_PATH_KAFKA}}/
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_KAFKA}} && docker compose -f docker-compose.kafka.prod.yml up -d"
+      - sleep 10
+      - task: kafka:status
+      - 'echo "Kafka запущена. Kafka UI доступен через SSH-туннель: ssh -L 39080:localhost:39080 {{.SSH_HOST}}"'
+
+  kafka:down:
+    desc: "Остановить Kafka (данные сохраняются)"
+    cmds:
+      - echo "Остановка Kafka..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_KAFKA}} && docker compose -f docker-compose.kafka.prod.yml down"
+      - echo "Kafka остановлена"
+
+  kafka:restart:
+    desc: "Перезапустить Kafka"
+    cmds:
+      - echo "Перезапуск Kafka..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_KAFKA}} && docker compose -f docker-compose.kafka.prod.yml restart kafka kafka-ui"
+      - sleep 5
+      - task: kafka:status
+      - echo "Kafka перезапущена"
+
+  kafka:logs:
+    desc: "Показать логи Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker logs otus-kafka-prod --tail=100 -f"
+
+  kafka:status:
+    desc: "Статус Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker ps | grep -E 'otus-kafka|CONTAINER'"
+
+  kafka:topics:
+    desc: "Список топиков Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker exec otus-kafka-prod kafka-topics --bootstrap-server localhost:9092 --list"
+
+  kafka:topics:describe:
+    desc: "Описание всех топиков Kafka"
+    cmds:
+      - ssh {{.SSH_HOST}} "docker exec otus-kafka-prod kafka-topics --bootstrap-server localhost:9092 --describe"
 
   # ===== Утилиты =====
 

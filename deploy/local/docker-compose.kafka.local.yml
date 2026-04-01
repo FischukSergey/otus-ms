@@ -1,0 +1,99 @@
+# Kafka для локальной разработки — KRaft режим (без Zookeeper).
+# Используется news-collector (producer) и news-processor (consumer).
+#
+# Запуск: docker compose -f deploy/local/docker-compose.kafka.local.yml up -d
+# Остановка: docker compose -f deploy/local/docker-compose.kafka.local.yml stop
+# Полный сброс: docker compose -f deploy/local/docker-compose.kafka.local.yml down -v
+#
+# Адреса:
+#   Внутри Docker-сети: kafka:9092
+#   С хост-машины:      localhost:39092
+#   Kafka UI:           http://localhost:39080
+name: otusms-kafka
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: otusms-kafka-local
+    restart: unless-stopped
+    ports:
+      - "39092:29092"  # Внешний (с хост-машины) — нестандартный порт
+    environment:
+      # KRaft — режим без Zookeeper
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      # Два listener-а: PLAINTEXT для внутренней сети, PLAINTEXT_HOST для хост-машины
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:39092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Репликация = 1, т.к. у нас один брокер
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_IN_SYNC_REPLICAS: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # Автосоздание топиков отключено — создаём явно через init-контейнер
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # Хранить сообщения 7 дней
+      KAFKA_LOG_RETENTION_HOURS: 168
+      # Идентификатор кластера (фиксированный UUID в base64)
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qg=="
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - otusms_network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: otusms-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - otusms_network
+    # Создаём топики при первом запуске и завершаем работу
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      echo 'Создание топиков Kafka...' &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic raw_news --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic processed_news --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic user_actions --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic raw_news.DLT --partitions 1 --replication-factor 1 --config retention.ms=2592000000 &&
+      echo 'Топики созданы:' &&
+      kafka-topics --bootstrap-server kafka:9092 --list
+    restart: on-failure
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: otusms-kafka-ui-local
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "39080:8080"  # http://localhost:39080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: otusms-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    networks:
+      - otusms_network
+
+networks:
+  otusms_network:
+    external: true
+    name: otusms_local_network  # Создаётся docker-compose.local.yml
+
+volumes:
+  kafka_data:
+    name: otusms_kafka_data_local

@@ -357,8 +357,13 @@ task tests
 - `GET /` - Приветственное сообщение
 - `GET /health` - Health check
 - `POST /api/v1/users` - Создание пользователя
+- `GET /api/v1/users` - Список пользователей (admin)
 - `GET /api/v1/users/{uuid}` - Получение пользователя
 - `DELETE /api/v1/users/{uuid}` - Удаление пользователя
+- `GET /api/v1/users/me/preferences` - Получение персональных предпочтений
+- `PUT /api/v1/users/me/preferences` - Обновление персональных предпочтений
+- `GET /api/v1/news/feed` - Персонализированная лента новостей
+- `POST /api/v1/news/events` - Отправка user events (view/click/like/dislike/hide)
 
 **Example:**
 ```bash
@@ -417,9 +422,15 @@ cd client && pip3 install -r requirements.txt && streamlit run app.py
 
 **Защищённые endpoints (Main Service):**
 ```
-POST   /api/v1/users       → admin только
-GET    /api/v1/users/{id}  → admin только
-DELETE /api/v1/users/{id}  → admin только
+POST   /api/v1/users                  → service-account, admin
+GET    /api/v1/users                  → admin
+GET    /api/v1/users/{id}             → admin
+DELETE /api/v1/users/{id}             → admin
+GET    /api/v1/news                   → admin
+GET    /api/v1/users/me/preferences   → user, admin
+PUT    /api/v1/users/me/preferences   → user, admin
+GET    /api/v1/news/feed              → user, admin
+POST   /api/v1/news/events            → user, admin
 ```
 
 **Middleware цепочка:**
@@ -459,6 +470,17 @@ servers:
       - "https://fishouk-otus-ms.ru"
 ```
 
+
+## 📋 Планируемые доработки news-processor
+
+| # | Задача | Описание |
+|---|--------|----------|
+| 1 | **Теги** | Реализовать `ExtractTags` в `pipeline.go` — возвращать слова из `categoryKeywords`, совпавшие с текстом новости (до 10 штук) |
+| 2 | **Словари категорий в БД** | Перенести `categoryKeywords` из кода в `main-service` (таблица `category_keywords`), загружать через gRPC при старте `news-processor` и обновлять по расписанию. TODO уже есть в `pipeline.go` |
+| 3 | **Сброс оффсетов** | Добавить локальную задачу `kafka:consumer:reset` в `Taskfile.yml` для сброса оффсетов consumer group при разработке |
+| 4 | **Длинные URL** | Пропускать новости с `url > 1000` символов с предупреждением в лог вместо падения INSERT |
+| 5 | **Тесты** | Написать unit-тесты для `pipeline.go`: `StripHTML`, `ExtractSummary`, `DetectCategory`, `truncate` |
+| 6 | **Retention policy** | Настроить автоудаление новостей старше N дней: `pg_cron` на уровне БД или cron-задача в `main-service`. Добавить параметр `news_retention_days` в конфиг |
 
 ## 🔗 Ссылки
 

@@ -219,6 +219,341 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/news": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает последние новости с полями topic, source и url. Требуется роль admin.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "news"
+                ],
+                "summary": "Получить список новостей (только admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Лимит записей (1..500), по умолчанию 50",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список новостей",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/newshttp.NewsResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный query-параметр limit",
+                        "schema": {
+                            "$ref": "#/definitions/newshttp.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован - отсутствует или невалидный JWT токен",
+                        "schema": {
+                            "$ref": "#/definitions/newshttp.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Доступ запрещён - требуется роль admin",
+                        "schema": {
+                            "$ref": "#/definitions/newshttp.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/newshttp.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/news/events": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Принимает события view/click/like/dislike/hide для текущего пользователя (роль user/admin).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "personalization"
+                ],
+                "summary": "Отправить пользовательское событие",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Событие пользователя",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/personalization.CreateEventRequestSchema"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Невалидный payload",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/news/feed": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает новости с фильтрацией и ранжированием score для текущего пользователя (роль user/admin).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "personalization"
+                ],
+                "summary": "Получить персонализированную ленту",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит (1..100), по умолчанию 50",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Смещение, по умолчанию 0",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Окно выдачи в часах",
+                        "name": "fromHours",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "FTS запрос (websearch syntax)",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Персонализированная лента",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/personalization.FeedItemResponseSchema"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидные query-параметры",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/me/preferences": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает настройки personalization для текущего пользователя (роль user/admin).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "personalization"
+                ],
+                "summary": "Получить предпочтения пользователя",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Предпочтения пользователя",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.PreferencesResponseSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает или обновляет настройки personalization текущего пользователя (роль user/admin).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "personalization"
+                ],
+                "summary": "Обновить предпочтения пользователя",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID целевого пользователя (только для admin)",
+                        "name": "userUuid",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Настройки personalization",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/personalization.UpdatePreferencesRequestSchema"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "Невалидный payload",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/personalization.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/news.v1.NewsService/SaveProcessedNews": {
+            "post": {
+                "responses": {}
+            }
+        },
+        "/news_sources.v1.NewsSourcesService/GetNewsSources": {
+            "post": {
+                "responses": {}
+            }
         }
     },
     "definitions": {
@@ -324,11 +659,163 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "newshttp.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "newshttp.NewsResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "topic": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "personalization.CreateEventRequestSchema": {
+            "type": "object",
+            "properties": {
+                "eventType": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "any"
+                    }
+                },
+                "newsId": {
+                    "type": "string"
+                }
+            }
+        },
+        "personalization.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "personalization.FeedItemResponseSchema": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "processedAt": {
+                    "type": "string"
+                },
+                "publishedAt": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "topic": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "personalization.PreferencesResponseSchema": {
+            "type": "object",
+            "properties": {
+                "fromHours": {
+                    "type": "integer"
+                },
+                "preferredCategories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "preferredKeywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "preferredLanguage": {
+                    "type": "string"
+                },
+                "preferredSources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "personalization.UpdatePreferencesRequestSchema": {
+            "type": "object",
+            "properties": {
+                "fromHours": {
+                    "type": "integer"
+                },
+                "preferredCategories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "preferredKeywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "preferredLanguage": {
+                    "type": "string"
+                },
+                "preferredSources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     }
 }`
 
-// SwaggerInfo holds exported Swagger Info so clients can modify it.
+// SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0.0",
 	Host:             "fishouk-otus-ms.ru",

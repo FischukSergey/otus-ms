@@ -11,6 +11,9 @@ import streamlit as st
 from api import (
     auth_proxy_url,
     get_all_users,
+    get_news,
+    get_personalized_feed,
+    get_user_preferences,
     get_logs,
     health_check,
     login,
@@ -19,7 +22,9 @@ from api import (
     logout,
     main_service_url,
     news_collector_url,
+    news_processor_url,
     refresh_token,
+    update_user_preferences,
 )
 
 # Загрузка .env (python-dotenv)
@@ -38,6 +43,8 @@ PAGE = "page"
 # Страницы
 PAGE_DASHBOARD = "Дашборд"
 PAGE_USERS = "Пользователи"
+PAGE_NEWS = "Новости"
+PAGE_PERSONALIZATION = "Personalization"
 PAGE_LOGS = "Логи"
 
 
@@ -129,7 +136,13 @@ def render_login():
 
 def render_sidebar():
     st.sidebar.title("OtusMS Admin")
-    pages = [PAGE_DASHBOARD, PAGE_USERS, PAGE_LOGS]
+    pages = [
+        PAGE_DASHBOARD,
+        PAGE_USERS,
+        PAGE_NEWS,
+        PAGE_PERSONALIZATION,
+        PAGE_LOGS,
+    ]
     current = st.session_state.get(PAGE, PAGE_DASHBOARD)
     idx = pages.index(current) if current in pages else 0
     page = st.sidebar.radio(
@@ -149,7 +162,7 @@ def render_sidebar():
 
 def render_dashboard():
     st.header("Состояние сервисов")
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.subheader("Auth-Proxy")
         info = health_check(auth_proxy_url(), "Auth-Proxy")
@@ -175,6 +188,14 @@ def render_dashboard():
         else:
             st.error(info.get("error", "Недоступен"))
     with col4:
+        st.subheader("News-processor")
+        info = health_check(news_processor_url(), "News-processor")
+        if info["ok"]:
+            st.success(f"Статус: {info['status']}")
+            st.caption(f"Время: {info['time']}")
+        else:
+            st.error(info.get("error", "Недоступен"))
+    with col5:
         st.subheader("Loki")
         if loki_health():
             st.success("Статус: ok")
@@ -184,6 +205,7 @@ def render_dashboard():
         f"Auth-Proxy: {auth_proxy_url()} | "
         f"Main: {main_service_url()} | "
         f"News-collector: {news_collector_url()} | "
+        f"News-processor: {news_processor_url()} | "
         f"Loki: {loki_url()}"
     )
 
@@ -231,6 +253,225 @@ def render_users():
             st.dataframe(rows, width="stretch")
 
 
+def render_news():
+    st.header("Новости")
+    token = st.session_state.get(ACCESS_TOKEN)
+    if not token:
+        st.warning("Нет токена")
+        return
+
+    if not is_admin():
+        st.warning("Доступ только для пользователей с ролью **admin**.")
+        return
+
+    limit = st.number_input(
+        "Сколько записей показать",
+        min_value=10,
+        max_value=500,
+        value=50,
+        step=10,
+        key="news_limit",
+    )
+
+    if st.button("Загрузить новости", key="btn_load_news"):
+        rows, err = get_news(token, limit=int(limit))
+        if err:
+            st.error(err)
+            return
+        if not rows:
+            st.info("Новости не найдены.")
+            return
+
+        st.success(f"Найдено: {len(rows)}")
+        for idx, row in enumerate(rows, start=1):
+            topic = row.get("topic", "").strip() or "(без заголовка)"
+            source = row.get("source", "").strip() or "(неизвестный источник)"
+            url = row.get("url", "").strip()
+            created_at = row.get("createdAt", "")[:19].replace("T", " ")
+            st.markdown(f"**{idx}. {topic}**")
+            st.caption(f"Источник: {source} | Создана: {created_at or '—'}")
+            if url:
+                st.markdown(f"[Открыть новость]({url})")
+            else:
+                st.caption("Ссылка отсутствует")
+            st.divider()
+    else:
+        st.caption("Нажмите «Загрузить новости» для получения данных.")
+
+
+def _current_user_uuid() -> str:
+    token = st.session_state.get(ACCESS_TOKEN) or ""
+    payload = _decode_jwt_payload(token)
+    return payload.get("sub", "")
+
+
+def _split_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def render_personalization():
+    st.header("Personalization")
+    token = st.session_state.get(ACCESS_TOKEN)
+    if not token:
+        st.warning("Нет токена")
+        return
+
+    current_uuid = _current_user_uuid()
+    st.caption(f"JWT user UUID: `{current_uuid or 'unknown'}`")
+
+    default_target = st.session_state.get("p13n_target_uuid", current_uuid)
+    target_uuid = st.text_input(
+        "Target user UUID",
+        value=default_target,
+        key="p13n_target_uuid",
+        help="Для admin можно указать UUID другого пользователя.",
+    ).strip()
+
+    st.subheader("Preferences")
+    if st.button("Загрузить preferences", key="btn_load_prefs"):
+        prefs, err = get_user_preferences(token, user_uuid=target_uuid or None)
+        if err:
+            st.error(err)
+        else:
+            st.session_state["p13n_categories"] = ", ".join(
+                prefs.get("preferredCategories", [])
+            )
+            st.session_state["p13n_sources"] = ", ".join(
+                prefs.get("preferredSources", [])
+            )
+            st.session_state["p13n_keywords"] = ", ".join(
+                prefs.get("preferredKeywords", [])
+            )
+            st.session_state["p13n_language"] = prefs.get(
+                "preferredLanguage", ""
+            )
+            st.session_state["p13n_from_hours"] = int(
+                prefs.get("fromHours", 168)
+            )
+            st.success("Preferences загружены")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        categories = st.text_input(
+            "preferredCategories (через запятую)",
+            key="p13n_categories",
+            placeholder="tech, science",
+        )
+        sources = st.text_input(
+            "preferredSources (через запятую)",
+            key="p13n_sources",
+            placeholder="source_3, source_2",
+        )
+        keywords = st.text_input(
+            "preferredKeywords (через запятую)",
+            key="p13n_keywords",
+            placeholder="ai, golang, llm",
+        )
+    with col2:
+        language = st.selectbox(
+            "preferredLanguage",
+            options=["", "ru", "en"],
+            key="p13n_language",
+            format_func=lambda x: x or "(пусто)",
+        )
+        from_hours = st.number_input(
+            "fromHours",
+            min_value=1,
+            max_value=720,
+            value=int(st.session_state.get("p13n_from_hours", 168)),
+            step=1,
+            key="p13n_from_hours",
+        )
+
+    if st.button(
+        "Сохранить preferences",
+        key="btn_save_prefs",
+        type="primary",
+    ):
+        ok, msg = update_user_preferences(
+            token,
+            {
+                "preferredCategories": _split_csv(categories),
+                "preferredSources": _split_csv(sources),
+                "preferredKeywords": _split_csv(keywords),
+                "preferredLanguage": language,
+                "fromHours": int(from_hours),
+            },
+            user_uuid=target_uuid or None,
+        )
+        if ok:
+            st.success(msg)
+        else:
+            st.error(msg)
+
+    st.divider()
+    st.subheader("Feed")
+    fcol1, fcol2, fcol3, fcol4 = st.columns([2, 1, 1, 1])
+    with fcol1:
+        query = st.text_input("q (FTS query)", key="p13n_q")
+    with fcol2:
+        limit = st.number_input(
+            "limit",
+            min_value=1,
+            max_value=100,
+            value=20,
+            step=1,
+            key="p13n_limit",
+        )
+    with fcol3:
+        offset = st.number_input(
+            "offset",
+            min_value=0,
+            max_value=10000,
+            value=0,
+            step=1,
+            key="p13n_offset",
+        )
+    with fcol4:
+        feed_from_hours = st.number_input(
+            "fromHours",
+            min_value=0,
+            max_value=720,
+            value=0,
+            step=1,
+            key="p13n_feed_from_hours",
+            help="0 = использовать fromHours из preferences",
+        )
+
+    if st.button("Загрузить feed", key="btn_load_p13n_feed"):
+        rows, err = get_personalized_feed(
+            token,
+            limit=int(limit),
+            offset=int(offset),
+            from_hours=int(feed_from_hours),
+            q=query.strip() or None,
+            user_uuid=target_uuid or None,
+        )
+        if err:
+            st.error(err)
+            return
+        if not rows:
+            st.info("Лента пустая.")
+            return
+
+        st.success(f"Найдено: {len(rows)}")
+        table_rows = []
+        for row in rows:
+            table_rows.append(
+                {
+                    "Score": round(float(row.get("score", 0.0)), 4),
+                    "Topic": row.get("topic", ""),
+                    "Source": row.get("source", ""),
+                    "Category": row.get("category", ""),
+                    "URL": row.get("url", ""),
+                    "ProcessedAt": (
+                        row.get("processedAt", "")[:19].replace("T", " ")
+                    ),
+                }
+            )
+        st.dataframe(table_rows, width="stretch")
+
+
 _LEVEL_COLORS = {
     "ERROR": "🔴",
     "WARN":  "🟡",
@@ -244,6 +485,7 @@ _SERVICES = [
     ("main-service",   "otus-microservice-be-prod"),
     ("auth-proxy",     "otus-microservice-auth-proxy-prod"),
     ("news-collector", "otus-news-collector-prod"),
+    ("news-processor", "otus-news-processor-prod"),
 ]
 
 _LEVELS = ["Все уровни", "ERROR", "WARN", "INFO", "DEBUG"]
@@ -347,6 +589,10 @@ def main():
     page = st.session_state.get(PAGE, PAGE_DASHBOARD)
     if page == PAGE_USERS:
         render_users()
+    elif page == PAGE_NEWS:
+        render_news()
+    elif page == PAGE_PERSONALIZATION:
+        render_personalization()
     elif page == PAGE_LOGS:
         render_logs()
     else:

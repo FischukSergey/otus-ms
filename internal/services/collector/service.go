@@ -23,7 +23,23 @@ type StateStore interface {
 	IncrementErrorCount(ctx context.Context, sourceID string) (int, error)
 	ResetErrorCount(ctx context.Context, sourceID string) error
 	IsLocallyDeactivated(ctx context.Context, sourceID string) (bool, error)
-	LocallyDeactivate(ctx context.Context, sourceID string) error
+	// LocallyDeactivate временно деактивирует источник на период backoff (circuit-breaker).
+	// Автоматически реактивируется по истечении TTL.
+	LocallyDeactivate(ctx context.Context, sourceID string, backoff time.Duration) error
+	// GetDeactivationCount возвращает число деактиваций для расчёта exponential backoff.
+	GetDeactivationCount(ctx context.Context, sourceID string) (int, error)
+}
+
+// DedupStore определяет интерфейс дедупликации новостей по нормализованному URL.
+// Реализуется store/collector.RedisDedupStore.
+type DedupStore interface {
+	IsNewURL(ctx context.Context, url string) (bool, error)
+}
+
+// NewsPublisher определяет интерфейс публикации собранных новостей.
+// Реализуется producer.KafkaProducer (prod) или producer.NoopPublisher (без Kafka).
+type NewsPublisher interface {
+	Publish(ctx context.Context, news []*models.RawNews) error
 }
 
 // ServiceConfig содержит настройки сервиса сбора.
@@ -31,17 +47,26 @@ type ServiceConfig struct {
 	MaxWorkers  int
 	MaxRetries  int
 	MaxErrCount int
+	// BaseBackoff — начальный период деактивации источника (circuit-breaker).
+	// Удваивается с каждой новой деактивацией. По умолчанию 15 минут.
+	BaseBackoff time.Duration
+	// MaxBackoff — максимальный период деактивации. По умолчанию 24 часа.
+	MaxBackoff time.Duration
 }
 
-// Service координирует сбор новостей: планирование, парсинг, обновление состояния.
+// Service координирует сбор новостей: планирование, парсинг, дедупликацию, обновление состояния.
 type Service struct {
 	client      SourcesClient
 	state       StateStore
+	dedup       DedupStore
+	publisher   NewsPublisher
 	parser      *Parser
 	logger      *slog.Logger
 	maxWorkers  int
 	maxRetries  int
 	maxErrCount int
+	baseBackoff time.Duration
+	maxBackoff  time.Duration
 
 	sourcesMu sync.RWMutex
 	sources   []models.Source
@@ -51,18 +76,32 @@ type Service struct {
 func NewService(
 	client SourcesClient,
 	state StateStore,
+	dedup DedupStore,
+	publisher NewsPublisher,
 	parser *Parser,
 	logger *slog.Logger,
 	cfg ServiceConfig,
 ) *Service {
+	base := cfg.BaseBackoff
+	if base <= 0 {
+		base = 15 * time.Minute
+	}
+	maxB := cfg.MaxBackoff
+	if maxB <= 0 {
+		maxB = 24 * time.Hour
+	}
 	return &Service{
 		client:      client,
 		state:       state,
+		dedup:       dedup,
+		publisher:   publisher,
 		parser:      parser,
 		logger:      logger,
 		maxWorkers:  cfg.MaxWorkers,
 		maxRetries:  cfg.MaxRetries,
 		maxErrCount: cfg.MaxErrCount,
+		baseBackoff: base,
+		maxBackoff:  maxB,
 	}
 }
 
@@ -140,7 +179,7 @@ func (s *Service) CollectFromDueSources(ctx context.Context) {
 	s.logger.Info("collection round complete", "processed", len(due))
 }
 
-// collectFromSource парсит RSS-фид одного источника и обновляет его состояние в Redis.
+// collectFromSource парсит RSS-фид одного источника, дедуплицирует и обновляет состояние в Redis.
 func (s *Service) collectFromSource(ctx context.Context, source models.Source) {
 	start := time.Now()
 	s.logger.Info("collecting source", "source_id", source.ID, "name", source.Name, "url", source.URL)
@@ -154,30 +193,66 @@ func (s *Service) collectFromSource(ctx context.Context, source models.Source) {
 	if err := s.state.SetCollected(ctx, source.ID, time.Now()); err != nil {
 		s.logger.Error("set collected failed", "source_id", source.ID, "error", err)
 	}
-
 	if err := s.state.ResetErrorCount(ctx, source.ID); err != nil {
 		s.logger.Error("reset error count failed", "source_id", source.ID, "error", err)
 	}
 
+	fresh := s.filterDuplicates(ctx, news)
+
 	s.logger.Info("collection success",
 		"source_id", source.ID,
-		"news_count", len(news),
+		"total", len(news),
+		"fresh", len(fresh),
+		"duplicates", len(news)-len(fresh),
 		"duration", time.Since(start),
 	)
 
-	for _, item := range news {
-		s.logger.Debug("collected item",
-			"source_id", source.ID,
-			"title", item.Title,
-			"url", item.URL,
-			"published_at", item.PublishedAt,
-			"author", item.Author,
-		)
+	if len(fresh) == 0 {
+		return
 	}
+
+	if err := s.publisher.Publish(ctx, fresh); err != nil {
+		s.logger.Error("failed to publish news to kafka",
+			"source_id", source.ID,
+			"count", len(fresh),
+			"error", err,
+		)
+		// Не возвращаем ошибку: недоступность Kafka не должна останавливать сбор.
+		return
+	}
+
+	s.logger.Info("published to kafka",
+		"source_id", source.ID,
+		"count", len(fresh),
+	)
+}
+
+// filterDuplicates отсеивает новости с уже виденными URL.
+// URL нормализуется перед проверкой. При ошибке дедупа конкретная новость включается (fail open).
+func (s *Service) filterDuplicates(ctx context.Context, news []*models.RawNews) []*models.RawNews {
+	fresh := make([]*models.RawNews, 0, len(news))
+	for _, item := range news {
+		if item.URL == "" {
+			fresh = append(fresh, item)
+			continue
+		}
+		normalized := NormalizeURL(item.URL)
+		isNew, err := s.dedup.IsNewURL(ctx, normalized)
+		if err != nil {
+			s.logger.Warn("dedup check failed, treating as new", "url", item.URL, "error", err)
+			fresh = append(fresh, item)
+			continue
+		}
+		if isNew {
+			fresh = append(fresh, item)
+		}
+	}
+	return fresh
 }
 
 // handleCollectError обрабатывает ошибку сбора: инкрементирует счётчик,
-// при достижении лимита локально деактивирует источник.
+// при достижении лимита временно деактивирует источник с exponential backoff (circuit-breaker).
+// После deactivation_count деактиваций backoff = baseBackoff * 2^count, но не более maxBackoff.
 func (s *Service) handleCollectError(ctx context.Context, source models.Source, err error) {
 	s.logger.Error("collection failed", "source_id", source.ID, "name", source.Name, "error", err)
 
@@ -187,14 +262,38 @@ func (s *Service) handleCollectError(ctx context.Context, source models.Source, 
 		return
 	}
 
-	if count >= s.maxErrCount {
-		s.logger.Warn("deactivating source locally after max errors",
-			"source_id", source.ID,
-			"error_count", count,
-			"max_error_count", s.maxErrCount,
-		)
-		if deactErr := s.state.LocallyDeactivate(ctx, source.ID); deactErr != nil {
-			s.logger.Error("local deactivation failed", "source_id", source.ID, "error", deactErr)
-		}
+	if count < s.maxErrCount {
+		return
 	}
+
+	deactCount, dcErr := s.state.GetDeactivationCount(ctx, source.ID)
+	if dcErr != nil {
+		s.logger.Error("get deactivation count failed", "source_id", source.ID, "error", dcErr)
+		deactCount = 0
+	}
+
+	backoff := calcBackoff(deactCount, s.baseBackoff, s.maxBackoff)
+
+	s.logger.Warn("circuit-breaker: temporarily deactivating source",
+		"source_id", source.ID,
+		"error_count", count,
+		"deactivation_count", deactCount,
+		"backoff", backoff,
+	)
+
+	if deactErr := s.state.LocallyDeactivate(ctx, source.ID, backoff); deactErr != nil {
+		s.logger.Error("local deactivation failed", "source_id", source.ID, "error", deactErr)
+		return
+	}
+	if resetErr := s.state.ResetErrorCount(ctx, source.ID); resetErr != nil {
+		s.logger.Error("reset error count after deactivation failed", "source_id", source.ID, "error", resetErr)
+	}
+}
+
+// calcBackoff вычисляет период деактивации: baseBackoff * 2^count, но не более maxBackoff.
+// count — текущее число деактиваций до новой (начиная с 0).
+func calcBackoff(count int, base, maxBackoff time.Duration) time.Duration {
+	shift := min(count, 10) // предотвращаем overflow при больших значениях
+	backoff := base * (1 << shift)
+	return min(backoff, maxBackoff)
 }

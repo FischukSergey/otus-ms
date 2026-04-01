@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package news.v1;
+
+option go_package = "github.com/FischukSergey/otus-ms/pkg/news/v1;newsv1";
+
+// NewsService предоставляет методы для работы с обработанными новостями.
+// Используется news-processor для сохранения новостей через main-service.
+service NewsService {
+  // SaveProcessedNews сохраняет пачку обработанных новостей в PostgreSQL.
+  // Дедупликация по URL на уровне БД: повторные URL игнорируются без ошибки.
+  //
+  // @Router /news.v1.NewsService/SaveProcessedNews [post].
+  rpc SaveProcessedNews(SaveProcessedNewsRequest) returns (SaveProcessedNewsResponse);
+}
+
+// ProcessedNewsItem — обработанная новость для сохранения.
+message ProcessedNewsItem {
+  string id          = 1; // UUID
+  string source_id   = 2;
+  string title       = 3;
+  string summary     = 4;
+  string url         = 5;
+  string category    = 6;
+  repeated string tags = 7;
+  int64  published_at  = 8; // Unix timestamp (секунды)
+  int64  processed_at  = 9; // Unix timestamp (секунды)
+  string s3_key       = 10; // Ключ объекта с артефактом в S3-совместимом хранилище
+}
+
+// SaveProcessedNewsRequest содержит пачку новостей для сохранения.
+message SaveProcessedNewsRequest {
+  repeated ProcessedNewsItem news = 1;
+}
+
+// SaveProcessedNewsResponse возвращает количество реально сохранённых новостей.
+message SaveProcessedNewsResponse {
+  int32 saved_count = 1;
+}

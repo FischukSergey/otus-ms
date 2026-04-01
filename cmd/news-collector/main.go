@@ -16,6 +16,7 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/config"
 	"github.com/FischukSergey/otus-ms/internal/keycloak"
 	"github.com/FischukSergey/otus-ms/internal/logger"
+	"github.com/FischukSergey/otus-ms/internal/producer"
 	"github.com/FischukSergey/otus-ms/internal/services/collector"
 	redisstate "github.com/FischukSergey/otus-ms/internal/store/collector"
 )
@@ -88,18 +89,40 @@ func run() error {
 	}()
 	appLogger.Info("redis connected", "addr", cfg.Redis.Addr, "db", cfg.Redis.DB)
 
+	// Инициализируем Kafka продюсер (или заглушку, если Kafka не сконфигурирована)
+	type closablePublisher interface {
+		collector.NewsPublisher
+		Close() error
+	}
+	var newsPublisher closablePublisher
+	if cfg.Kafka.IsConfigured() {
+		newsPublisher = producer.NewKafkaProducer(cfg.Kafka, appLogger)
+	} else {
+		newsPublisher = producer.NewNoopPublisher(appLogger)
+	}
+	defer func() {
+		if err := newsPublisher.Close(); err != nil {
+			appLogger.Error("kafka producer close error", "error", err)
+		}
+	}()
+
 	// Собираем сервис сбора новостей
 	stateStore := redisstate.NewRedisStateStore(redisClient)
+	dedupStore := redisstate.NewRedisDedupStore(redisClient, cfg.Collector.GetDedupTTL())
 	parser := collector.NewParser(cfg.Collector.ParseTimeout, appLogger)
 	collectorService := collector.NewService(
 		grpcClient,
 		stateStore,
+		dedupStore,
+		newsPublisher,
 		parser,
 		appLogger,
 		collector.ServiceConfig{
 			MaxWorkers:  cfg.Collector.MaxWorkers,
 			MaxRetries:  cfg.Collector.MaxRetries,
 			MaxErrCount: cfg.Collector.MaxErrCount,
+			BaseBackoff: cfg.Collector.GetDeactivationBaseBackoff(),
+			MaxBackoff:  cfg.Collector.GetDeactivationMaxBackoff(),
 		},
 	)
 

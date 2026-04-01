@@ -5,16 +5,20 @@ import "time"
 
 // Config представляет конфигурацию приложения.
 type Config struct {
-	Global      GlobalConfig      `yaml:"global"`
-	Log         LogConfig         `yaml:"log"`
-	Servers     ServersConfig     `yaml:"servers"`
-	DB          DBConfig          `yaml:"db"`
-	Keycloak    KeycloakConfig    `yaml:"keycloak"`
-	JWT         JWTConfig         `yaml:"jwt"`
-	MainService MainServiceConfig `yaml:"main_service"`
-	RateLimiter RateLimiterConfig `yaml:"rate_limiter"`
-	Redis       RedisConfig       `yaml:"redis"`
-	Collector   CollectorConfig   `yaml:"collector"`
+	Global      GlobalConfig        `yaml:"global"`
+	Log         LogConfig           `yaml:"log"`
+	Servers     ServersConfig       `yaml:"servers"`
+	DB          DBConfig            `yaml:"db"`
+	Keycloak    KeycloakConfig      `yaml:"keycloak"`
+	JWT         JWTConfig           `yaml:"jwt"`
+	MainService MainServiceConfig   `yaml:"main_service"`
+	RateLimiter RateLimiterConfig   `yaml:"rate_limiter"`
+	Redis       RedisConfig         `yaml:"redis"`
+	ObjectStore ObjectStorageConfig `yaml:"object_storage"`
+	Collector   CollectorConfig     `yaml:"collector"`
+	Kafka       KafkaConfig         `yaml:"kafka"`
+	Processor   ProcessorConfig     `yaml:"processor"`
+	Retention   RetentionConfig     `yaml:"retention"`
 }
 
 // GlobalConfig представляет глобальные настройки.
@@ -177,6 +181,27 @@ func (r RedisConfig) IsConfigured() bool {
 	return r.Addr != ""
 }
 
+// ObjectStorageConfig содержит настройки подключения к S3-совместимому хранилищу.
+// Используется news-processor для загрузки артефактов обработанных новостей.
+type ObjectStorageConfig struct {
+	Endpoint  string `yaml:"endpoint" env:"OBJECT_STORAGE_ENDPOINT"`
+	Bucket    string `yaml:"bucket" env:"OBJECT_STORAGE_BUCKET"`
+	AccessKey string `yaml:"access_key" env:"OBJECT_STORAGE_ACCESS_KEY"`
+	SecretKey string `yaml:"secret_key" env:"OBJECT_STORAGE_SECRET_KEY"`
+	Region    string `yaml:"region" env:"OBJECT_STORAGE_REGION"`
+	UseSSL    bool   `yaml:"use_ssl" env:"OBJECT_STORAGE_USE_SSL" env-default:"true"`
+	Prefix    string `yaml:"prefix" env:"OBJECT_STORAGE_PREFIX" env-default:"news"`
+}
+
+// IsConfigured проверяет, что конфигурация Object Storage заполнена.
+func (o ObjectStorageConfig) IsConfigured() bool {
+	return o.Endpoint != "" &&
+		o.Bucket != "" &&
+		o.AccessKey != "" &&
+		o.SecretKey != "" &&
+		o.Region != ""
+}
+
 // CollectorConfig содержит настройки сервиса сбора новостей (news-collector).
 type CollectorConfig struct {
 	MaxWorkers      int           `yaml:"max_workers"`
@@ -184,4 +209,143 @@ type CollectorConfig struct {
 	MaxErrCount     int           `yaml:"max_error_count"`
 	ParseTimeout    time.Duration `yaml:"parse_timeout"`
 	RefreshInterval time.Duration `yaml:"refresh_interval"`
+	DedupTTL        time.Duration `yaml:"dedup_ttl"`
+	// DeactivationBaseBackoff — начальный период circuit-breaker деактивации источника.
+	// Удваивается с каждой деактивацией. По умолчанию 15 минут.
+	DeactivationBaseBackoff time.Duration `yaml:"deactivation_base_backoff"`
+	// DeactivationMaxBackoff — максимальный период деактивации. По умолчанию 24 часа.
+	DeactivationMaxBackoff time.Duration `yaml:"deactivation_max_backoff"`
+}
+
+// GetDedupTTL возвращает TTL дедупликации или 7 дней если поле не задано.
+func (c CollectorConfig) GetDedupTTL() time.Duration {
+	if c.DedupTTL > 0 {
+		return c.DedupTTL
+	}
+	return 7 * 24 * time.Hour
+}
+
+// GetDeactivationBaseBackoff возвращает начальный backoff или 15 минут по умолчанию.
+func (c CollectorConfig) GetDeactivationBaseBackoff() time.Duration {
+	if c.DeactivationBaseBackoff > 0 {
+		return c.DeactivationBaseBackoff
+	}
+	return 15 * time.Minute
+}
+
+// GetDeactivationMaxBackoff возвращает максимальный backoff или 24 часа по умолчанию.
+func (c CollectorConfig) GetDeactivationMaxBackoff() time.Duration {
+	if c.DeactivationMaxBackoff > 0 {
+		return c.DeactivationMaxBackoff
+	}
+	return 24 * time.Hour
+}
+
+// KafkaConfig содержит настройки подключения к Kafka.
+// Используется в news-collector (producer) и news-processor (consumer).
+type KafkaConfig struct {
+	// Brokers — список адресов Kafka брокеров (например ["kafka:9092"]).
+	Brokers []string `yaml:"brokers"`
+	// TopicRawNews — топик для сырых новостей от news-collector.
+	TopicRawNews string `yaml:"topic_raw_news"`
+	// TopicProcessedNews — топик для обработанных новостей от news-processor.
+	TopicProcessedNews string `yaml:"topic_processed_news"`
+	// ConsumerGroup — consumer group для news-processor.
+	ConsumerGroup string `yaml:"consumer_group"`
+	// BatchSize — максимальное количество сообщений в одном батче (producer).
+	BatchSize int `yaml:"batch_size"`
+	// BatchTimeout — максимальное время ожидания накопления батча перед отправкой (producer).
+	BatchTimeout time.Duration `yaml:"batch_timeout"`
+	// WriteTimeout — таймаут записи одного батча (producer).
+	WriteTimeout time.Duration `yaml:"write_timeout"`
+}
+
+// IsConfigured проверяет, что конфигурация Kafka заполнена.
+func (k KafkaConfig) IsConfigured() bool {
+	return len(k.Brokers) > 0 && k.TopicRawNews != ""
+}
+
+// GetBatchSize возвращает размер батча или 100 по умолчанию.
+func (k KafkaConfig) GetBatchSize() int {
+	if k.BatchSize > 0 {
+		return k.BatchSize
+	}
+	return 100
+}
+
+// GetBatchTimeout возвращает таймаут батча или 1 секунду по умолчанию.
+func (k KafkaConfig) GetBatchTimeout() time.Duration {
+	if k.BatchTimeout > 0 {
+		return k.BatchTimeout
+	}
+	return time.Second
+}
+
+// GetWriteTimeout возвращает таймаут записи или 10 секунд по умолчанию.
+func (k KafkaConfig) GetWriteTimeout() time.Duration {
+	if k.WriteTimeout > 0 {
+		return k.WriteTimeout
+	}
+	return 10 * time.Second
+}
+
+// ProcessorConfig содержит настройки сервиса обработки новостей (news-processor).
+type ProcessorConfig struct {
+	// Workers — количество параллельных воркеров обработки сообщений из Kafka.
+	Workers int `yaml:"workers"`
+	// SaveBatchSize — количество новостей в одном gRPC запросе SaveProcessedNews.
+	SaveBatchSize int `yaml:"save_batch_size"`
+	// FetchContent — загружать полный текст статьи по URL если content в RawNews пустой.
+	FetchContent bool `yaml:"fetch_content"`
+	// FetchTimeout — таймаут HTTP-запроса при загрузке контента по URL.
+	FetchTimeout time.Duration `yaml:"fetch_timeout"`
+}
+
+// GetWorkers возвращает количество воркеров или 5 по умолчанию.
+func (p ProcessorConfig) GetWorkers() int {
+	if p.Workers > 0 {
+		return p.Workers
+	}
+	return 5
+}
+
+// GetSaveBatchSize возвращает размер батча gRPC или 50 по умолчанию.
+func (p ProcessorConfig) GetSaveBatchSize() int {
+	if p.SaveBatchSize > 0 {
+		return p.SaveBatchSize
+	}
+	return 50
+}
+
+// GetFetchTimeout возвращает таймаут загрузки контента или 15 секунд по умолчанию.
+func (p ProcessorConfig) GetFetchTimeout() time.Duration {
+	if p.FetchTimeout > 0 {
+		return p.FetchTimeout
+	}
+	return 15 * time.Second
+}
+
+// RetentionConfig содержит политику хранения данных.
+// Используется в main-service (очистка БД) и news-processor (очистка S3).
+type RetentionConfig struct {
+	// NewsRetentionDays — количество дней хранения новостей. По умолчанию 7.
+	NewsRetentionDays int `yaml:"news_retention_days"`
+	// CleanupInterval — интервал между запусками задачи очистки. По умолчанию 24h.
+	CleanupInterval time.Duration `yaml:"cleanup_interval"`
+}
+
+// GetNewsRetentionDays возвращает срок хранения новостей или 7 дней по умолчанию.
+func (r RetentionConfig) GetNewsRetentionDays() int {
+	if r.NewsRetentionDays > 0 {
+		return r.NewsRetentionDays
+	}
+	return 7
+}
+
+// GetCleanupInterval возвращает интервал очистки или 24 часа по умолчанию.
+func (r RetentionConfig) GetCleanupInterval() time.Duration {
+	if r.CleanupInterval > 0 {
+		return r.CleanupInterval
+	}
+	return 24 * time.Hour
 }

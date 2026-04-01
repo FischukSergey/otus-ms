@@ -94,6 +94,28 @@ services:
       retries: 3
       start_period: 10s
 
+  news-processor:
+    container_name: otusms-news-processor-local
+    build:
+      context: ../..
+      dockerfile: news-processor.Dockerfile
+    profiles:
+      - news-processor  # docker compose --profile news-processor up
+    restart: unless-stopped
+    ports:
+      - "38083:38083"  # HTTP health check
+    volumes:
+      - ../../configs/config.news-processor.local.yaml:/app/configs/config.news-processor.local.yaml:ro
+    command: ["./news-processor", "-config", "/app/configs/config.news-processor.local.yaml"]
+    networks:
+      - otusms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:38083/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   auth-proxy:
     container_name: otusms-auth-proxy-local
     build:

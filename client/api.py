@@ -30,6 +30,10 @@ def news_collector_url() -> str:
     return _base_url("NEWS_COLLECTOR_URL", "http://localhost:38082")
 
 
+def news_processor_url() -> str:
+    return _base_url("NEWS_PROCESSOR_URL", "http://localhost:38083")
+
+
 @dataclass
 class TokenResponse:
     access_token: str
@@ -150,6 +154,14 @@ def _headers(access_token: str) -> dict[str, str]:
     }
 
 
+def _extract_error(response: requests.Response) -> str:
+    try:
+        body = response.json()
+        return body.get("error", body.get("message", response.text))
+    except Exception:
+        return response.text or str(response.status_code)
+
+
 def create_user(
     access_token: str, payload: dict[str, Any]
 ) -> tuple[bool, str]:
@@ -166,12 +178,7 @@ def create_user(
         return False, f"Ошибка сети: {e}"
     if r.status_code == 201:
         return True, "Пользователь создан"
-    try:
-        body = r.json()
-        err = body.get("error", body.get("message", r.text))
-    except Exception:
-        err = r.text or str(r.status_code)
-    return False, f"{r.status_code}: {err}"
+    return False, f"{r.status_code}: {_extract_error(r)}"
 
 
 def get_user(access_token: str, uuid: str) -> tuple[dict | None, str | None]:
@@ -183,12 +190,7 @@ def get_user(access_token: str, uuid: str) -> tuple[dict | None, str | None]:
         return None, f"Ошибка сети: {e}"
     if r.status_code == 200:
         return r.json(), None
-    try:
-        body = r.json()
-        err = body.get("error", body.get("message", r.text))
-    except Exception:
-        err = r.text or str(r.status_code)
-    return None, f"{r.status_code}: {err}"
+    return None, f"{r.status_code}: {_extract_error(r)}"
 
 
 # --- Loki: логи ---
@@ -207,7 +209,7 @@ def get_logs(
     """
     import time as _time
 
-    label_sel = '{container=~"otus-microservice-.*"}'
+    label_sel = '{container=~"otus-(microservice|news)-.*"}'
     filters = []
     if service:
         label_sel = f'{{container="{service}"}}'
@@ -302,7 +304,10 @@ def loki_health() -> bool:
 
 
 def get_all_users(access_token: str) -> tuple[list[dict] | None, str | None]:
-    """GET /api/v1/users. Возвращает (список пользователей, ошибка или None)."""
+    """
+    GET /api/v1/users.
+    Возвращает (список пользователей, ошибка или None).
+    """
     url = f"{main_service_url()}/api/v1/users"
     try:
         r = requests.get(url, headers=_headers(access_token), timeout=10)
@@ -310,12 +315,26 @@ def get_all_users(access_token: str) -> tuple[list[dict] | None, str | None]:
         return None, f"Ошибка сети: {e}"
     if r.status_code == 200:
         return r.json(), None
+    return None, f"{r.status_code}: {_extract_error(r)}"
+
+
+def get_news(
+    access_token: str, limit: int = 50
+) -> tuple[list[dict] | None, str | None]:
+    """GET /api/v1/news. Возвращает (список новостей, ошибка или None)."""
+    url = f"{main_service_url()}/api/v1/news"
     try:
-        body = r.json()
-        err = body.get("error", body.get("message", r.text))
-    except Exception:
-        err = r.text or str(r.status_code)
-    return None, f"{r.status_code}: {err}"
+        r = requests.get(
+            url,
+            params={"limit": limit},
+            headers=_headers(access_token),
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return None, f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        return r.json(), None
+    return None, f"{r.status_code}: {_extract_error(r)}"
 
 
 def delete_user(access_token: str, uuid: str) -> tuple[bool, str]:
@@ -327,9 +346,82 @@ def delete_user(access_token: str, uuid: str) -> tuple[bool, str]:
         return False, f"Ошибка сети: {e}"
     if r.status_code in (200, 204):
         return True, "Пользователь удалён (мягкое удаление)"
+    return False, f"{r.status_code}: {_extract_error(r)}"
+
+
+def get_user_preferences(
+    access_token: str, user_uuid: str | None = None
+) -> tuple[dict | None, str | None]:
+    """GET /api/v1/users/me/preferences."""
+    url = f"{main_service_url()}/api/v1/users/me/preferences"
+    params = {"userUuid": user_uuid} if user_uuid else None
     try:
-        body = r.json()
-        err = body.get("error", body.get("message", r.text))
-    except Exception:
-        err = r.text or str(r.status_code)
-    return False, f"{r.status_code}: {err}"
+        r = requests.get(
+            url,
+            params=params,
+            headers=_headers(access_token),
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return None, f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        return r.json(), None
+    return None, f"{r.status_code}: {_extract_error(r)}"
+
+
+def update_user_preferences(
+    access_token: str,
+    payload: dict[str, Any],
+    user_uuid: str | None = None,
+) -> tuple[bool, str]:
+    """PUT /api/v1/users/me/preferences."""
+    url = f"{main_service_url()}/api/v1/users/me/preferences"
+    params = {"userUuid": user_uuid} if user_uuid else None
+    try:
+        r = requests.put(
+            url,
+            params=params,
+            json=payload,
+            headers=_headers(access_token),
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        return False, f"Ошибка сети: {e}"
+    if r.status_code == 204:
+        return True, "Предпочтения сохранены"
+    return False, f"{r.status_code}: {_extract_error(r)}"
+
+
+def get_personalized_feed(
+    access_token: str,
+    limit: int = 50,
+    offset: int = 0,
+    from_hours: int | None = None,
+    q: str | None = None,
+    user_uuid: str | None = None,
+) -> tuple[list[dict] | None, str | None]:
+    """GET /api/v1/news/feed."""
+    url = f"{main_service_url()}/api/v1/news/feed"
+    params: dict[str, Any] = {
+        "limit": limit,
+        "offset": offset,
+    }
+    if from_hours is not None and from_hours > 0:
+        params["fromHours"] = from_hours
+    if q:
+        params["q"] = q
+    if user_uuid:
+        params["userUuid"] = user_uuid
+
+    try:
+        r = requests.get(
+            url,
+            params=params,
+            headers=_headers(access_token),
+            timeout=15,
+        )
+    except requests.RequestException as e:
+        return None, f"Ошибка сети: {e}"
+    if r.status_code == 200:
+        return r.json(), None
+    return None, f"{r.status_code}: {_extract_error(r)}"

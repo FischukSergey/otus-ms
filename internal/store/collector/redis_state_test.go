@@ -119,14 +119,17 @@ func TestRedisStateStore_ResetErrorCount(t *testing.T) {
 }
 
 func TestRedisStateStore_LocallyDeactivate(t *testing.T) {
-	store := newTestStore(t)
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	store := redisstate.NewRedisStateStore(client)
 	ctx := context.Background()
 
 	deactivated, err := store.IsLocallyDeactivated(ctx, "source_1")
 	require.NoError(t, err)
 	assert.False(t, deactivated)
 
-	err = store.LocallyDeactivate(ctx, "source_1")
+	err = store.LocallyDeactivate(ctx, "source_1", 10*time.Minute)
 	require.NoError(t, err)
 
 	deactivated, err = store.IsLocallyDeactivated(ctx, "source_1")
@@ -134,11 +137,54 @@ func TestRedisStateStore_LocallyDeactivate(t *testing.T) {
 	assert.True(t, deactivated)
 }
 
+func TestRedisStateStore_LocallyDeactivate_AutoReactivation(t *testing.T) {
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	store := redisstate.NewRedisStateStore(client)
+	ctx := context.Background()
+
+	err := store.LocallyDeactivate(ctx, "source_1", 1*time.Minute)
+	require.NoError(t, err)
+
+	deactivated, err := store.IsLocallyDeactivated(ctx, "source_1")
+	require.NoError(t, err)
+	assert.True(t, deactivated)
+
+	// Перематываем время на 2 минуты — TTL-ключ истекает, источник реактивируется
+	mr.FastForward(2 * time.Minute)
+
+	deactivated, err = store.IsLocallyDeactivated(ctx, "source_1")
+	require.NoError(t, err)
+	assert.False(t, deactivated, "источник должен автоматически реактивироваться после истечения TTL")
+}
+
+func TestRedisStateStore_GetDeactivationCount(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	count, err := store.GetDeactivationCount(ctx, "source_1")
+	require.NoError(t, err)
+	assert.Equal(t, 0, count, "новый источник: счётчик деактиваций = 0")
+
+	err = store.LocallyDeactivate(ctx, "source_1", 5*time.Minute)
+	require.NoError(t, err)
+	count, err = store.GetDeactivationCount(ctx, "source_1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+
+	err = store.LocallyDeactivate(ctx, "source_1", 10*time.Minute)
+	require.NoError(t, err)
+	count, err = store.GetDeactivationCount(ctx, "source_1")
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+}
+
 func TestRedisStateStore_DifferentSources_Independent(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	err := store.LocallyDeactivate(ctx, "source_1")
+	err := store.LocallyDeactivate(ctx, "source_1", 5*time.Minute)
 	require.NoError(t, err)
 
 	deactivated, err := store.IsLocallyDeactivated(ctx, "source_2")

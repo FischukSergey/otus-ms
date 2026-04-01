@@ -36,7 +36,9 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/jwks"
 	"github.com/FischukSergey/otus-ms/internal/logger"
 	"github.com/FischukSergey/otus-ms/internal/metrics"
+	"github.com/FischukSergey/otus-ms/internal/services/retention"
 	"github.com/FischukSergey/otus-ms/internal/store"
+	newsrepo "github.com/FischukSergey/otus-ms/internal/store/news"
 )
 
 var configPath = flag.String("config", "configs/config.local.yaml", "Path to config file")
@@ -119,6 +121,14 @@ func run() error {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 	appLogger.Info("Database migrations completed successfully")
+
+	// Запускаем фоновую очистку устаревших новостей из PostgreSQL
+	dbCleaner := retention.NewDBCleaner(
+		newsrepo.NewRepository(storage.DB()),
+		cfg.Retention,
+		appLogger,
+	)
+	go dbCleaner.Run(ctx)
 
 	// Инициализируем JWKS Manager (если настроен)
 	var jwksManager *jwks.Manager

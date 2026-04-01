@@ -70,6 +70,105 @@ definitions:
       token_type:
         type: string
     type: object
+  newshttp.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  newshttp.NewsResponse:
+    properties:
+      createdAt:
+        type: string
+      source:
+        type: string
+      topic:
+        type: string
+      url:
+        type: string
+    type: object
+  personalization.CreateEventRequestSchema:
+    properties:
+      eventType:
+        type: string
+      metadata:
+        additionalProperties:
+          type: any
+        type: object
+      newsId:
+        type: string
+    type: object
+  personalization.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  personalization.FeedItemResponseSchema:
+    properties:
+      category:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      processedAt:
+        type: string
+      publishedAt:
+        type: string
+      score:
+        type: number
+      source:
+        type: string
+      sourceId:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      topic:
+        type: string
+      url:
+        type: string
+    type: object
+  personalization.PreferencesResponseSchema:
+    properties:
+      fromHours:
+        type: integer
+      preferredCategories:
+        items:
+          type: string
+        type: array
+      preferredKeywords:
+        items:
+          type: string
+        type: array
+      preferredLanguage:
+        type: string
+      preferredSources:
+        items:
+          type: string
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  personalization.UpdatePreferencesRequestSchema:
+    properties:
+      fromHours:
+        type: integer
+      preferredCategories:
+        items:
+          type: string
+        type: array
+      preferredKeywords:
+        items:
+          type: string
+        type: array
+      preferredLanguage:
+        type: string
+      preferredSources:
+        items:
+          type: string
+        type: array
+    type: object
 host: fishouk-otus-ms.ru
 info:
   contact:
@@ -219,4 +318,222 @@ paths:
       summary: Регистрация нового пользователя
       tags:
       - auth
+  /api/v1/news:
+    get:
+      description: Возвращает последние новости с полями topic, source и url. Требуется
+        роль admin.
+      parameters:
+      - description: Лимит записей (1..500), по умолчанию 50
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список новостей
+          schema:
+            items:
+              $ref: '#/definitions/newshttp.NewsResponse'
+            type: array
+        "400":
+          description: Некорректный query-параметр limit
+          schema:
+            $ref: '#/definitions/newshttp.ErrorResponse'
+        "401":
+          description: Не авторизован - отсутствует или невалидный JWT токен
+          schema:
+            $ref: '#/definitions/newshttp.ErrorResponse'
+        "403":
+          description: Доступ запрещён - требуется роль admin
+          schema:
+            $ref: '#/definitions/newshttp.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/newshttp.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список новостей (только admin)
+      tags:
+      - news
+  /api/v1/news/events:
+    post:
+      consumes:
+      - application/json
+      description: Принимает события view/click/like/dislike/hide для текущего пользователя
+        (роль user/admin).
+      parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
+      - description: Событие пользователя
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/personalization.CreateEventRequestSchema'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: ""
+        "400":
+          description: Невалидный payload
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Отправить пользовательское событие
+      tags:
+      - personalization
+  /api/v1/news/feed:
+    get:
+      description: Возвращает новости с фильтрацией и ранжированием score для текущего
+        пользователя (роль user/admin).
+      parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
+      - description: Лимит (1..100), по умолчанию 50
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение, по умолчанию 0
+        in: query
+        name: offset
+        type: integer
+      - description: Окно выдачи в часах
+        in: query
+        name: fromHours
+        type: integer
+      - description: FTS запрос (websearch syntax)
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Персонализированная лента
+          schema:
+            items:
+              $ref: '#/definitions/personalization.FeedItemResponseSchema'
+            type: array
+        "400":
+          description: Невалидные query-параметры
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить персонализированную ленту
+      tags:
+      - personalization
+  /api/v1/users/me/preferences:
+    get:
+      description: Возвращает настройки personalization для текущего пользователя
+        (роль user/admin).
+      parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Предпочтения пользователя
+          schema:
+            $ref: '#/definitions/personalization.PreferencesResponseSchema'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить предпочтения пользователя
+      tags:
+      - personalization
+    put:
+      consumes:
+      - application/json
+      description: Создает или обновляет настройки personalization текущего пользователя
+        (роль user/admin).
+      parameters:
+      - description: UUID целевого пользователя (только для admin)
+        in: query
+        name: userUuid
+        type: string
+      - description: Настройки personalization
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/personalization.UpdatePreferencesRequestSchema'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: ""
+        "400":
+          description: Невалидный payload
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/personalization.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить предпочтения пользователя
+      tags:
+      - personalization
+  /news.v1.NewsService/SaveProcessedNews:
+    post:
+      responses: {}
+  /news_sources.v1.NewsSourcesService/GetNewsSources:
+    post:
+      responses: {}
 swagger: "2.0"

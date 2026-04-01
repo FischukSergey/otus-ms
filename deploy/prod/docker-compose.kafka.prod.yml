@@ -1,0 +1,92 @@
+# Kafka для Production — KRaft режим (без Zookeeper).
+# Используется news-collector (producer) и news-processor (consumer).
+# Запускается ОДИН РАЗ вручную и живёт постоянно.
+#
+# Запуск:  task -d . -t deploy/prod/Taskfile.yml kafka:up
+# Остановка: task -d . -t deploy/prod/Taskfile.yml kafka:down
+#
+# Адреса (только внутри Docker-сети):
+#   kafka:9092  — для сервисов (news-collector, news-processor)
+#   Kafka UI:   http://localhost:39080 (только через SSH-туннель)
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: otus-kafka-prod
+    restart: always
+    ports:
+      - "127.0.0.1:39092:9092"  # только localhost, не торчит наружу в интернет
+    environment:
+      # KRaft — режим без Zookeeper
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      # В prod только один listener — внутри Docker-сети
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Репликация = 1, т.к. у нас один брокер
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_IN_SYNC_REPLICAS: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qg=="
+    volumes:
+      - kafka_data_prod:/var/lib/kafka/data
+    networks:
+      - otus_network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: otus-kafka-init-prod
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - otus_network
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      echo 'Создание топиков Kafka...' &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic raw_news --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic processed_news --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic user_actions --partitions 3 --replication-factor 1 --config retention.ms=604800000 &&
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic raw_news.DLT --partitions 1 --replication-factor 1 --config retention.ms=2592000000 &&
+      echo 'Топики созданы:' &&
+      kafka-topics --bootstrap-server kafka:9092 --list
+    restart: on-failure
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: otus-kafka-ui-prod
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:39080:8080"  # доступно только через SSH-туннель: ssh -L 39080:localhost:39080 otus-prod
+    environment:
+      KAFKA_CLUSTERS_0_NAME: otusms-prod
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    networks:
+      - otus_network
+
+networks:
+  otus_network:
+    external: true  # Создаётся docker-compose.be.prod.yml
+
+volumes:
+  kafka_data_prod:
+    name: otus_kafka_data_prod

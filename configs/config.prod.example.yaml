@@ -36,3 +36,8 @@ jwt:
   cache_duration: 600  # 10 минут
   # Main Service только валидирует JWT токены через JWKS
   # Keycloak клиент не используется - только Auth-Proxy работает с Keycloak напрямую
+
+# Политика хранения новостей — очистка устаревших записей из PostgreSQL
+retention:
+  news_retention_days: 7    # удалять новости старше N дней (default: 7)
+  cleanup_interval: 24h     # интервал между запусками очистки (default: 24h)

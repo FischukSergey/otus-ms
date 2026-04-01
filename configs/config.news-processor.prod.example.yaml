@@ -1,0 +1,58 @@
+# News Processor Service — production конфигурация (шаблон)
+# Скопируйте как config.news-processor.prod.yaml и заполните секреты
+global:
+  env: prod
+
+log:
+  level: info
+  format: json
+  service_name: news-processor
+
+servers:
+  client:
+    addr: 0.0.0.0:38083  # HTTP health check
+
+# Keycloak service account — client_id: news-processor
+# Создать клиент в Keycloak с Client Credentials Flow
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"
+  realm: "otus-ms"
+  client_id: "news-processor"
+  client_secret: "CHANGE_ME"
+
+# Main Service gRPC — имя контейнера в Docker-сети otus_network
+main_service:
+  grpc_addr: "otus-microservice-be-prod:50051"
+
+# Kafka — имена контейнеров в Docker-сети otus_network
+kafka:
+  brokers:
+    - "otus-kafka-prod:9092"
+  topic_raw_news: "raw_news"
+  topic_processed_news: "processed_news"
+  consumer_group: "news-processor-group"
+  batch_size: 100
+  batch_timeout: 1s
+  write_timeout: 10s
+
+# Настройки конвейера обработки
+processor:
+  workers: 5
+  save_batch_size: 50
+  fetch_content: true   # загружать полный текст если content пустой в RSS
+  fetch_timeout: 15s
+
+# S3-совместимое объектное хранилище (Selectel S3 / MinIO / AWS S3).
+object_storage:
+  endpoint: "https://s3.ru-1.storage.selcloud.ru"
+  bucket: "otus-news-artifacts"
+  access_key: "CHANGE_ME"
+  secret_key: "CHANGE_ME"
+  region: "ru-1"
+  use_ssl: true
+  prefix: "news-processor"
+
+# Политика хранения новостей — очистка устаревших объектов из S3
+retention:
+  news_retention_days: 7    # удалять объекты старше N дней (default: 7)
+  cleanup_interval: 24h     # интервал между запусками очистки (default: 24h)

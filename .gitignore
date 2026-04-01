@@ -8,6 +8,7 @@
 /main-service
 /auth-proxy
 /news-collector
+/news-processor
 
 /vendor
 /.cursor
@@ -20,6 +21,8 @@ configs/config.auth-proxy.prod.yaml
 configs/config.auth-proxy.test.yaml
 configs/config.news-collector.local.yaml
 configs/config.news-collector.prod.yaml
+configs/config.news-processor.local.yaml
+configs/config.news-processor.prod.yaml
 
 /load_testing/logs
 

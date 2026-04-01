@@ -9,10 +9,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
+	newshandler "github.com/FischukSergey/otus-ms/internal/handlers/news"
 	"github.com/FischukSergey/otus-ms/internal/handlers/sources"
 	"github.com/FischukSergey/otus-ms/internal/jwks"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
+	newsrepo "github.com/FischukSergey/otus-ms/internal/store/news"
 	sourcerepo "github.com/FischukSergey/otus-ms/internal/store/sources"
+	newspb "github.com/FischukSergey/otus-ms/pkg/news/v1"
 	pb "github.com/FischukSergey/otus-ms/pkg/news_sources/v1"
 )
 
@@ -48,9 +51,15 @@ func NewGRPCServer(deps *GRPCServerDeps) *GRPCServer {
 		grpc.UnaryInterceptor(authInterceptor),
 	)
 
-	repo := sourcerepo.NewRepository(deps.DB)
-	handler := sources.NewGRPCHandler(repo, deps.Logger)
-	pb.RegisterNewsSourcesServiceServer(srv, handler)
+	// NewsSourcesService — список источников для news-collector
+	sourceRepo := sourcerepo.NewRepository(deps.DB)
+	sourceHandler := sources.NewGRPCHandler(sourceRepo, deps.Logger)
+	pb.RegisterNewsSourcesServiceServer(srv, sourceHandler)
+
+	// NewsService — сохранение обработанных новостей от news-processor
+	nRepo := newsrepo.NewRepository(deps.DB)
+	nHandler := newshandler.NewGRPCHandler(nRepo, deps.Logger)
+	newspb.RegisterNewsServiceServer(srv, nHandler)
 
 	return &GRPCServer{
 		server: srv,

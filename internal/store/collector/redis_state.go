@@ -1,6 +1,13 @@
 // Package collector реализует хранилище операционного состояния сбора новостей в Redis.
-// Каждый источник хранится как Hash: ключ nc:source:{id},
-// поля: last_collected_at (unix timestamp int64), error_count (int), deactivated ("0"/"1").
+//
+// Операционное состояние каждого источника хранится в Hash nc:source:{id}:
+//   - last_collected_at      — unix timestamp последнего успешного сбора
+//   - error_count            — счётчик последовательных ошибок
+//   - deactivation_count     — сколько раз источник был деактивирован (не сбрасывается)
+//
+// Временная деактивация (circuit-breaker) хранится как отдельный TTL-ключ nc:deact:{id}.
+// Когда ключ существует — источник пропускается при сборе.
+// Когда TTL истекает — Redis автоматически удаляет ключ и источник снова становится активным.
 package collector
 
 import (
@@ -15,10 +22,11 @@ import (
 )
 
 const (
-	keyPrefix        = "nc:source:"
-	fieldLastAt      = "last_collected_at"
-	fieldErrorCount  = "error_count"
-	fieldDeactivated = "deactivated"
+	keyPrefix              = "nc:source:"
+	deactKeyPrefix         = "nc:deact:"
+	fieldLastAt            = "last_collected_at"
+	fieldErrorCount        = "error_count"
+	fieldDeactivationCount = "deactivation_count"
 )
 
 // RedisStateStore хранит операционное состояние сбора в Redis.
@@ -86,25 +94,43 @@ func (s *RedisStateStore) ResetErrorCount(ctx context.Context, sourceID string) 
 	return nil
 }
 
-// IsLocallyDeactivated проверяет, деактивирован ли источник локально в news-collector.
-// Локальная деактивация не влияет на is_active в main-service.
+// IsLocallyDeactivated проверяет, активен ли circuit-breaker для источника.
+// Возвращает true пока существует TTL-ключ nc:deact:{id}.
+// Когда TTL истекает — Redis удаляет ключ автоматически, источник снова активен.
 func (s *RedisStateStore) IsLocallyDeactivated(ctx context.Context, sourceID string) (bool, error) {
-	val, err := s.client.HGet(ctx, key(sourceID), fieldDeactivated).Result()
-	if err == redis.Nil {
-		return false, nil
-	}
+	exists, err := s.client.Exists(ctx, deactKeyPrefix+sourceID).Result()
 	if err != nil {
-		return false, fmt.Errorf("redis HGet deactivated for %s: %w", sourceID, err)
+		return false, fmt.Errorf("redis EXISTS deact key for %s: %w", sourceID, err)
 	}
-	return val == "1", nil
+	return exists > 0, nil
 }
 
-// LocallyDeactivate помечает источник как локально деактивированный.
-// Вызывается когда error_count достигает максимума.
-func (s *RedisStateStore) LocallyDeactivate(ctx context.Context, sourceID string) error {
-	err := s.client.HSet(ctx, key(sourceID), fieldDeactivated, "1").Err()
-	if err != nil {
-		return fmt.Errorf("redis HSet deactivated for %s: %w", sourceID, err)
+// LocallyDeactivate временно деактивирует источник на заданный backoff-период,
+// инкрементирует счётчик деактиваций (используется для расчёта следующего backoff).
+// По истечении TTL Redis удаляет ключ и источник автоматически возобновляет сбор.
+func (s *RedisStateStore) LocallyDeactivate(ctx context.Context, sourceID string, backoff time.Duration) error {
+	pipe := s.client.Pipeline()
+	pipe.Set(ctx, deactKeyPrefix+sourceID, 1, backoff)
+	pipe.HIncrBy(ctx, key(sourceID), fieldDeactivationCount, 1)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return fmt.Errorf("redis pipeline LocallyDeactivate for %s: %w", sourceID, err)
 	}
 	return nil
+}
+
+// GetDeactivationCount возвращает количество раз, которое источник был деактивирован.
+// Используется для расчёта следующего exponential backoff.
+func (s *RedisStateStore) GetDeactivationCount(ctx context.Context, sourceID string) (int, error) {
+	val, err := s.client.HGet(ctx, key(sourceID), fieldDeactivationCount).Result()
+	if err == redis.Nil {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("redis HGet deactivation_count for %s: %w", sourceID, err)
+	}
+	n, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, fmt.Errorf("parse deactivation_count for %s: %w", sourceID, err)
+	}
+	return n, nil
 }
