@@ -34,6 +34,10 @@ def news_processor_url() -> str:
     return _base_url("NEWS_PROCESSOR_URL", "http://localhost:38083")
 
 
+def alert_worker_url() -> str:
+    return _base_url("ALERT_WORKER_URL", "http://localhost:38084")
+
+
 @dataclass
 class TokenResponse:
     access_token: str
@@ -209,7 +213,7 @@ def get_logs(
     """
     import time as _time
 
-    label_sel = '{container=~"otus-(microservice|news)-.*"}'
+    label_sel = '{container=~"otus-(microservice|news|alert)-.*"}'
     filters = []
     if service:
         label_sel = f'{{container="{service}"}}'

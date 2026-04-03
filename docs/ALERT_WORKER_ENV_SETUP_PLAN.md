@@ -37,7 +37,7 @@
 
 ## 2) Streamlit Admin: статус сервиса и его логи
 
-### 3.1 Дашборд статуса
+### 2.1 Дашборд статуса
 
 Обновить `client/api.py`:
 - добавить `alert_worker_url()` (env `ALERT_WORKER_URL`, default `http://localhost:38084`).
@@ -46,17 +46,17 @@
 - в `render_dashboard()` добавить карточку `Alert-worker` с `health_check(alert_worker_url(), "Alert-worker")`.
 - отобразить URL в подписи под дашбордом.
 
-### 3.2 Раздел логов
+### 2.2 Раздел логов
 
 В `client/app.py`, список `_SERVICES` дополнить:
 - `("alert-worker", "otus-alert-worker-prod")`
 
-### 3.3 Документация и env-шаблон
+### 2.3 Документация и env-шаблон
 
 - Обновить `client/.env.example` (добавить `ALERT_WORKER_URL`).
 - Обновить `client/README.md` (новый сервис в дашборде и логах).
 
-### 3.4 Проверка
+### 2.4 Проверка
 
 - Локально: Streamlit показывает `alert-worker` в status и в выпадающем списке логов.
 - Прод: аналогично после деплоя.
@@ -65,13 +65,13 @@
 
 ## 3) CI/CD: сборка и деплой `alert-worker` из GitHub Actions
 
-### 4.1 Docker image для сервиса
+### 3.1 Docker image для сервиса
 
 Добавить `alert-worker.Dockerfile` (по шаблону `news-processor.Dockerfile`):
 - сборка `./cmd/alert-worker`;
 - запуск с `-config /app/configs/config.alert-worker.prod.yaml`.
 
-### 4.2 Workflow
+### 3.2 Workflow
 
 Вариант A (рекомендовано): расширить `.github/workflows/ci.yml`:
 - добавить env:
@@ -87,7 +87,7 @@
 
 Вариант B: отдельный workflow `deploy-alert-worker.yml` по аналогии с `deploy-streamlit.yml`.
 
-### 4.3 Secrets / prerequisites
+### 3.3 Secrets / prerequisites
 
 Проверить наличие:
 - `SELECTEL_REGISTRY_OTUS_USERNAME_PROD`
@@ -95,7 +95,7 @@
 - `VPS_OTUS_HOST`, `VPS_OTUS_USER`, `VPS_OTUS_SSH_KEY`
 - Keycloak secret и Telegram token остаются в файле конфига на VPS (не в репозитории).
 
-### 4.4 Проверка пайплайна
+### 3.4 Проверка пайплайна
 
 - Ручной `workflow_dispatch` с dry-run логикой.
 - Smoke-check после деплоя:
@@ -147,6 +147,25 @@
 3. Streamlit status/logs для `alert-worker`.
 4. Dockerfile + CI/CD job для `alert-worker`.
 5. Финальный E2E smoke-test на проде.
+
+## 6.1 Текущий статус исполнения
+
+- Выполнено:
+  - шаг 1: Kafka topics (`news_alerts`, `news_alerts.DLT`);
+  - шаг 2: Promtail/Loki фильтр для `alert-worker`;
+  - шаг 3: Streamlit статус + логи `alert-worker`;
+  - шаг 4: CI/CD + `alert-worker.Dockerfile`.
+- Осталось:
+  - шаг 5: финальный E2E smoke-test на проде.
+
+Чеклист шага 5:
+- `task -d . -t deploy/prod/Taskfile.yml config:upload`
+- `task -d . -t deploy/prod/Taskfile.yml deploy:compose`
+- `task -d . -t deploy/prod/Taskfile.yml kafka:topics`
+- `task -d . -t deploy/prod/Taskfile.yml aw:up`
+- `task -d . -t deploy/prod/Taskfile.yml aw:health`
+- `task -d . -t deploy/prod/Taskfile.yml aw:logs`
+- тестовый event в `news_alerts` и проверка доставки в Telegram
 
 ---
 

@@ -119,3 +119,43 @@ task -d . -t deploy/prod/Taskfile.yml aw:config:edit
 
 - Не коммитьте реальные `client_secret`, `bot_token`, `chat_id`.
 - Файлы `configs/config.*.yaml` уже в `.gitignore`.
+
+## 7) Финальный smoke-check
+
+### 7.1 Локально
+
+```bash
+# 1) Kafka с новыми топиками
+docker exec otusms-kafka-local kafka-topics --bootstrap-server localhost:9092 --list | grep news_alerts
+
+# 2) Main-service и alert-worker health
+curl http://localhost:38080/health
+curl http://localhost:38084/health
+
+# 3) Streamlit видит alert-worker
+cd client && streamlit run app.py
+# На вкладке "Дашборд" статус Alert-worker = ok
+# На вкладке "Логи" есть фильтр alert-worker
+```
+
+### 7.2 Прод (VPS)
+
+```bash
+# 1) Конфиги и compose на VPS
+task -d . -t deploy/prod/Taskfile.yml config:upload
+task -d . -t deploy/prod/Taskfile.yml deploy:compose
+
+# 2) Kafka топики
+task -d . -t deploy/prod/Taskfile.yml kafka:topics
+
+# 3) Alert-worker
+task -d . -t deploy/prod/Taskfile.yml aw:up
+task -d . -t deploy/prod/Taskfile.yml aw:health
+task -d . -t deploy/prod/Taskfile.yml aw:logs
+```
+
+Минимальный критерий smoke-pass:
+- `news_alerts` и `news_alerts.DLT` существуют;
+- `aw:health` возвращает `status=ok`;
+- логи `otus-alert-worker-prod` видны в Loki/Streamlit;
+- после тестового события в `news_alerts` появляется отправка в Telegram.
