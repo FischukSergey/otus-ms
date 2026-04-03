@@ -3,15 +3,25 @@ package news
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/FischukSergey/otus-ms/internal/models"
 	pb "github.com/FischukSergey/otus-ms/pkg/news/v1"
+)
+
+const (
+	pgForeignKeyViolationCode           = "23503"
+	alertEventsNewsFKConstraint         = "alert_events_news_id_fkey"
+	pendingInsertRetryAttempts          = 5
+	pendingInsertInitialRetryBackoff    = 150 * time.Millisecond
+	pendingInsertMaxRetryBackoff        = 1200 * time.Millisecond
 )
 
 // Repository определяет интерфейс доступа к таблице news.
@@ -149,7 +159,7 @@ func (h *GRPCHandler) ReserveAlertDelivery(
 		Keyword:  req.Keyword,
 	}
 
-	inserted, err := h.alertRepo.CreatePendingEvent(ctx, event)
+	inserted, err := h.createPendingEventWithRetry(ctx, event)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("create pending event: %v", err))
 	}
@@ -186,6 +196,49 @@ func (h *GRPCHandler) ReserveAlertDelivery(
 		ShouldSend: true,
 		Reason:     "ready",
 	}, nil
+}
+
+func (h *GRPCHandler) createPendingEventWithRetry(ctx context.Context, event models.NewsAlertEvent) (bool, error) {
+	backoff := pendingInsertInitialRetryBackoff
+
+	for attempt := 1; attempt <= pendingInsertRetryAttempts; attempt++ {
+		inserted, err := h.alertRepo.CreatePendingEvent(ctx, event)
+		if err == nil {
+			return inserted, nil
+		}
+
+		if !isNewsForeignKeyRace(err) || attempt == pendingInsertRetryAttempts {
+			return false, err
+		}
+
+		h.logger.Warn("grpc ReserveAlertDelivery: retry pending insert after news FK race",
+			"event_id", event.EventID,
+			"rule_id", event.RuleID,
+			"news_id", event.NewsID,
+			"attempt", attempt,
+			"max_attempts", pendingInsertRetryAttempts,
+			"next_backoff", backoff,
+		)
+
+		select {
+		case <-time.After(backoff):
+			backoff = min(backoff*2, pendingInsertMaxRetryBackoff)
+		case <-ctx.Done():
+			return false, ctx.Err()
+		}
+	}
+
+	return false, errors.New("pending insert retries exhausted")
+}
+
+func isNewsForeignKeyRace(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	return pgErr.Code == pgForeignKeyViolationCode &&
+		pgErr.ConstraintName == alertEventsNewsFKConstraint
 }
 
 // FinalizeAlertDelivery фиксирует финальный статус доставки.
