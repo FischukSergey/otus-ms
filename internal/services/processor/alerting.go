@@ -42,35 +42,49 @@ func matchAlertEvents(processed *models.ProcessedNews, rules []models.AlertRule)
 		if keyword == "" {
 			continue
 		}
-
-		matchedField := ""
-		matchedSnippet := ""
 		switch {
 		case strings.Contains(titleLower, keyword):
-			matchedField = "title"
-			matchedSnippet = buildSnippet(processed.Title, keyword)
+			events = append(events, models.NewsAlertEvent{
+				EventID:        uuid.NewString(),
+				RuleID:         rules[i].ID,
+				UserUUID:       rules[i].UserUUID,
+				NewsID:         processed.ID,
+				Keyword:        keyword,
+				MatchedField:   "title",
+				MatchedSnippet: buildSnippet(processed.Title, keyword),
+				NewsTitle:      processed.Title,
+				NewsURL:        processed.URL,
+				CreatedAt:      time.Now().UTC().Format(time.RFC3339),
+			})
 		case strings.Contains(summaryLower, keyword):
-			matchedField = "summary"
-			matchedSnippet = buildSnippet(processed.Summary, keyword)
+			events = append(events, models.NewsAlertEvent{
+				EventID:        uuid.NewString(),
+				RuleID:         rules[i].ID,
+				UserUUID:       rules[i].UserUUID,
+				NewsID:         processed.ID,
+				Keyword:        keyword,
+				MatchedField:   "summary",
+				MatchedSnippet: buildSnippet(processed.Summary, keyword),
+				NewsTitle:      processed.Title,
+				NewsURL:        processed.URL,
+				CreatedAt:      time.Now().UTC().Format(time.RFC3339),
+			})
 		case strings.Contains(contentLower, keyword):
-			matchedField = "content"
-			matchedSnippet = buildSnippet(processed.Content, keyword)
+			events = append(events, models.NewsAlertEvent{
+				EventID:        uuid.NewString(),
+				RuleID:         rules[i].ID,
+				UserUUID:       rules[i].UserUUID,
+				NewsID:         processed.ID,
+				Keyword:        keyword,
+				MatchedField:   "content",
+				MatchedSnippet: buildSnippet(processed.Content, keyword),
+				NewsTitle:      processed.Title,
+				NewsURL:        processed.URL,
+				CreatedAt:      time.Now().UTC().Format(time.RFC3339),
+			})
 		default:
 			continue
 		}
-
-		events = append(events, models.NewsAlertEvent{
-			EventID:        uuid.NewString(),
-			RuleID:         rules[i].ID,
-			UserUUID:       rules[i].UserUUID,
-			NewsID:         processed.ID,
-			Keyword:        keyword,
-			MatchedField:   matchedField,
-			MatchedSnippet: matchedSnippet,
-			NewsTitle:      processed.Title,
-			NewsURL:        processed.URL,
-			CreatedAt:      time.Now().UTC().Format(time.RFC3339),
-		})
 	}
 
 	return events

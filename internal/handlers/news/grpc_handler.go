@@ -13,15 +13,17 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/FischukSergey/otus-ms/internal/models"
+	alertingrepo "github.com/FischukSergey/otus-ms/internal/store/alerting"
 	pb "github.com/FischukSergey/otus-ms/pkg/news/v1"
 )
 
 const (
-	pgForeignKeyViolationCode           = "23503"
-	alertEventsNewsFKConstraint         = "alert_events_news_id_fkey"
-	pendingInsertRetryAttempts          = 5
-	pendingInsertInitialRetryBackoff    = 150 * time.Millisecond
-	pendingInsertMaxRetryBackoff        = 1200 * time.Millisecond
+	pgForeignKeyViolationCode        = "23503"
+	alertEventsNewsFKConstraint      = "alert_events_news_id_fkey"
+	pendingInsertRetryAttempts       = 5
+	pendingInsertInitialRetryBackoff = 150 * time.Millisecond
+	pendingInsertMaxRetryBackoff     = 1200 * time.Millisecond
+	maxCooldownSecondsInt32          = int32(^uint32(0) >> 1)
 )
 
 // Repository определяет интерфейс доступа к таблице news.
@@ -137,7 +139,7 @@ func (h *GRPCHandler) GetActiveAlertRules(
 			Id:              rules[i].ID,
 			UserUuid:        rules[i].UserUUID,
 			Keyword:         rules[i].Keyword,
-			CooldownSeconds: int32(rules[i].CooldownSeconds),
+			CooldownSeconds: safeCooldownSecondsToInt32(rules[i].CooldownSeconds),
 		})
 	}
 
@@ -175,7 +177,7 @@ func (h *GRPCHandler) ReserveAlertDelivery(
 		return nil, status.Error(codes.Internal, fmt.Sprintf("get cooldown: %v", err))
 	}
 	lastSentAt, err := h.alertRepo.GetLastSentAt(ctx, req.RuleId)
-	if err != nil {
+	if err != nil && !errors.Is(err, alertingrepo.ErrLastSentAtNotFound) {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("get last sent_at: %v", err))
 	}
 
@@ -239,6 +241,19 @@ func isNewsForeignKeyRace(err error) bool {
 
 	return pgErr.Code == pgForeignKeyViolationCode &&
 		pgErr.ConstraintName == alertEventsNewsFKConstraint
+}
+
+func safeCooldownSecondsToInt32(value int) int32 {
+	if value < 0 {
+		return 0
+	}
+
+	maxCooldown := int(maxCooldownSecondsInt32)
+	if value > maxCooldown {
+		return maxCooldownSecondsInt32
+	}
+
+	return int32(value)
 }
 
 // FinalizeAlertDelivery фиксирует финальный статус доставки.

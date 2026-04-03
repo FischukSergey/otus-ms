@@ -7,11 +7,12 @@
 package newsv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -680,19 +681,22 @@ func file_news_v1_news_proto_rawDescGZIP() []byte {
 	return file_news_v1_news_proto_rawDescData
 }
 
-var file_news_v1_news_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-var file_news_v1_news_proto_goTypes = []any{
-	(*ProcessedNewsItem)(nil),             // 0: news.v1.ProcessedNewsItem
-	(*SaveProcessedNewsRequest)(nil),      // 1: news.v1.SaveProcessedNewsRequest
-	(*SaveProcessedNewsResponse)(nil),     // 2: news.v1.SaveProcessedNewsResponse
-	(*AlertRule)(nil),                     // 3: news.v1.AlertRule
-	(*GetActiveAlertRulesRequest)(nil),    // 4: news.v1.GetActiveAlertRulesRequest
-	(*GetActiveAlertRulesResponse)(nil),   // 5: news.v1.GetActiveAlertRulesResponse
-	(*ReserveAlertDeliveryRequest)(nil),   // 6: news.v1.ReserveAlertDeliveryRequest
-	(*ReserveAlertDeliveryResponse)(nil),  // 7: news.v1.ReserveAlertDeliveryResponse
-	(*FinalizeAlertDeliveryRequest)(nil),  // 8: news.v1.FinalizeAlertDeliveryRequest
-	(*FinalizeAlertDeliveryResponse)(nil), // 9: news.v1.FinalizeAlertDeliveryResponse
-}
+var (
+	file_news_v1_news_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+	file_news_v1_news_proto_goTypes  = []any{
+		(*ProcessedNewsItem)(nil),             // 0: news.v1.ProcessedNewsItem
+		(*SaveProcessedNewsRequest)(nil),      // 1: news.v1.SaveProcessedNewsRequest
+		(*SaveProcessedNewsResponse)(nil),     // 2: news.v1.SaveProcessedNewsResponse
+		(*AlertRule)(nil),                     // 3: news.v1.AlertRule
+		(*GetActiveAlertRulesRequest)(nil),    // 4: news.v1.GetActiveAlertRulesRequest
+		(*GetActiveAlertRulesResponse)(nil),   // 5: news.v1.GetActiveAlertRulesResponse
+		(*ReserveAlertDeliveryRequest)(nil),   // 6: news.v1.ReserveAlertDeliveryRequest
+		(*ReserveAlertDeliveryResponse)(nil),  // 7: news.v1.ReserveAlertDeliveryResponse
+		(*FinalizeAlertDeliveryRequest)(nil),  // 8: news.v1.FinalizeAlertDeliveryRequest
+		(*FinalizeAlertDeliveryResponse)(nil), // 9: news.v1.FinalizeAlertDeliveryResponse
+	}
+)
+
 var file_news_v1_news_proto_depIdxs = []int32{
 	0, // 0: news.v1.SaveProcessedNewsRequest.news:type_name -> news.v1.ProcessedNewsItem
 	3, // 1: news.v1.GetActiveAlertRulesResponse.rules:type_name -> news.v1.AlertRule

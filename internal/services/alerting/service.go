@@ -17,6 +17,7 @@ const (
 	defaultEventsLimit     = 50
 	maxEventsLimit         = 200
 	maxActiveRulesPerUser  = 20
+	telegramChannelType    = "telegram"
 )
 
 var allowedStatuses = []string{"pending", "sent", "failed", "dropped"}
@@ -105,8 +106,8 @@ func (s *Service) CreateRule(ctx context.Context, userUUID string, req CreateRul
 		ChannelTarget:   strings.TrimSpace(req.ChannelTarget),
 		CooldownSeconds: cooldown,
 	}
-	if rule.ChannelType != "telegram" {
-		return nil, errors.New("channelType must be telegram")
+	if rule.ChannelType != telegramChannelType {
+		return nil, fmt.Errorf("channelType must be %s", telegramChannelType)
 	}
 
 	if err := s.repo.CreateRule(ctx, rule); err != nil {
@@ -150,8 +151,8 @@ func (s *Service) UpdateRule(
 	}
 
 	channelType := normalizeChannelType(req.ChannelType)
-	if channelType != "telegram" {
-		return errors.New("channelType must be telegram")
+	if channelType != telegramChannelType {
+		return fmt.Errorf("channelType must be %s", telegramChannelType)
 	}
 
 	rule := models.AlertRule{
@@ -244,7 +245,7 @@ func normalizeKeyword(value string) string {
 func normalizeChannelType(value string) string {
 	trimmed := strings.TrimSpace(strings.ToLower(value))
 	if trimmed == "" {
-		return "telegram"
+		return telegramChannelType
 	}
 	return trimmed
 }

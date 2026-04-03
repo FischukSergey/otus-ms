@@ -14,6 +14,9 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/models"
 )
 
+// ErrLastSentAtNotFound возвращается, когда успешных отправок по правилу нет.
+var ErrLastSentAtNotFound = errors.New("last sent_at not found")
+
 // Repository реализует доступ к таблицам alert_rules и alert_events.
 type Repository struct {
 	db *pgxpool.Pool
@@ -333,7 +336,7 @@ func (r *Repository) GetLastSentAt(ctx context.Context, ruleID string) (*time.Ti
 	var sentAt time.Time
 	if err := r.db.QueryRow(ctx, query, ruleID).Scan(&sentAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, ErrLastSentAtNotFound
 		}
 		return nil, fmt.Errorf("query last sent_at for rule_id=%s: %w", ruleID, err)
 	}

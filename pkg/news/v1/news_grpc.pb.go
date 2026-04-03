@@ -8,6 +8,7 @@ package newsv1
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -140,12 +141,15 @@ type UnimplementedNewsServiceServer struct{}
 func (UnimplementedNewsServiceServer) SaveProcessedNews(context.Context, *SaveProcessedNewsRequest) (*SaveProcessedNewsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SaveProcessedNews not implemented")
 }
+
 func (UnimplementedNewsServiceServer) GetActiveAlertRules(context.Context, *GetActiveAlertRulesRequest) (*GetActiveAlertRulesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetActiveAlertRules not implemented")
 }
+
 func (UnimplementedNewsServiceServer) ReserveAlertDelivery(context.Context, *ReserveAlertDeliveryRequest) (*ReserveAlertDeliveryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReserveAlertDelivery not implemented")
 }
+
 func (UnimplementedNewsServiceServer) FinalizeAlertDelivery(context.Context, *FinalizeAlertDeliveryRequest) (*FinalizeAlertDeliveryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method FinalizeAlertDelivery not implemented")
 }
