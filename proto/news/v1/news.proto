@@ -12,6 +12,23 @@ service NewsService {
   //
   // @Router /news.v1.NewsService/SaveProcessedNews [post].
   rpc SaveProcessedNews(SaveProcessedNewsRequest) returns (SaveProcessedNewsResponse);
+
+  // GetActiveAlertRules возвращает активные правила алертинга.
+  // Используется news-processor для матчинга ключевых слов.
+  //
+  // @Router /news.v1.NewsService/GetActiveAlertRules [post].
+  rpc GetActiveAlertRules(GetActiveAlertRulesRequest) returns (GetActiveAlertRulesResponse);
+
+  // ReserveAlertDelivery резервирует доставку алерта: дедуп + cooldown + pending.
+  // Если should_send=false, доставку выполнять не нужно.
+  //
+  // @Router /news.v1.NewsService/ReserveAlertDelivery [post].
+  rpc ReserveAlertDelivery(ReserveAlertDeliveryRequest) returns (ReserveAlertDeliveryResponse);
+
+  // FinalizeAlertDelivery фиксирует финальный статус доставки алерта.
+  //
+  // @Router /news.v1.NewsService/FinalizeAlertDelivery [post].
+  rpc FinalizeAlertDelivery(FinalizeAlertDeliveryRequest) returns (FinalizeAlertDeliveryResponse);
 }
 
 // ProcessedNewsItem — обработанная новость для сохранения.
@@ -37,3 +54,45 @@ message SaveProcessedNewsRequest {
 message SaveProcessedNewsResponse {
   int32 saved_count = 1;
 }
+
+// AlertRule — минимальная проекция правила для матчинга в news-processor.
+message AlertRule {
+  string id = 1;
+  string user_uuid = 2;
+  string keyword = 3;
+  int32 cooldown_seconds = 4;
+}
+
+// GetActiveAlertRulesRequest — запрос активных правил.
+message GetActiveAlertRulesRequest {}
+
+// GetActiveAlertRulesResponse — ответ со списком активных правил.
+message GetActiveAlertRulesResponse {
+  repeated AlertRule rules = 1;
+}
+
+// ReserveAlertDeliveryRequest — запрос на резервирование доставки.
+message ReserveAlertDeliveryRequest {
+  string event_id = 1;
+  string rule_id = 2;
+  string user_uuid = 3;
+  string news_id = 4;
+  string keyword = 5;
+}
+
+// ReserveAlertDeliveryResponse — результат резервирования.
+message ReserveAlertDeliveryResponse {
+  bool should_send = 1;
+  string reason = 2; // duplicate, cooldown, ready
+}
+
+// FinalizeAlertDeliveryRequest — финализация доставки.
+message FinalizeAlertDeliveryRequest {
+  string event_id = 1;
+  string status = 2; // sent, failed, dropped
+  string error_message = 3;
+  int64 sent_at_unix = 4; // unix seconds, only for sent
+}
+
+// FinalizeAlertDeliveryResponse — пустой ответ.
+message FinalizeAlertDeliveryResponse {}

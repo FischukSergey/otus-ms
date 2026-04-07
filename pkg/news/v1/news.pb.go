@@ -229,6 +229,393 @@ func (x *SaveProcessedNewsResponse) GetSavedCount() int32 {
 	return 0
 }
 
+// AlertRule — минимальная проекция правила для матчинга в news-processor.
+type AlertRule struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserUuid        string                 `protobuf:"bytes,2,opt,name=user_uuid,json=userUuid,proto3" json:"user_uuid,omitempty"`
+	Keyword         string                 `protobuf:"bytes,3,opt,name=keyword,proto3" json:"keyword,omitempty"`
+	CooldownSeconds int32                  `protobuf:"varint,4,opt,name=cooldown_seconds,json=cooldownSeconds,proto3" json:"cooldown_seconds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AlertRule) Reset() {
+	*x = AlertRule{}
+	mi := &file_news_v1_news_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AlertRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AlertRule) ProtoMessage() {}
+
+func (x *AlertRule) ProtoReflect() protoreflect.Message {
+	mi := &file_news_v1_news_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AlertRule.ProtoReflect.Descriptor instead.
+func (*AlertRule) Descriptor() ([]byte, []int) {
+	return file_news_v1_news_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AlertRule) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AlertRule) GetUserUuid() string {
+	if x != nil {
+		return x.UserUuid
+	}
+	return ""
+}
+
+func (x *AlertRule) GetKeyword() string {
+	if x != nil {
+		return x.Keyword
+	}
+	return ""
+}
+
+func (x *AlertRule) GetCooldownSeconds() int32 {
+	if x != nil {
+		return x.CooldownSeconds
+	}
+	return 0
+}
+
+// GetActiveAlertRulesRequest — запрос активных правил.
+type GetActiveAlertRulesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetActiveAlertRulesRequest) Reset() {
+	*x = GetActiveAlertRulesRequest{}
+	mi := &file_news_v1_news_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActiveAlertRulesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActiveAlertRulesRequest) ProtoMessage() {}
+
+func (x *GetActiveAlertRulesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_news_v1_news_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActiveAlertRulesRequest.ProtoReflect.Descriptor instead.
+func (*GetActiveAlertRulesRequest) Descriptor() ([]byte, []int) {
+	return file_news_v1_news_proto_rawDescGZIP(), []int{4}
+}
+
+// GetActiveAlertRulesResponse — ответ со списком активных правил.
+type GetActiveAlertRulesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rules         []*AlertRule           `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetActiveAlertRulesResponse) Reset() {
+	*x = GetActiveAlertRulesResponse{}
+	mi := &file_news_v1_news_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActiveAlertRulesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActiveAlertRulesResponse) ProtoMessage() {}
+
+func (x *GetActiveAlertRulesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_news_v1_news_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActiveAlertRulesResponse.ProtoReflect.Descriptor instead.
+func (*GetActiveAlertRulesResponse) Descriptor() ([]byte, []int) {
+	return file_news_v1_news_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetActiveAlertRulesResponse) GetRules() []*AlertRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+// ReserveAlertDeliveryRequest — запрос на резервирование доставки.
+type ReserveAlertDeliveryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	RuleId        string                 `protobuf:"bytes,2,opt,name=rule_id,json=ruleId,proto3" json:"rule_id,omitempty"`
+	UserUuid      string                 `protobuf:"bytes,3,opt,name=user_uuid,json=userUuid,proto3" json:"user_uuid,omitempty"`
+	NewsId        string                 `protobuf:"bytes,4,opt,name=news_id,json=newsId,proto3" json:"news_id,omitempty"`
+	Keyword       string                 `protobuf:"bytes,5,opt,name=keyword,proto3" json:"keyword,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReserveAlertDeliveryRequest) Reset() {
+	*x = ReserveAlertDeliveryRequest{}
+	mi := &file_news_v1_news_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReserveAlertDeliveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReserveAlertDeliveryRequest) ProtoMessage() {}
+
+func (x *ReserveAlertDeliveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_news_v1_news_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReserveAlertDeliveryRequest.ProtoReflect.Descriptor instead.
+func (*ReserveAlertDeliveryRequest) Descriptor() ([]byte, []int) {
+	return file_news_v1_news_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ReserveAlertDeliveryRequest) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *ReserveAlertDeliveryRequest) GetRuleId() string {
+	if x != nil {
+		return x.RuleId
+	}
+	return ""
+}
+
+func (x *ReserveAlertDeliveryRequest) GetUserUuid() string {
+	if x != nil {
+		return x.UserUuid
+	}
+	return ""
+}
+
+func (x *ReserveAlertDeliveryRequest) GetNewsId() string {
+	if x != nil {
+		return x.NewsId
+	}
+	return ""
+}
+
+func (x *ReserveAlertDeliveryRequest) GetKeyword() string {
+	if x != nil {
+		return x.Keyword
+	}
+	return ""
+}
+
+// ReserveAlertDeliveryResponse — результат резервирования.
+type ReserveAlertDeliveryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ShouldSend    bool                   `protobuf:"varint,1,opt,name=should_send,json=shouldSend,proto3" json:"should_send,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"` // duplicate, cooldown, ready
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReserveAlertDeliveryResponse) Reset() {
+	*x = ReserveAlertDeliveryResponse{}
+	mi := &file_news_v1_news_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReserveAlertDeliveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReserveAlertDeliveryResponse) ProtoMessage() {}
+
+func (x *ReserveAlertDeliveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_news_v1_news_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReserveAlertDeliveryResponse.ProtoReflect.Descriptor instead.
+func (*ReserveAlertDeliveryResponse) Descriptor() ([]byte, []int) {
+	return file_news_v1_news_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ReserveAlertDeliveryResponse) GetShouldSend() bool {
+	if x != nil {
+		return x.ShouldSend
+	}
+	return false
+}
+
+func (x *ReserveAlertDeliveryResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// FinalizeAlertDeliveryRequest — финализация доставки.
+type FinalizeAlertDeliveryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // sent, failed, dropped
+	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	SentAtUnix    int64                  `protobuf:"varint,4,opt,name=sent_at_unix,json=sentAtUnix,proto3" json:"sent_at_unix,omitempty"` // unix seconds, only for sent
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinalizeAlertDeliveryRequest) Reset() {
+	*x = FinalizeAlertDeliveryRequest{}
+	mi := &file_news_v1_news_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinalizeAlertDeliveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinalizeAlertDeliveryRequest) ProtoMessage() {}
+
+func (x *FinalizeAlertDeliveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_news_v1_news_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinalizeAlertDeliveryRequest.ProtoReflect.Descriptor instead.
+func (*FinalizeAlertDeliveryRequest) Descriptor() ([]byte, []int) {
+	return file_news_v1_news_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *FinalizeAlertDeliveryRequest) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *FinalizeAlertDeliveryRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *FinalizeAlertDeliveryRequest) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *FinalizeAlertDeliveryRequest) GetSentAtUnix() int64 {
+	if x != nil {
+		return x.SentAtUnix
+	}
+	return 0
+}
+
+// FinalizeAlertDeliveryResponse — пустой ответ.
+type FinalizeAlertDeliveryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinalizeAlertDeliveryResponse) Reset() {
+	*x = FinalizeAlertDeliveryResponse{}
+	mi := &file_news_v1_news_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinalizeAlertDeliveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinalizeAlertDeliveryResponse) ProtoMessage() {}
+
+func (x *FinalizeAlertDeliveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_news_v1_news_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinalizeAlertDeliveryResponse.ProtoReflect.Descriptor instead.
+func (*FinalizeAlertDeliveryResponse) Descriptor() ([]byte, []int) {
+	return file_news_v1_news_proto_rawDescGZIP(), []int{9}
+}
+
 var File_news_v1_news_proto protoreflect.FileDescriptor
 
 const file_news_v1_news_proto_rawDesc = "" +
@@ -250,9 +637,37 @@ const file_news_v1_news_proto_rawDesc = "" +
 	"\x04news\x18\x01 \x03(\v2\x1a.news.v1.ProcessedNewsItemR\x04news\"<\n" +
 	"\x19SaveProcessedNewsResponse\x12\x1f\n" +
 	"\vsaved_count\x18\x01 \x01(\x05R\n" +
-	"savedCount2i\n" +
+	"savedCount\"}\n" +
+	"\tAlertRule\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tuser_uuid\x18\x02 \x01(\tR\buserUuid\x12\x18\n" +
+	"\akeyword\x18\x03 \x01(\tR\akeyword\x12)\n" +
+	"\x10cooldown_seconds\x18\x04 \x01(\x05R\x0fcooldownSeconds\"\x1c\n" +
+	"\x1aGetActiveAlertRulesRequest\"G\n" +
+	"\x1bGetActiveAlertRulesResponse\x12(\n" +
+	"\x05rules\x18\x01 \x03(\v2\x12.news.v1.AlertRuleR\x05rules\"\xa1\x01\n" +
+	"\x1bReserveAlertDeliveryRequest\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x17\n" +
+	"\arule_id\x18\x02 \x01(\tR\x06ruleId\x12\x1b\n" +
+	"\tuser_uuid\x18\x03 \x01(\tR\buserUuid\x12\x17\n" +
+	"\anews_id\x18\x04 \x01(\tR\x06newsId\x12\x18\n" +
+	"\akeyword\x18\x05 \x01(\tR\akeyword\"W\n" +
+	"\x1cReserveAlertDeliveryResponse\x12\x1f\n" +
+	"\vshould_send\x18\x01 \x01(\bR\n" +
+	"shouldSend\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x98\x01\n" +
+	"\x1cFinalizeAlertDeliveryRequest\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\x12 \n" +
+	"\fsent_at_unix\x18\x04 \x01(\x03R\n" +
+	"sentAtUnix\"\x1f\n" +
+	"\x1dFinalizeAlertDeliveryResponse2\x98\x03\n" +
 	"\vNewsService\x12Z\n" +
-	"\x11SaveProcessedNews\x12!.news.v1.SaveProcessedNewsRequest\x1a\".news.v1.SaveProcessedNewsResponseB5Z3github.com/FischukSergey/otus-ms/pkg/news/v1;newsv1b\x06proto3"
+	"\x11SaveProcessedNews\x12!.news.v1.SaveProcessedNewsRequest\x1a\".news.v1.SaveProcessedNewsResponse\x12`\n" +
+	"\x13GetActiveAlertRules\x12#.news.v1.GetActiveAlertRulesRequest\x1a$.news.v1.GetActiveAlertRulesResponse\x12c\n" +
+	"\x14ReserveAlertDelivery\x12$.news.v1.ReserveAlertDeliveryRequest\x1a%.news.v1.ReserveAlertDeliveryResponse\x12f\n" +
+	"\x15FinalizeAlertDelivery\x12%.news.v1.FinalizeAlertDeliveryRequest\x1a&.news.v1.FinalizeAlertDeliveryResponseB5Z3github.com/FischukSergey/otus-ms/pkg/news/v1;newsv1b\x06proto3"
 
 var (
 	file_news_v1_news_proto_rawDescOnce sync.Once
@@ -267,23 +682,37 @@ func file_news_v1_news_proto_rawDescGZIP() []byte {
 }
 
 var (
-	file_news_v1_news_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+	file_news_v1_news_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 	file_news_v1_news_proto_goTypes  = []any{
-		(*ProcessedNewsItem)(nil),         // 0: news.v1.ProcessedNewsItem
-		(*SaveProcessedNewsRequest)(nil),  // 1: news.v1.SaveProcessedNewsRequest
-		(*SaveProcessedNewsResponse)(nil), // 2: news.v1.SaveProcessedNewsResponse
+		(*ProcessedNewsItem)(nil),             // 0: news.v1.ProcessedNewsItem
+		(*SaveProcessedNewsRequest)(nil),      // 1: news.v1.SaveProcessedNewsRequest
+		(*SaveProcessedNewsResponse)(nil),     // 2: news.v1.SaveProcessedNewsResponse
+		(*AlertRule)(nil),                     // 3: news.v1.AlertRule
+		(*GetActiveAlertRulesRequest)(nil),    // 4: news.v1.GetActiveAlertRulesRequest
+		(*GetActiveAlertRulesResponse)(nil),   // 5: news.v1.GetActiveAlertRulesResponse
+		(*ReserveAlertDeliveryRequest)(nil),   // 6: news.v1.ReserveAlertDeliveryRequest
+		(*ReserveAlertDeliveryResponse)(nil),  // 7: news.v1.ReserveAlertDeliveryResponse
+		(*FinalizeAlertDeliveryRequest)(nil),  // 8: news.v1.FinalizeAlertDeliveryRequest
+		(*FinalizeAlertDeliveryResponse)(nil), // 9: news.v1.FinalizeAlertDeliveryResponse
 	}
 )
 
 var file_news_v1_news_proto_depIdxs = []int32{
 	0, // 0: news.v1.SaveProcessedNewsRequest.news:type_name -> news.v1.ProcessedNewsItem
-	1, // 1: news.v1.NewsService.SaveProcessedNews:input_type -> news.v1.SaveProcessedNewsRequest
-	2, // 2: news.v1.NewsService.SaveProcessedNews:output_type -> news.v1.SaveProcessedNewsResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: news.v1.GetActiveAlertRulesResponse.rules:type_name -> news.v1.AlertRule
+	1, // 2: news.v1.NewsService.SaveProcessedNews:input_type -> news.v1.SaveProcessedNewsRequest
+	4, // 3: news.v1.NewsService.GetActiveAlertRules:input_type -> news.v1.GetActiveAlertRulesRequest
+	6, // 4: news.v1.NewsService.ReserveAlertDelivery:input_type -> news.v1.ReserveAlertDeliveryRequest
+	8, // 5: news.v1.NewsService.FinalizeAlertDelivery:input_type -> news.v1.FinalizeAlertDeliveryRequest
+	2, // 6: news.v1.NewsService.SaveProcessedNews:output_type -> news.v1.SaveProcessedNewsResponse
+	5, // 7: news.v1.NewsService.GetActiveAlertRules:output_type -> news.v1.GetActiveAlertRulesResponse
+	7, // 8: news.v1.NewsService.ReserveAlertDelivery:output_type -> news.v1.ReserveAlertDeliveryResponse
+	9, // 9: news.v1.NewsService.FinalizeAlertDelivery:output_type -> news.v1.FinalizeAlertDeliveryResponse
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_news_v1_news_proto_init() }
@@ -297,7 +726,7 @@ func file_news_v1_news_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_news_v1_news_proto_rawDesc), len(file_news_v1_news_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -11,6 +11,7 @@ services:
       - MAIN_SERVICE_URL=http://otus-microservice-be-prod:38080
       - NEWS_COLLECTOR_URL=http://otus-news-collector-prod:38082
       - NEWS_PROCESSOR_URL=http://otus-news-processor-prod:38083
+      - ALERT_WORKER_URL=http://otus-alert-worker-prod:38084
       - LOKI_URL=http://otus-loki-prod:3100
       - STREAMLIT_SERVER_BASE_URL_PATH=/admin 
     networks:

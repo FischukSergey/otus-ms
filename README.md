@@ -6,13 +6,14 @@
 
 ## О проекте
 
-OtusMS - это шаблон микросервиса с полным CI/CD циклом, демонстрирующий:
+OtusMS - это учебно-практический микросервисный проект на Go с несколькими runtime-сервисами и production-инфраструктурой.
+Проект демонстрирует:
 
-- **Архитектуру** - разделение на слои (handlers, services, repositories)
-- **Контейнеризацию** - Docker multi-stage builds для оптимизации образов
-- **Автоматизацию** - полный CI/CD pipeline с GitHub Actions
-- **Качество кода** - линтинг, тестирование, форматирование
-- **Production-ready** - graceful shutdown, health checks, логирование
+- **Сервисную декомпозицию** - API, Auth, News pipeline, Alert worker
+- **Смешанные протоколы** - REST/HTTP для внешнего API и gRPC для внутреннего обмена
+- **Асинхронный пайплайн** - Kafka для сбора и обработки новостей
+- **Production DevOps** - отдельные docker compose окружения, CI/CD в GitHub Actions, деплой на VPS
+- **Наблюдаемость** - Prometheus/Alertmanager (метрики), Loki/Promtail (логи)
 
 **Production версия доступна по адресу:** [https://fishouk-otus-ms.ru/](https://fishouk-otus-ms.ru/)
 
@@ -21,73 +22,46 @@ OtusMS - это шаблон микросервиса с полным CI/CD ци
 ```
 OtusMS/
 ├── cmd/
-│   ├── main-service/          # Основной микросервис
-│   │   ├── main.go            # Инициализация и запуск
-│   │   └── api-server.go      # HTTP сервер с роутами
-│   └── auth-proxy/            # Auth-Proxy микросервис
-│       ├── main.go            # Инициализация и запуск
-│       └── api-server.go      # HTTP сервер для авторизации
+│   ├── main-service/          # Основной API сервис
+│   ├── auth-proxy/            # Аутентификация через Keycloak
+│   ├── news-collector/        # Сбор новостей, producer в Kafka
+│   ├── news-processor/        # Обработка новостей, consumer из Kafka
+│   └── alert-worker/          # Обработка алертов и notifications
 │
-├── internal/                  # Внутренняя бизнес-логика
-│   ├── config/               # Конфигурация
-│   │   ├── config.go         # Структуры конфигурации
-│   │   ├── parse.go          # Парсинг YAML
-│   │   └── parse_test.go     # Unit тесты
-│   ├── keycloak/             # Keycloak интеграция
-│   │   ├── client.go         # Клиент для Keycloak
-│   │   └── models.go         # Модели данных
-│   └── handlers/
-│       ├── user/             # User handlers
-│       └── auth/             # Auth handlers (login/refresh/logout)
+├── internal/                  # Бизнес-логика (handlers/services/store/middleware)
+├── proto/                     # protobuf/gRPC контракты
+├── api/                       # Swagger спецификации сервисов
+├── client/                    # Streamlit UI (Python)
 │
-├── pkg/                      # Публичные библиотеки (переиспользуемые)
-│
-├── configs/                  # Файлы конфигурации
-│   ├── config.local.yaml    # Main-service (не в git)
-│   ├── config.prod.yaml     # Main-service production (не в git)
-│   ├── config.auth-proxy.local.yaml   # Auth-Proxy локально
-│   ├── config.auth-proxy.prod.yaml    # Auth-Proxy production
-│   └── *.example.yaml       # Примеры конфигов
+├── configs/                   # YAML конфиги сервисов + monitoring
+│   └── *.example.yaml         # Шаблоны конфигурации под локал/production
 │
 ├── deploy/                   # Инфраструктура и деплой
-│   ├── local/               # Docker Compose для разработки
-│   └── prod/                # Production конфигурация
-│       ├── docker-compose.auth-proxy.prod.yml
-│       ├── docker-compose.keycloak*.prod.yml
-│       └── KEYCLOAK_AUTH_PROXY_SETUP.md
+│   ├── local/                # Локальные compose окружения и профили
+│   ├── prod/                 # Production compose + prod Taskfile
+│   └── test/                 # Compose для интеграционных тестов
 │
-├── docs/                     # Документация
-│   └── AUTH_PROXY_API.md    # API документация Auth-Proxy
-│
-├── tests/                    # Тесты
-│   ├── integration/         # Интеграционные тесты
-│   │   ├── README.md        # 📖 Документация по интеграционным тестам
-│   │   ├── user_test.go
-│   │   └── auth_test.go
-│   └── unit/                # Unit тесты
-├── TESTING.md               # 📖 Руководство по тестированию
-├── README.md                # Этот файл
-├── Taskfile.yml             # Task автоматизация
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml           # GitHub Actions CI/CD
-│       └── deploy-keycloak.yml  # Деплой Keycloak
-│
-├── prod.Dockerfile          # Main-service Dockerfile
-├── auth-proxy.Dockerfile    # Auth-Proxy Dockerfile
-├── Taskfile.yml             # Автоматизация задач разработки
-└── go.mod                   # Go зависимости
+├── docs/                     # Руководства и runbook'и
+├── tests/                    # Unit и integration тесты
+├── .github/workflows/        # CI/CD и инфраструктурные workflow
+├── *.Dockerfile              # Отдельные Dockerfile для сервисов
+├── Taskfile.yml              # Локальная автоматизация
+└── deploy/prod/Taskfile.yml  # Автоматизация production операций
 ```
 
 ## Технологический стек
 
-### Backend
+### Backend / Core
 - **Go 1.23.8**
 - **chi/v5** - HTTP роутер
 - **slog** - структурированное логирование
 - **cleanenv** - парсинг конфигурации
 - **validator/v10** - валидация данных
+- **pgx/v5** - PostgreSQL драйвер
+- **grpc + protobuf + buf** - внутренние контракты и кодогенерация
+- **kafka-go** - producer/consumer для news pipeline
+- **go-redis/v9** - Redis интеграция
+- **aws-sdk-go-v2 (S3)** - объектное хранилище файлов
 - **gocloak/v13** - Keycloak клиент для авторизации
 - **golang-jwt/jwt/v5** - JWT токены и валидация
 - **lestrrat-go/jwx/v2** - JWKS (публичные ключи для JWT)
@@ -95,11 +69,16 @@ OtusMS/
 ### DevOps & Infrastructure
 - **Docker** - контейнеризация приложения
 - **Docker BuildKit** - оптимизация сборки образов
+- **Docker Compose (local/prod/test)** - оркестрация сервисов
 - **Selectel Container Registry** - хранение Docker образов
 - **GitHub Actions** - CI/CD автоматизация
 - **Nginx** - reverse proxy, SSL termination
 - **Let's Encrypt** - бесплатные SSL сертификаты
 - **Task** - автоматизация локальной разработки
+- **PostgreSQL 16** - основная БД
+- **Kafka (KRaft)** - event streaming
+- **Prometheus + Alertmanager** - метрики и алерты
+- **Loki + Promtail** - централизация логов
 
 ### Code Quality
 - **golangci-lint** - комплексный линтер для Go
@@ -112,9 +91,23 @@ OtusMS/
 - **Ubuntu 22.04** - операционная система
 - **UFW** - firewall
 
+### Frontend/Admin
+- **Streamlit (Python 3 + pip3)** - легковесный admin UI (`client/`)
+
+## Примененные технические решения
+
+Ниже краткий разбор того, как устроен проект сейчас и какие компромиссы заложены в архитектуре:
+
+- **Много отдельных сервисов** (`main-service`, `auth-proxy`, `news-collector`, `news-processor`, `alert-worker`) дают независимый деплой, но увеличивают сложность эксплуатации.
+- **REST + gRPC** позволяет разделить внешний и внутренний API, но требует аккуратно поддерживать консистентность контрактов и auth-слоев.
+- **Kafka как шина событий** разгружает синхронные API пути, но в текущем single-broker режиме (replication factor = 1) не дает broker-level HA.
+- **JWT/JWKS + Keycloak** централизуют IAM, но требуют операционной дисциплины по секретам и доступности IdP.
+- **Наблюдаемость разделена на метрики и логи** (Prometheus/Alertmanager + Loki/Promtail), что удобно для расследований, но важно контролировать сетевую экспозицию и политику доступа.
+- **CI/CD на GitHub Actions + деплой через SSH/SCP** прост для сопровождения, но сейчас использует тег `latest` и stop/start сценарий, что ухудшает rollback story и может давать краткий простой при обновлении.
+
 ## CI/CD Pipeline
 
-### Автоматический процесс при push в `main` или в ручную:
+### Автоматический процесс при push в `main` или вручную:
 
 ```
  GitHub Actions (ubuntu-latest)                         
@@ -129,18 +122,22 @@ OtusMS/
     ├─ Checkout code                                    
     └─ go test -race -count=1 -v ./...                  
                                                          
- 3️⃣ Build & Push                                        
+ 3️⃣ Build & Push (для нескольких сервисов)             
     ├─ Setup Docker Buildx                              
     ├─ Login to Selectel Registry                       
-    └─ Build & Push image                               
-       └─ cr.selcloud.ru/otus-microservice-be/backend   
+    └─ Build & Push images                              
+       ├─ backend
+       ├─ auth-proxy
+       ├─ news-collector
+       ├─ news-processor
+       └─ alert-worker
                                                          
- 4️⃣ Deploy to Production                               
-    ├─ Copy docker-compose via SCP                      
+ 4️⃣ Deploy to Production (по сервисам)                
+    ├─ Copy compose files via SCP                       
     └─ Deploy via SSH                                   
-       ├─ Stop old containers                           
-       ├─ Pull new image                                
-       ├─ Start new containers                          
+       ├─ docker compose down                           
+       ├─ docker compose pull                           
+       ├─ docker compose up -d                          
        └─ Health check                                  
 
        │
@@ -161,17 +158,16 @@ OtusMS/
 - Unit тесты с race detector
 - В дальнейшем добавим параллельное выполнение интеграционных тестов
 
-**Build Stage** 
+**Build Stage**
 - Multi-stage Docker build
 - Оптимизация размера образа
 - Push в Selectel Container Registry
-- Тег: `latest` (пока без версий для ролбэков и вообще без версий)
+- Тег: `latest` (без релизных тегов для rollback)
 
-**Deploy Stage** 
+**Deploy Stage**
 - Копирование конфигурации через SCP
-- Graceful shutdown старой версии
+- `docker compose down` -> `pull` -> `up -d`
 - Pull нового образа из registry
-- Zero-downtime deployment
 - Автоматическая очистка старых образов
 
 **Total pipeline time:** ~2-3 минуты от commit до production
@@ -232,10 +228,10 @@ cd otus-ms
 # Установить зависимости
 go mod download
 
-# Запустить полный цикл разработки
+# Запустить полный цикл разработки (lint/test/build)
 task
 
-# Или запустить напрямую
+# Или запустить main-service напрямую
 go run ./cmd/main-service -config configs/config.local.yaml
 ```
 
@@ -252,14 +248,28 @@ task lint           # Линтинг (golangci-lint в Docker)
 task tests          # Запуск тестов
 task build          # Сборка бинарника
 
-# С Docker Compose
+# С Docker Compose (примеры профилей)
 docker compose -f deploy/local/docker-compose.local.yml up -d
 docker compose -f deploy/local/docker-compose.local.yml logs -f
 docker compose -f deploy/local/docker-compose.local.yml down
 
-# Запуск Auth-Proxy с профилем
+# Отдельные профили
+docker compose -f deploy/local/docker-compose.local.yml --profile db up -d
 docker compose -f deploy/local/docker-compose.local.yml --profile auth up -d
+docker compose -f deploy/local/docker-compose.local.yml --profile monitoring up -d
+docker compose -f deploy/local/docker-compose.local.yml --profile news-collector up -d
+docker compose -f deploy/local/docker-compose.local.yml --profile news-processor up -d
 ```
+
+### Локальные профили compose
+
+| Профиль | Что запускает | Когда использовать |
+|---|---|---|
+| `db` | PostgreSQL | Локальная разработка API и тесты БД |
+| `auth` | Auth-Proxy | Проверка login/refresh/logout |
+| `monitoring` | Prometheus + Alertmanager | Проверка метрик и алертов |
+| `news-collector` | News Collector | Сбор новостей из источников |
+| `news-processor` | News Processor | Обработка новостей из Kafka |
 
 ### Настройка Auth-Proxy (если нужен)
 
@@ -340,10 +350,32 @@ task tests
 
 При push в `main` ветку автоматически:
 1. Проходит все проверки (lint, test)
-2. Собирается Docker образ
-3. Публикуется в Selectel Container Registry
-4. Деплоится на production сервер
-5. Выполняется graceful restart
+2. Собираются и публикуются Docker образы сервисов
+3. Копируются compose-файлы на production сервер
+4. Деплоятся сервисы через `docker compose`
+5. Выполняется health check
+
+### Ручные production операции
+
+Все операции управления production окружением собраны в `deploy/prod/Taskfile.yml`.
+
+```bash
+# Пример запуска задач production из корня проекта
+task -d . -t deploy/prod/Taskfile.yml status
+task -d . -t deploy/prod/Taskfile.yml config:upload:all
+task -d . -t deploy/prod/Taskfile.yml kafka:up
+```
+
+Основные compose-файлы production:
+- `deploy/prod/docker-compose.be.prod.yml`
+- `deploy/prod/docker-compose.auth-proxy.prod.yml`
+- `deploy/prod/docker-compose.news-collector.prod.yml`
+- `deploy/prod/docker-compose.news-processor.prod.yml`
+- `deploy/prod/docker-compose.alert-worker.prod.yml`
+- `deploy/prod/docker-compose.db.prod.yml`
+- `deploy/prod/docker-compose.redis.prod.yml`
+- `deploy/prod/docker-compose.kafka.prod.yml`
+- `deploy/prod/docker-compose.loki.prod.yml`
 
 
 ## 🌐 Микросервисы
@@ -407,7 +439,7 @@ curl -X POST http://localhost:38081/api/v1/auth/login \
 Веб-клиент на Python/Streamlit для входа, дашборда сервисов и работы с пользователями.
 
 ```bash
-cd client && pip3 install -r requirements.txt && streamlit run app.py
+cd client && python3 -m venv .venv && source .venv/bin/activate && pip3 install -r requirements.txt && streamlit run app.py
 ```
 
 Подробнее: [client/README.md](client/README.md)

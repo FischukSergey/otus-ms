@@ -1,0 +1,37 @@
+# Alert Worker Service — production конфигурация (шаблон)
+global:
+  env: prod
+
+log:
+  level: info
+  format: json
+  service_name: alert-worker
+
+servers:
+  client:
+    addr: 0.0.0.0:38084
+
+keycloak:
+  url: "https://fishouk-otus-ms.ru/auth"
+  realm: "otus-ms"
+  client_id: "alert-worker"
+  client_secret: "CHANGE_ME"
+
+main_service:
+  grpc_addr: "otus-microservice-be-prod:50051"
+
+kafka:
+  brokers:
+    - "otus-kafka-prod:9092"
+  topic_raw_news: "raw_news"
+  topic_processed_news: "processed_news"
+  topic_news_alerts: "news_alerts"
+  topic_news_alerts_dlt: "news_alerts.DLT"
+  consumer_group: "news-processor-group"
+  batch_size: 100
+  batch_timeout: 1s
+  write_timeout: 10s
+
+telegram:
+  bot_token: "CHANGE_ME"
+  project_chat_id: "CHANGE_ME"

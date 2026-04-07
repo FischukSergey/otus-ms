@@ -5,7 +5,7 @@
 ## Возможности
 
 - **Вход** — логин через Auth-Proxy (Keycloak), хранение и автообновление токенов
-- **Дашборд** — health check Auth-Proxy, Main-service, News-collector, News-processor и Loki
+- **Дашборд** — health check Auth-Proxy, Main-service, News-collector, News-processor, Alert-worker и Loki
 - **Пользователи** — создание, получение по UUID, мягкое удаление
 - **Personalization** — редактирование preferences и просмотр персонализированной ленты (`score`)
 - **Логи** — просмотр логов из Loki с фильтрами по сервису и уровню
@@ -38,6 +38,7 @@ streamlit run app.py
 | `MAIN_SERVICE_URL` | `http://localhost:38080` | URL Main-service (пользователи, health) |
 | `NEWS_COLLECTOR_URL` | `http://localhost:38082` | URL News-collector (health) |
 | `NEWS_PROCESSOR_URL` | `http://localhost:38083` | URL News-processor (health) |
+| `ALERT_WORKER_URL` | `http://localhost:38084` | URL Alert-worker (health) |
 | `LOKI_URL` | `http://localhost:3100` | URL Loki (логи) |
 
 ## Замечания

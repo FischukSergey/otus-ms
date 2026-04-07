@@ -9,6 +9,7 @@ import time
 import streamlit as st
 
 from api import (
+    alert_worker_url,
     auth_proxy_url,
     get_all_users,
     get_news,
@@ -162,7 +163,7 @@ def render_sidebar():
 
 def render_dashboard():
     st.header("Состояние сервисов")
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
         st.subheader("Auth-Proxy")
         info = health_check(auth_proxy_url(), "Auth-Proxy")
@@ -196,6 +197,14 @@ def render_dashboard():
         else:
             st.error(info.get("error", "Недоступен"))
     with col5:
+        st.subheader("Alert-worker")
+        info = health_check(alert_worker_url(), "Alert-worker")
+        if info["ok"]:
+            st.success(f"Статус: {info['status']}")
+            st.caption(f"Время: {info['time']}")
+        else:
+            st.error(info.get("error", "Недоступен"))
+    with col6:
         st.subheader("Loki")
         if loki_health():
             st.success("Статус: ok")
@@ -206,6 +215,7 @@ def render_dashboard():
         f"Main: {main_service_url()} | "
         f"News-collector: {news_collector_url()} | "
         f"News-processor: {news_processor_url()} | "
+        f"Alert-worker: {alert_worker_url()} | "
         f"Loki: {loki_url()}"
     )
 
@@ -486,6 +496,7 @@ _SERVICES = [
     ("auth-proxy",     "otus-microservice-auth-proxy-prod"),
     ("news-collector", "otus-news-collector-prod"),
     ("news-processor", "otus-news-processor-prod"),
+    ("alert-worker",   "otus-alert-worker-prod"),
 ]
 
 _LEVELS = ["Все уровни", "ERROR", "WARN", "INFO", "DEBUG"]

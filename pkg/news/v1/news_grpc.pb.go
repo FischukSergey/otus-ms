@@ -20,7 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	NewsService_SaveProcessedNews_FullMethodName = "/news.v1.NewsService/SaveProcessedNews"
+	NewsService_SaveProcessedNews_FullMethodName     = "/news.v1.NewsService/SaveProcessedNews"
+	NewsService_GetActiveAlertRules_FullMethodName   = "/news.v1.NewsService/GetActiveAlertRules"
+	NewsService_ReserveAlertDelivery_FullMethodName  = "/news.v1.NewsService/ReserveAlertDelivery"
+	NewsService_FinalizeAlertDelivery_FullMethodName = "/news.v1.NewsService/FinalizeAlertDelivery"
 )
 
 // NewsServiceClient is the client API for NewsService service.
@@ -35,6 +38,20 @@ type NewsServiceClient interface {
 	//
 	// @Router /news.v1.NewsService/SaveProcessedNews [post].
 	SaveProcessedNews(ctx context.Context, in *SaveProcessedNewsRequest, opts ...grpc.CallOption) (*SaveProcessedNewsResponse, error)
+	// GetActiveAlertRules возвращает активные правила алертинга.
+	// Используется news-processor для матчинга ключевых слов.
+	//
+	// @Router /news.v1.NewsService/GetActiveAlertRules [post].
+	GetActiveAlertRules(ctx context.Context, in *GetActiveAlertRulesRequest, opts ...grpc.CallOption) (*GetActiveAlertRulesResponse, error)
+	// ReserveAlertDelivery резервирует доставку алерта: дедуп + cooldown + pending.
+	// Если should_send=false, доставку выполнять не нужно.
+	//
+	// @Router /news.v1.NewsService/ReserveAlertDelivery [post].
+	ReserveAlertDelivery(ctx context.Context, in *ReserveAlertDeliveryRequest, opts ...grpc.CallOption) (*ReserveAlertDeliveryResponse, error)
+	// FinalizeAlertDelivery фиксирует финальный статус доставки алерта.
+	//
+	// @Router /news.v1.NewsService/FinalizeAlertDelivery [post].
+	FinalizeAlertDelivery(ctx context.Context, in *FinalizeAlertDeliveryRequest, opts ...grpc.CallOption) (*FinalizeAlertDeliveryResponse, error)
 }
 
 type newsServiceClient struct {
@@ -55,6 +72,36 @@ func (c *newsServiceClient) SaveProcessedNews(ctx context.Context, in *SaveProce
 	return out, nil
 }
 
+func (c *newsServiceClient) GetActiveAlertRules(ctx context.Context, in *GetActiveAlertRulesRequest, opts ...grpc.CallOption) (*GetActiveAlertRulesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetActiveAlertRulesResponse)
+	err := c.cc.Invoke(ctx, NewsService_GetActiveAlertRules_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *newsServiceClient) ReserveAlertDelivery(ctx context.Context, in *ReserveAlertDeliveryRequest, opts ...grpc.CallOption) (*ReserveAlertDeliveryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReserveAlertDeliveryResponse)
+	err := c.cc.Invoke(ctx, NewsService_ReserveAlertDelivery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *newsServiceClient) FinalizeAlertDelivery(ctx context.Context, in *FinalizeAlertDeliveryRequest, opts ...grpc.CallOption) (*FinalizeAlertDeliveryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FinalizeAlertDeliveryResponse)
+	err := c.cc.Invoke(ctx, NewsService_FinalizeAlertDelivery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NewsServiceServer is the server API for NewsService service.
 // All implementations must embed UnimplementedNewsServiceServer
 // for forward compatibility.
@@ -67,6 +114,20 @@ type NewsServiceServer interface {
 	//
 	// @Router /news.v1.NewsService/SaveProcessedNews [post].
 	SaveProcessedNews(context.Context, *SaveProcessedNewsRequest) (*SaveProcessedNewsResponse, error)
+	// GetActiveAlertRules возвращает активные правила алертинга.
+	// Используется news-processor для матчинга ключевых слов.
+	//
+	// @Router /news.v1.NewsService/GetActiveAlertRules [post].
+	GetActiveAlertRules(context.Context, *GetActiveAlertRulesRequest) (*GetActiveAlertRulesResponse, error)
+	// ReserveAlertDelivery резервирует доставку алерта: дедуп + cooldown + pending.
+	// Если should_send=false, доставку выполнять не нужно.
+	//
+	// @Router /news.v1.NewsService/ReserveAlertDelivery [post].
+	ReserveAlertDelivery(context.Context, *ReserveAlertDeliveryRequest) (*ReserveAlertDeliveryResponse, error)
+	// FinalizeAlertDelivery фиксирует финальный статус доставки алерта.
+	//
+	// @Router /news.v1.NewsService/FinalizeAlertDelivery [post].
+	FinalizeAlertDelivery(context.Context, *FinalizeAlertDeliveryRequest) (*FinalizeAlertDeliveryResponse, error)
 	mustEmbedUnimplementedNewsServiceServer()
 }
 
@@ -79,6 +140,18 @@ type UnimplementedNewsServiceServer struct{}
 
 func (UnimplementedNewsServiceServer) SaveProcessedNews(context.Context, *SaveProcessedNewsRequest) (*SaveProcessedNewsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SaveProcessedNews not implemented")
+}
+
+func (UnimplementedNewsServiceServer) GetActiveAlertRules(context.Context, *GetActiveAlertRulesRequest) (*GetActiveAlertRulesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetActiveAlertRules not implemented")
+}
+
+func (UnimplementedNewsServiceServer) ReserveAlertDelivery(context.Context, *ReserveAlertDeliveryRequest) (*ReserveAlertDeliveryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReserveAlertDelivery not implemented")
+}
+
+func (UnimplementedNewsServiceServer) FinalizeAlertDelivery(context.Context, *FinalizeAlertDeliveryRequest) (*FinalizeAlertDeliveryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FinalizeAlertDelivery not implemented")
 }
 func (UnimplementedNewsServiceServer) mustEmbedUnimplementedNewsServiceServer() {}
 func (UnimplementedNewsServiceServer) testEmbeddedByValue()                     {}
@@ -119,6 +192,60 @@ func _NewsService_SaveProcessedNews_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NewsService_GetActiveAlertRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetActiveAlertRulesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsServiceServer).GetActiveAlertRules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsService_GetActiveAlertRules_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsServiceServer).GetActiveAlertRules(ctx, req.(*GetActiveAlertRulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NewsService_ReserveAlertDelivery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReserveAlertDeliveryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsServiceServer).ReserveAlertDelivery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsService_ReserveAlertDelivery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsServiceServer).ReserveAlertDelivery(ctx, req.(*ReserveAlertDeliveryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NewsService_FinalizeAlertDelivery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinalizeAlertDeliveryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsServiceServer).FinalizeAlertDelivery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsService_FinalizeAlertDelivery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsServiceServer).FinalizeAlertDelivery(ctx, req.(*FinalizeAlertDeliveryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NewsService_ServiceDesc is the grpc.ServiceDesc for NewsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -129,6 +256,18 @@ var NewsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SaveProcessedNews",
 			Handler:    _NewsService_SaveProcessedNews_Handler,
+		},
+		{
+			MethodName: "GetActiveAlertRules",
+			Handler:    _NewsService_GetActiveAlertRules_Handler,
+		},
+		{
+			MethodName: "ReserveAlertDelivery",
+			Handler:    _NewsService_ReserveAlertDelivery_Handler,
+		},
+		{
+			MethodName: "FinalizeAlertDelivery",
+			Handler:    _NewsService_FinalizeAlertDelivery_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -13,6 +13,7 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/handlers/sources"
 	"github.com/FischukSergey/otus-ms/internal/jwks"
 	custommiddleware "github.com/FischukSergey/otus-ms/internal/middleware"
+	alertingrepo "github.com/FischukSergey/otus-ms/internal/store/alerting"
 	newsrepo "github.com/FischukSergey/otus-ms/internal/store/news"
 	sourcerepo "github.com/FischukSergey/otus-ms/internal/store/sources"
 	newspb "github.com/FischukSergey/otus-ms/pkg/news/v1"
@@ -58,7 +59,8 @@ func NewGRPCServer(deps *GRPCServerDeps) *GRPCServer {
 
 	// NewsService — сохранение обработанных новостей от news-processor
 	nRepo := newsrepo.NewRepository(deps.DB)
-	nHandler := newshandler.NewGRPCHandler(nRepo, deps.Logger)
+	aRepo := alertingrepo.NewRepository(deps.DB)
+	nHandler := newshandler.NewGRPCHandler(nRepo, aRepo, deps.Logger)
 	newspb.RegisterNewsServiceServer(srv, nHandler)
 
 	return &GRPCServer{
