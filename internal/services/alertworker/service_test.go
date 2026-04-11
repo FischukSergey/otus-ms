@@ -1,3 +1,4 @@
+//nolint:testpackage // тестируем неэкспортируемые части alert-worker.
 package alertworker
 
 import (

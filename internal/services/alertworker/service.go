@@ -228,11 +228,11 @@ func (s *Service) commitWithRetry(ctx context.Context, msg kafka.Message) error 
 	var lastErr error
 
 	for attempt := 1; attempt <= commitRetryAttempts; attempt++ {
-		if err := s.reader.CommitMessages(ctx, msg); err == nil {
+		err := s.reader.CommitMessages(ctx, msg)
+		if err == nil {
 			return nil
-		} else {
-			lastErr = err
 		}
+		lastErr = err
 
 		if attempt == commitRetryAttempts {
 			break

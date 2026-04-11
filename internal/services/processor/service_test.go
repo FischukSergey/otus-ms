@@ -1,3 +1,4 @@
+//nolint:testpackage // тестируем неэкспортируемые части конвейера обработки.
 package processor
 
 import (
