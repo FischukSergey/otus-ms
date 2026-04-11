@@ -113,14 +113,26 @@ task -d . -t deploy/prod/Taskfile.yml aw:logs
 task -d . -t deploy/prod/Taskfile.yml aw:restart
 task -d . -t deploy/prod/Taskfile.yml aw:down
 task -d . -t deploy/prod/Taskfile.yml aw:config:edit
+task -d . -t deploy/prod/Taskfile.yml aw:rollout:safe
+task -d . -t deploy/prod/Taskfile.yml aw:rollback ROLLBACK_TAG=<tag>
 ```
 
-## 6) Важно по безопасности
+## 6) Семантика доставки Kafka (at-least-once)
+
+`alert-worker` использует explicit commit (`FetchMessage` -> обработка -> `CommitMessages`).
+
+- Если событие обработано успешно (или корректно отфильтровано как duplicate/cooldown), offset коммитится.
+- Если произошла retryable ошибка (например, временно недоступен main-service/Kafka), offset не коммитится и событие будет прочитано повторно.
+- Для невалидного JSON событие пропускается и коммитится, чтобы не блокировать партицию poison-message.
+
+Следствие: возможны повторы обработки, поэтому downstream-операции должны быть идемпотентны.
+
+## 7) Важно по безопасности
 
 - Не коммитьте реальные `client_secret`, `bot_token`, `chat_id`.
 - Файлы `configs/config.*.yaml` уже в `.gitignore`.
 
-## 7) Финальный smoke-check
+## 8) Финальный smoke-check
 
 ### 7.1 Локально
 
@@ -152,6 +164,10 @@ task -d . -t deploy/prod/Taskfile.yml kafka:topics
 task -d . -t deploy/prod/Taskfile.yml aw:up
 task -d . -t deploy/prod/Taskfile.yml aw:health
 task -d . -t deploy/prod/Taskfile.yml aw:logs
+
+# 4) Safe rollout и rollback
+task -d . -t deploy/prod/Taskfile.yml aw:rollout:safe
+task -d . -t deploy/prod/Taskfile.yml aw:rollback ROLLBACK_TAG=<tag>
 ```
 
 Минимальный критерий smoke-pass:

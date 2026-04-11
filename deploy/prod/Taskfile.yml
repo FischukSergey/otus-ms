@@ -18,6 +18,8 @@ vars:
   VPS_PATH_KAFKA: /root/otus-microservice/prod/kafka
   VPS_PATH_NP: /root/otus-microservice/prod/news-processor
   VPS_PATH_AW: /root/otus-microservice/prod/alert-worker
+  NP_IMAGE: cr.selcloud.ru/otus-microservice-be/news-processor
+  AW_IMAGE: cr.selcloud.ru/otus-microservice-be/alert-worker
 
 tasks:
   # ===== Конфигурация =====
@@ -262,6 +264,32 @@ tasks:
       - task: np:health
       - echo "✅ News Processor перезапущен"
 
+  np:rollout:safe:
+    desc: "Безопасный rollout News Processor с проверкой lag"
+    cmds:
+      - echo "🚀 Safe rollout News Processor..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NP}} && docker compose -f docker-compose.news-processor.prod.yml up -d"
+      - sleep 5
+      - task: np:health
+      - echo "📊 Kafka lag (consumer group):"
+      - ssh {{.SSH_HOST}} "docker exec otus-kafka-prod kafka-consumer-groups --bootstrap-server localhost:9092 --group news-processor-group --describe || true"
+      - echo "✅ Safe rollout завершен"
+
+  np:rollback:
+    desc: "Rollback News Processor на указанный тег (ROLLBACK_TAG=vX.Y.Z)"
+    vars:
+      ROLLBACK_TAG: '{{.ROLLBACK_TAG}}'
+    preconditions:
+      - sh: test -n "{{.ROLLBACK_TAG}}"
+        msg: "Укажите тег: task -d . -t deploy/prod/Taskfile.yml np:rollback ROLLBACK_TAG=<tag>"
+    cmds:
+      - echo "⏪ Rollback News Processor -> {{.ROLLBACK_TAG}}"
+      - ssh {{.SSH_HOST}} "docker pull {{.NP_IMAGE}}:{{.ROLLBACK_TAG}} && docker tag {{.NP_IMAGE}}:{{.ROLLBACK_TAG}} {{.NP_IMAGE}}:latest"
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_NP}} && docker compose -f docker-compose.news-processor.prod.yml up -d"
+      - sleep 5
+      - task: np:health
+      - task: np:logs
+
   np:logs:
     desc: "Показать логи News Processor"
     cmds:
@@ -317,6 +345,32 @@ tasks:
       - sleep 5
       - task: aw:health
       - echo "✅ Alert Worker перезапущен"
+
+  aw:rollout:safe:
+    desc: "Безопасный rollout Alert Worker с проверкой lag"
+    cmds:
+      - echo "🚀 Safe rollout Alert Worker..."
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AW}} && docker compose -f docker-compose.alert-worker.prod.yml up -d"
+      - sleep 5
+      - task: aw:health
+      - echo "📊 Kafka lag (consumer group):"
+      - ssh {{.SSH_HOST}} "docker exec otus-kafka-prod kafka-consumer-groups --bootstrap-server localhost:9092 --group news-processor-group-alert-worker --describe || true"
+      - echo "✅ Safe rollout завершен"
+
+  aw:rollback:
+    desc: "Rollback Alert Worker на указанный тег (ROLLBACK_TAG=vX.Y.Z)"
+    vars:
+      ROLLBACK_TAG: '{{.ROLLBACK_TAG}}'
+    preconditions:
+      - sh: test -n "{{.ROLLBACK_TAG}}"
+        msg: "Укажите тег: task -d . -t deploy/prod/Taskfile.yml aw:rollback ROLLBACK_TAG=<tag>"
+    cmds:
+      - echo "⏪ Rollback Alert Worker -> {{.ROLLBACK_TAG}}"
+      - ssh {{.SSH_HOST}} "docker pull {{.AW_IMAGE}}:{{.ROLLBACK_TAG}} && docker tag {{.AW_IMAGE}}:{{.ROLLBACK_TAG}} {{.AW_IMAGE}}:latest"
+      - ssh {{.SSH_HOST}} "cd {{.VPS_PATH_AW}} && docker compose -f docker-compose.alert-worker.prod.yml up -d"
+      - sleep 5
+      - task: aw:health
+      - task: aw:logs
 
   aw:logs:
     desc: "Показать логи Alert Worker"

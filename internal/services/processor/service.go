@@ -14,6 +14,24 @@ import (
 	"github.com/FischukSergey/otus-ms/internal/objectstore"
 )
 
+const (
+	commitRetryAttempts       = 3
+	commitInitialRetryBackoff = 100 * time.Millisecond
+	commitMaxRetryBackoff     = 800 * time.Millisecond
+)
+
+type reader interface {
+	FetchMessage(ctx context.Context) (kafka.Message, error)
+	CommitMessages(ctx context.Context, msgs ...kafka.Message) error
+	Close() error
+	Stats() kafka.ReaderStats
+}
+
+type rawTask struct {
+	msg kafka.Message
+	raw *models.RawNews
+}
+
 // startOffsetLabel возвращает строковое представление StartOffset для логов.
 func startOffsetLabel(o int64) string {
 	switch o {
@@ -41,7 +59,7 @@ type ArtifactStore interface {
 // Service читает сырые новости из Kafka, обрабатывает через конвейер
 // и батчами сохраняет через gRPC в main-service.
 type Service struct {
-	reader         *kafka.Reader
+	reader         reader
 	alertWriter    *kafka.Writer
 	alertTopic     string
 	newsClient     NewsClient
@@ -133,7 +151,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	// Буферизованные каналы: задачи и результаты.
-	tasks := make(chan *models.RawNews, workers*2)
+	tasks := make(chan rawTask, workers*2)
 	results := make(chan *models.ProcessedNews, workers*2)
 
 	var wg sync.WaitGroup
@@ -174,7 +192,7 @@ func (s *Service) Run(ctx context.Context) error {
 }
 
 // readLoop читает сообщения из Kafka и отправляет десериализованные RawNews в tasks.
-func (s *Service) readLoop(ctx context.Context, tasks chan<- *models.RawNews) {
+func (s *Service) readLoop(ctx context.Context, tasks chan<- rawTask) {
 	s.logger.Debug("kafka readLoop started, waiting for messages...")
 
 	var received int64
@@ -196,7 +214,7 @@ func (s *Service) readLoop(ctx context.Context, tasks chan<- *models.RawNews) {
 		default:
 		}
 
-		msg, err := s.reader.ReadMessage(ctx)
+		msg, err := s.reader.FetchMessage(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				s.logger.Info("kafka readLoop stopped by context", "total_received", received)
@@ -219,11 +237,21 @@ func (s *Service) readLoop(ctx context.Context, tasks chan<- *models.RawNews) {
 		if err := json.Unmarshal(msg.Value, &raw); err != nil {
 			s.logger.Warn("failed to unmarshal raw news, skipping",
 				"partition", msg.Partition, "offset", msg.Offset, "error", err)
+			if commitErr := s.commitWithRetry(ctx, msg); commitErr != nil {
+				s.logger.Error("failed to commit invalid raw news message",
+					"partition", msg.Partition,
+					"offset", msg.Offset,
+					"error", commitErr,
+				)
+			}
 			continue
 		}
 
 		select {
-		case tasks <- &raw:
+		case tasks <- rawTask{
+			msg: msg,
+			raw: &raw,
+		}:
 		case <-ctx.Done():
 			return
 		}
@@ -231,8 +259,9 @@ func (s *Service) readLoop(ctx context.Context, tasks chan<- *models.RawNews) {
 }
 
 // workerLoop получает задачи из tasks, запускает конвейер обработки и отправляет результаты.
-func (s *Service) workerLoop(ctx context.Context, tasks <-chan *models.RawNews, results chan<- *models.ProcessedNews) {
-	for raw := range tasks {
+func (s *Service) workerLoop(ctx context.Context, tasks <-chan rawTask, results chan<- *models.ProcessedNews) {
+	for task := range tasks {
+		raw := task.raw
 		s.logger.Debug("processing news item",
 			"id", raw.ID,
 			"source_id", raw.SourceID,
@@ -296,10 +325,45 @@ func (s *Service) workerLoop(ctx context.Context, tasks <-chan *models.RawNews, 
 
 		select {
 		case results <- processed:
+			if err := s.commitWithRetry(ctx, task.msg); err != nil {
+				s.logger.Error("failed to commit processed kafka message",
+					"id", processed.ID,
+					"source_id", processed.SourceID,
+					"partition", task.msg.Partition,
+					"offset", task.msg.Offset,
+					"error", err,
+				)
+			}
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func (s *Service) commitWithRetry(ctx context.Context, msg kafka.Message) error {
+	backoff := commitInitialRetryBackoff
+	var lastErr error
+
+	for attempt := 1; attempt <= commitRetryAttempts; attempt++ {
+		if err := s.reader.CommitMessages(ctx, msg); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+
+		if attempt == commitRetryAttempts {
+			break
+		}
+
+		select {
+		case <-time.After(backoff):
+			backoff = min(backoff*2, commitMaxRetryBackoff)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	return lastErr
 }
 
 func (s *Service) alertRulesRefresher(ctx context.Context, interval time.Duration) {
