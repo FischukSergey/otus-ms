@@ -15,10 +15,10 @@ import (
 )
 
 func TestGetPreferences_WhenNotFound_ReturnsDefaults(t *testing.T) {
-	repo := &mockRepository{
+	commandRepo := &mockPreferencesRepository{
 		getPreferencesErr: personalizationrepo.ErrPreferencesNotFound,
 	}
-	svc := personalization.NewService(repo)
+	svc := personalization.NewService(commandRepo, &mockFeedRepository{})
 
 	got, err := svc.GetPreferences(context.Background(), "11111111-1111-1111-1111-111111111111")
 	require.NoError(t, err)
@@ -30,8 +30,8 @@ func TestGetPreferences_WhenNotFound_ReturnsDefaults(t *testing.T) {
 }
 
 func TestUpdatePreferences_ValidatesLanguage(t *testing.T) {
-	repo := &mockRepository{}
-	svc := personalization.NewService(repo)
+	commandRepo := &mockPreferencesRepository{}
+	svc := personalization.NewService(commandRepo, &mockFeedRepository{})
 
 	err := svc.UpdatePreferences(
 		context.Background(),
@@ -47,8 +47,8 @@ func TestUpdatePreferences_ValidatesLanguage(t *testing.T) {
 }
 
 func TestUpdatePreferences_NormalizesValuesAndDefaults(t *testing.T) {
-	repo := &mockRepository{}
-	svc := personalization.NewService(repo)
+	commandRepo := &mockPreferencesRepository{}
+	svc := personalization.NewService(commandRepo, &mockFeedRepository{})
 
 	err := svc.UpdatePreferences(
 		context.Background(),
@@ -62,18 +62,18 @@ func TestUpdatePreferences_NormalizesValuesAndDefaults(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	require.NotNil(t, repo.upsertedPreferences)
+	require.NotNil(t, commandRepo.upsertedPreferences)
 
-	assert.Equal(t, []string{"tech", "science"}, repo.upsertedPreferences.PreferredCategories)
-	assert.Equal(t, []string{"source_2", "source_3"}, repo.upsertedPreferences.PreferredSources)
-	assert.Equal(t, []string{"ai", "golang"}, repo.upsertedPreferences.PreferredKeywords)
-	assert.Equal(t, "ru", repo.upsertedPreferences.PreferredLanguage)
-	assert.Equal(t, 168, repo.upsertedPreferences.FromHours)
+	assert.Equal(t, []string{"tech", "science"}, commandRepo.upsertedPreferences.PreferredCategories)
+	assert.Equal(t, []string{"source_2", "source_3"}, commandRepo.upsertedPreferences.PreferredSources)
+	assert.Equal(t, []string{"ai", "golang"}, commandRepo.upsertedPreferences.PreferredKeywords)
+	assert.Equal(t, "ru", commandRepo.upsertedPreferences.PreferredLanguage)
+	assert.Equal(t, 168, commandRepo.upsertedPreferences.FromHours)
 }
 
 func TestCreateEvent_Validation(t *testing.T) {
-	repo := &mockRepository{}
-	svc := personalization.NewService(repo)
+	commandRepo := &mockPreferencesRepository{}
+	svc := personalization.NewService(commandRepo, &mockFeedRepository{})
 
 	err := svc.CreateEvent(context.Background(), "11111111-1111-1111-1111-111111111111", personalization.CreateEventRequest{
 		NewsID:    "not-uuid",
@@ -92,7 +92,7 @@ func TestCreateEvent_Validation(t *testing.T) {
 
 func TestGetFeed_UsesPreferencesAndRequestOverrides(t *testing.T) {
 	now := time.Now().UTC()
-	repo := &mockRepository{
+	commandRepo := &mockPreferencesRepository{
 		preferences: &models.UserNewsPreferences{
 			UserUUID:            "11111111-1111-1111-1111-111111111111",
 			PreferredCategories: []string{"tech"},
@@ -101,6 +101,8 @@ func TestGetFeed_UsesPreferencesAndRequestOverrides(t *testing.T) {
 			PreferredLanguage:   "ru",
 			FromHours:           48,
 		},
+	}
+	feedRepo := &mockFeedRepository{
 		feedItems: []models.PersonalizedNewsItem{
 			{
 				ID:        "33333333-3333-3333-3333-333333333333",
@@ -113,7 +115,7 @@ func TestGetFeed_UsesPreferencesAndRequestOverrides(t *testing.T) {
 			},
 		},
 	}
-	svc := personalization.NewService(repo)
+	svc := personalization.NewService(commandRepo, feedRepo)
 
 	got, err := svc.GetFeed(context.Background(), "11111111-1111-1111-1111-111111111111", personalization.FeedRequest{
 		Limit:     200, // проверка cap до 100
@@ -123,29 +125,26 @@ func TestGetFeed_UsesPreferencesAndRequestOverrides(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, got, 1)
-	require.NotNil(t, repo.lastFeedFilters)
+	require.NotNil(t, feedRepo.lastFeedFilters)
 
-	assert.Equal(t, 100, repo.lastFeedFilters.Limit)
-	assert.Equal(t, 0, repo.lastFeedFilters.Offset)
-	assert.Equal(t, 24, repo.lastFeedFilters.FromHours)
-	assert.Equal(t, []string{"tech"}, repo.lastFeedFilters.PreferredCategories)
-	assert.Equal(t, []string{"source_3"}, repo.lastFeedFilters.PreferredSources)
-	assert.Equal(t, []string{"ai"}, repo.lastFeedFilters.PreferredKeywords)
-	assert.Equal(t, "ru", repo.lastFeedFilters.PreferredLanguage)
-	assert.Equal(t, "ai chips", repo.lastFeedFilters.Query)
+	assert.Equal(t, 100, feedRepo.lastFeedFilters.Limit)
+	assert.Equal(t, 0, feedRepo.lastFeedFilters.Offset)
+	assert.Equal(t, 24, feedRepo.lastFeedFilters.FromHours)
+	assert.Equal(t, []string{"tech"}, feedRepo.lastFeedFilters.PreferredCategories)
+	assert.Equal(t, []string{"source_3"}, feedRepo.lastFeedFilters.PreferredSources)
+	assert.Equal(t, []string{"ai"}, feedRepo.lastFeedFilters.PreferredKeywords)
+	assert.Equal(t, "ru", feedRepo.lastFeedFilters.PreferredLanguage)
+	assert.Equal(t, "ai chips", feedRepo.lastFeedFilters.Query)
 }
 
-type mockRepository struct {
+type mockPreferencesRepository struct {
 	preferences         *models.UserNewsPreferences
 	getPreferencesErr   error
 	upsertedPreferences *models.UserNewsPreferences
 	insertedEvent       *models.UserNewsEvent
-	feedItems           []models.PersonalizedNewsItem
-	feedErr             error
-	lastFeedFilters     *models.PersonalizedFeedFilters
 }
 
-func (m *mockRepository) GetPreferences(_ context.Context, _ string) (*models.UserNewsPreferences, error) {
+func (m *mockPreferencesRepository) GetPreferences(_ context.Context, _ string) (*models.UserNewsPreferences, error) {
 	if m.getPreferencesErr != nil {
 		return nil, m.getPreferencesErr
 	}
@@ -155,12 +154,12 @@ func (m *mockRepository) GetPreferences(_ context.Context, _ string) (*models.Us
 	return m.preferences, nil
 }
 
-func (m *mockRepository) UpsertPreferences(_ context.Context, prefs models.UserNewsPreferences) error {
+func (m *mockPreferencesRepository) UpsertPreferences(_ context.Context, prefs models.UserNewsPreferences) error {
 	m.upsertedPreferences = &prefs
 	return nil
 }
 
-func (m *mockRepository) InsertEvent(_ context.Context, event models.UserNewsEvent) error {
+func (m *mockPreferencesRepository) InsertEvent(_ context.Context, event models.UserNewsEvent) error {
 	if event.ID == "" {
 		return errors.New("event id is empty")
 	}
@@ -168,7 +167,13 @@ func (m *mockRepository) InsertEvent(_ context.Context, event models.UserNewsEve
 	return nil
 }
 
-func (m *mockRepository) GetPersonalizedFeed(
+type mockFeedRepository struct {
+	feedItems       []models.PersonalizedNewsItem
+	feedErr         error
+	lastFeedFilters *models.PersonalizedFeedFilters
+}
+
+func (m *mockFeedRepository) GetPersonalizedFeed(
 	_ context.Context,
 	filters models.PersonalizedFeedFilters,
 ) ([]models.PersonalizedNewsItem, error) {

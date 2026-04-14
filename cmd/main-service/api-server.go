@@ -71,8 +71,12 @@ func NewAPIServer(deps *APIServerDeps) *APIServer {
 	newsRepository := newsrepo.NewRepository(deps.Storage.DB())
 	newsService := newsservice.NewService(newsRepository)
 	newsHandler := newshttphandler.NewHandler(newsService, deps.Logger)
-	personalizationRepository := personalizationrepo.NewRepository(deps.Storage.DB())
-	personalizationService := personalizationservice.NewService(personalizationRepository)
+	personalizationWriteRepository := personalizationrepo.NewRepository(deps.Storage.DB())
+	personalizationFeedQueryRepository := personalizationrepo.NewFeedQueryRepository(deps.Storage.DB())
+	personalizationService := personalizationservice.NewService(
+		personalizationWriteRepository,
+		personalizationFeedQueryRepository,
+	)
 	personalizationHandler := personalizationhandler.NewHandler(personalizationService, deps.Logger)
 	alertingRepository := alertingrepo.NewRepository(deps.Storage.DB())
 	alertingService := alertingservice.NewService(alertingRepository)
